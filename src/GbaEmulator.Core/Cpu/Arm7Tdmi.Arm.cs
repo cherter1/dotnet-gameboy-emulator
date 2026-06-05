@@ -1,0 +1,198 @@
+using GbaEmulator.Core.Common;
+
+namespace GbaEmulator.Core.Cpu;
+
+public sealed partial class Arm7Tdmi
+{
+    private void ExecuteArmDataProcessing(uint instruction)
+    {
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_0_0|___Op__|S|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| DataProc
+          |_Cond__|0_0_0|___Op__|S|__Rn___|__Rd___|__Rs___|0|Typ|1|__Rm___| DataProc
+          |_Cond__|0_0_1|___Op__|S|__Rn___|__Rd___|_Shift_|___Immediate___| DataProc
+         */
+
+        var immediate = BitUtils.IsBitSet(instruction, 25);
+        var opcode = (instruction >> 21) & 0xF;
+        var setFlags = BitUtils.IsBitSet(instruction, 20);
+        var rn = (int)((instruction >> 16) & 0xF);
+        var rd = (int)((instruction >> 12) & 0xF);
+        if (rd == 15)
+        {
+            var x = 1;
+        }
+
+        var operand1 = rn == 15 ? Registers[rn] + 4 : Registers[rn];
+        if (!immediate && !BitUtils.IsBitSet(instruction, 4))
+        {
+            //operand1 += 4; //plus 12 if shift is specified in instruction normally +8 because of prefetching
+        }
+        var operand2 = immediate
+            ? DecodeImmediateOperand(instruction, out var carryOut)
+            : ComputeShiftedRegisterOperand(instruction, out carryOut);
+
+        var cy = Cpsr.Carry ? 1u : 0u;
+        uint result;
+        switch (opcode)
+        {
+            case 0x0: //AND
+                result = operand1 & operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateNz(result);
+                    SetCarry(carryOut);
+                }
+
+                break;
+            case 0x1: //EOR
+                result = operand1 ^ operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateNz(result);
+                    SetCarry(carryOut);
+                }
+
+                break;
+            case 0x2: //SUB
+                result = operand1 - operand2;
+                Registers[rd] = result;
+                if (setFlags && rd == 15)
+                {
+                    var restoredPsr = Registers.GetSpsr(Cpsr.Mode);
+                    Cpsr = restoredPsr;
+                }
+                if (rd != 15 && setFlags)
+                {
+                    UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+                }
+
+                break;
+            case 0x3: //RSB
+                result = operand2 - operand1;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateArithmeticFlags(operand2, operand1, result, subtraction: true);
+                }
+
+                break;
+            case 0x4: //ADD
+                result = operand1 + operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateArithmeticFlags(operand1, operand2, result, subtraction: false);
+                }
+
+                break;
+            case 0x5: //ADC
+                ulong wide = operand1 + operand2 + cy;
+                result = (uint)wide;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateArithmeticFlags(operand1, operand2, result, subtraction: false);
+                    //Set Carry after to set it correctly
+                    SetCarry(wide >> 32 != 0);
+                }
+
+                break;
+            case 0x6: //SBC
+                result = operand1 - operand2 + cy - 1u;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+                    //Set Carry after to set it correctly
+                    SetCarry((ulong)operand1 >= operand2 + cy - 1u);
+                }
+
+                break;
+            case 0x7: //RSC
+                result = operand2 - operand1 + cy - 1u;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateArithmeticFlags(operand2, operand1, result, subtraction: true);
+                    //Set Carry after to set it correctly
+                    SetCarry((ulong)operand2 >= operand1 + cy - 1u);
+                }
+
+                break;
+            case 0x08: //TST
+                result = operand1 & operand2;
+                UpdateNz(result);
+                SetCarry(carryOut);
+
+                break;
+            case 0x09: //TEQ
+                result = operand1 ^ operand2;
+                UpdateNz(result);
+                SetCarry(carryOut);
+
+                break;
+            case 0xA: //CMP
+                result = operand1 - operand2;
+                UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+
+                break;
+            case 0xB: //CMN
+                result = operand1 + operand2;
+                UpdateArithmeticFlags(operand1, operand2, result, subtraction: false);
+
+                break;
+            case 0xC: //ORR
+                result = operand1 | operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateNz(result);
+                    SetCarry(carryOut);
+                }
+
+                break;
+            case 0xD: //MOV
+                result = operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateNz(result);
+                    SetCarry(carryOut);
+                }
+
+                if (rd == 15 && setFlags)
+                {
+                    var oldMode = Cpsr.Mode;
+                    Cpsr = Registers.GetSpsr(oldMode);
+                }
+
+                break;
+            case 0xE: //BIC
+                result = operand1 & ~operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateNz(result);
+                    SetCarry(carryOut);
+                }
+
+                break;
+            case 0xF: //MVN
+                result = ~operand2;
+                Registers[rd] = result;
+                if (setFlags)
+                {
+                    UpdateNz(result);
+                    SetCarry(carryOut);
+                }
+
+                break;
+            default:
+                throw new NotSupportedException($"ARM opcode 0x{opcode:X} is not implemented yet.");
+        }
+    }
+}
