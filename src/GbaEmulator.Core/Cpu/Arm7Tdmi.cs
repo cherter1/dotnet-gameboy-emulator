@@ -48,7 +48,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0xE25EF004)
+            if (Registers.ProgramCounter == 0x08000192)
             {
                 var x = 11;
             }
