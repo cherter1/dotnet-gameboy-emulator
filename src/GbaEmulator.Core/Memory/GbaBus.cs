@@ -97,9 +97,13 @@ public sealed class GbaBus
         }
 
         var region = ResolveRegion(address, out var buffer, out var offset);
+        if (region is MemoryRegion.Vram)
+        {
+            var x = 1;
+        }
         if (region is MemoryRegion.Unused)
         {
-            Console.WriteLine("WRITE");
+            Console.WriteLine("WRITE unused");
         }
         if (region is MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused)
         {
