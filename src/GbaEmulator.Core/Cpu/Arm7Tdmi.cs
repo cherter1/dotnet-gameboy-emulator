@@ -38,6 +38,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         try
         {
             if (interrupts.ShouldServiceIrq(Cpsr.IrqDisable))
+            //if(false)
             {
                 EnterIrqException();
                 return 4;

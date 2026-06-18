@@ -100,6 +100,10 @@ public sealed class GbaBus
         if (region is MemoryRegion.Vram)
         {
             var x = 1;
+            if (address >= 0x06000000 && address < 0x06000800)
+            {
+                Console.WriteLine($"Write to vram region addr={address:x8} value={value:x2}");
+            }
         }
         if (region is MemoryRegion.Unused)
         {
@@ -109,6 +113,11 @@ public sealed class GbaBus
         {
             //throw new Exception("Cannot Write to bios or rom or unused memory");
             return;
+        }
+
+        if (region is MemoryRegion.Sram && value != 0x0)
+        {
+            //Console.WriteLine("Write to SRAM");
         }
 
         buffer[offset] = value;
