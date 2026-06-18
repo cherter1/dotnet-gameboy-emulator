@@ -23,8 +23,6 @@ public sealed partial class Arm7Tdmi
         uint result;
         switch (opCode)
         {
-            //TODO: start thinking about checked and unchecked casts
-
             case 0b00: //LSL
                 result = (uint)(sourceValue << offset);
                 if (offset != 0)
@@ -284,18 +282,13 @@ public sealed partial class Arm7Tdmi
         }
     }
 
-    private void ExecuteThumbFormat5(ushort instruction)
+    private int ExecuteThumbFormat5(ushort instruction)
     {
         /*
            |..........1 ..................0|
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_1_0_0_0_1|OP_|H|H|Rs/Hs|Rd/Hd| (h1-7 high bit for Rd, h2-6 h2 high bit for Rs) - ADD, CMP, MOV (lo and hi reg or hi reg pair), BX
          */
-
-        if (instruction == 0x4668)
-        {
-            var x = 1;
-        }
 
         var opCode = (instruction >> 8) & 0b11;
         var rd = ((instruction >> 4) & 0x8) | (instruction & 0b111);
@@ -331,9 +324,10 @@ public sealed partial class Arm7Tdmi
                 //32 bit align if entering arm else 16 bit aligned
                 target = !setThumb ? target & ~3u : target & ~1u;
                 Registers.ProgramCounter = target;
-
-                break;
+                return 3;
         }
+
+        return 1;
     }
 
     private void ExecuteThumbFormat6(ushort instruction)
@@ -562,7 +556,7 @@ public sealed partial class Arm7Tdmi
         }
     }
 
-    private void ExecuteThumbFormat14(ushort instruction)
+    private int ExecuteThumbFormat14(ushort instruction)
     {
         /*
            |..........1 ..................0|
@@ -570,6 +564,7 @@ public sealed partial class Arm7Tdmi
            |1_0_1_1|L|1_0|R|____RList______| push/pop registers
          */
 
+        var transferCount = 0;
         var isPush = !BitUtils.IsBitSet(instruction, 11);
 
         if (isPush)
@@ -580,6 +575,7 @@ public sealed partial class Arm7Tdmi
                 if (!shouldTransfer)
                     continue;
 
+                transferCount++;
                 Registers[13] -= 4;
                 var register = Registers[reg];
                 bus.Write32(Registers.StackPointer, reg == 8 ? Registers.LinkRegister : register);
@@ -593,6 +589,7 @@ public sealed partial class Arm7Tdmi
                 if (!shouldTransfer)
                     continue;
 
+                transferCount++;
                 var result = bus.Read32(Registers.StackPointer);
                 if (reg == 8)
                 {
@@ -605,21 +602,18 @@ public sealed partial class Arm7Tdmi
                 Registers[13] += 4;
             }
         }
+        return transferCount + 1;
     }
 
-    private void ExecuteThumbFormat15(ushort instruction)
+    private int ExecuteThumbFormat15(ushort instruction)
     {
         /*
            |..........1 ..................0|
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |1_1_0_0|L|_Rb__|____RList______| multiple load/store
          */
-        if (instruction is 0xc835 or 0xcafe or 0xca3d or 0xcc7d or 0xcfba or 0xce60 or 0xc966 or 0xcae4 or 0xcb5c or 0xcb98 or 0xcc1c or 0xccb0 or 0xcda4 or 0xcc58)
-        {
-            var x = 1;
-        }
 
-        //Console.WriteLine($"LDMIA: {instruction:x8}");
+        var transferCount = 0;
         var isLoad = BitUtils.IsBitSet(instruction, 11);
         var rb = (instruction >> 8) & 0b111;
         var address = Registers[rb];
@@ -630,6 +624,7 @@ public sealed partial class Arm7Tdmi
             if (!shouldTransfer)
                 continue;
 
+            transferCount++;
             if (isLoad) //LDMIA
             {
                 Registers[reg] = bus.Read32(address);
@@ -643,6 +638,7 @@ public sealed partial class Arm7Tdmi
         }
 
         Registers[rb] = address;
+        return transferCount + 1;
     }
 
     private void ExecuteThumbFormat16(ushort instruction)

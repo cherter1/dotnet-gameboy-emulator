@@ -19,8 +19,6 @@ public sealed class InterruptController
 
     public void Request(InterruptType interrupt) => InterruptFlags |= (ushort)interrupt;
 
-    public void AcknowledgePendingIrq() => InterruptFlags = 0;
-
     public ushort Read16(uint address) =>
         address switch
         {
@@ -38,7 +36,7 @@ public sealed class InterruptController
                 InterruptEnable = value;
                 break;
             case 0x04000202:
-                InterruptFlags = (ushort)(InterruptFlags & ~value);
+                InterruptFlags &= (ushort)~value;
                 break;
             case 0x04000208:
                 InterruptMasterEnable = (value & 1) != 0;

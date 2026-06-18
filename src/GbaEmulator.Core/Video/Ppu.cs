@@ -124,6 +124,10 @@ public sealed class Ppu
                     _interrupts.Request(InterruptType.VCounter);
                 }
             }
+            else
+            {
+                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, false);
+            }
 
             if (VerticalCount < ScanLinesPerFrame)
             {
