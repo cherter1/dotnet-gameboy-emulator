@@ -117,6 +117,7 @@ public sealed class GbaBus
 
         if (region is MemoryRegion.Sram && value != 0x0)
         {
+            var x = 0;
             //Console.WriteLine("Write to SRAM");
         }
 
@@ -131,7 +132,7 @@ public sealed class GbaBus
             return;
         }
 
-        Write8(address, (byte)(value & 0xFF));
+        Write8(address, (byte)value);
         Write8(address + 1, (byte)(value >> 8));
     }
 
@@ -143,10 +144,10 @@ public sealed class GbaBus
             return;
         }
 
-        Write8(address, (byte)(value & 0xFF));
-        Write8(address + 1, (byte)((value >> 8) & 0xFF));
-        Write8(address + 2, (byte)((value >> 16) & 0xFF));
-        Write8(address + 3, (byte)((value >> 24) & 0xFF));
+        Write8(address, (byte)value);
+        Write8(address + 1, (byte)(value >> 8));
+        Write8(address + 2, (byte)(value >> 16));
+        Write8(address + 3, (byte)(value >> 24));
     }
 
     private MemoryRegion ResolveRegion(uint address, out byte[] buffer, out int offset)
@@ -271,7 +272,7 @@ public sealed class GbaBus
         {
             Console.WriteLine("writing to dma");
         }
-        WriteIo16(address, (ushort)(value & 0xFFFF));
+        WriteIo16(address, (ushort)value);
         WriteIo16(address + 2, (ushort)(value >> 16));
     }
 }
