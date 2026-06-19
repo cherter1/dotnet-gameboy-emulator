@@ -105,9 +105,15 @@ public sealed class GbaBus
                 Console.WriteLine($"Write to vram region addr={address:x8} value={value:x2}");
             }
         }
-        if (region is MemoryRegion.Unused)
+        if (region is MemoryRegion.Iwram)
         {
-            Console.WriteLine("WRITE unused");
+            if (address >= 0x03003128 && address < 0x030033a8)
+            {
+                if (value != 0x0)
+                {
+                    Console.WriteLine($"writing non zero to textgrid address={address:x8}, value={value:x2}");
+                }
+            }
         }
         if (region is MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused)
         {
