@@ -102,7 +102,7 @@ public sealed class GbaBus
             var x = 1;
             if (address >= 0x06000000 && address < 0x06000800)
             {
-                Console.WriteLine($"Write to vram region addr={address:x8} value={value:x2}");
+                //Console.WriteLine($"Write to vram region addr={address:x8} value={value:x2}");
             }
         }
         if (region is MemoryRegion.Iwram)
@@ -112,6 +112,13 @@ public sealed class GbaBus
                 if (value != 0x0)
                 {
                     Console.WriteLine($"writing non zero to textgrid address={address:x8}, value={value:x2}");
+                }
+
+                if (address >= 0x03003188 && address < 0x030031a8)
+                {
+                    //Console.WriteLine(
+                      //  $"suite line write addr={address:X8} " +
+                       // $"off={address - 0x03003128:X3} value={value:X2} char={(value >= 32 && value < 127 ? (char)value : '.')}"); 
                 }
             }
         }

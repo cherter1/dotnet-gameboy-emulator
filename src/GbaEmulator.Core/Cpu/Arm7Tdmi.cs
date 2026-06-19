@@ -49,10 +49,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            // if (Registers.ProgramCounter == 0x03003010)
-            // {
-            //     var y = 1;
-            // }
+            if (Registers.ProgramCounter == 0x0 && Cpsr.Mode == CpuMode.System)
+            {
+                Console.WriteLine("Bios in system mode");
+                var y = 1;
+            }
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
         }

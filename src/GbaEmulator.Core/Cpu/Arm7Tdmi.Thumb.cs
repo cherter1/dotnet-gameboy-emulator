@@ -71,10 +71,6 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_0_0|1_1|I|O|_Rni_|_Rs__|_Rd__| ADD, SUB (lo reg or 3 bit imm value)
          */
-        if (instruction == 0x1c28)
-        {
-            var x = 0;
-        }
 
         var rd = instruction & 0b111;
         var rs = (instruction >> 3) & 0b111;
@@ -104,10 +100,6 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_0_1|OP_|_Rd__|__Offset8______| MOV, CMP, ADD, SUB (8b imm)
          */
-        if (instruction == 0x281f)
-        {
-            var x = 0;
-        }
 
         var opCode = (instruction >> 11) & 0b11;
         var rd = (instruction >> 8) & 0b111;
@@ -210,7 +202,6 @@ public sealed partial class Arm7Tdmi
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: false);
                 SetCarry(wide >> 32 != 0);
                 Registers[rd] = result;
-                //TODO: Flags N, Z, C, V
 
                 break;
             case 0b0110: //SBC
@@ -466,10 +457,6 @@ public sealed partial class Arm7Tdmi
            |1_0_0_0|L|_Offset5_|_Rb__|_Rd__| Load/Store halfword
            |1_0_0_0|0|0_0_0_0_1|1_0_0|1_1_0|
          */
-        if (instruction == 0x8820)
-        {
-            var x = 1;
-        }
 
         var rd = instruction & 0b111;
         var rb = (instruction >> 3) & 0b111;
@@ -593,6 +580,9 @@ public sealed partial class Arm7Tdmi
                 var result = bus.Read32(Registers.StackPointer);
                 if (reg == 8)
                 {
+                    var cpsr = Cpsr.ToUInt32();
+                    cpsr = BitUtils.SetBit(cpsr, 5, (result & 1) != 0);
+                    Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
                     Registers[15] = result & ~1u;
                 }
                 else
@@ -648,10 +638,6 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |1_1_0_1|_Cond__|____SOffset8___| conditional branch
          */
-        if (instruction == 0xd9fc)
-        {
-            var x = 0;
-        }
 
         var cond = (instruction >> 8) & 0x0F;
         if (!ConditionPassed((Condition)cond))
@@ -745,6 +731,7 @@ public sealed partial class Arm7Tdmi
         {
             var temp = Registers.ProgramCounter;
             Registers.ProgramCounter = Registers.LinkRegister + (uint)(offset << 1);
+            Registers.ProgramCounter &= ~1u;
             Registers[14] = temp | 1u;
         }
         else
