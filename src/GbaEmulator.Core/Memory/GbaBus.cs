@@ -97,14 +97,41 @@ public sealed class GbaBus
         }
 
         var region = ResolveRegion(address, out var buffer, out var offset);
-        if (region is MemoryRegion.Unused)
+        if (region is MemoryRegion.Vram)
         {
-            Console.WriteLine("WRITE");
+            var x = 1;
+            if (address >= 0x06000000 && address < 0x06000800)
+            {
+                //Console.WriteLine($"Write to vram region addr={address:x8} value={value:x2}");
+            }
+        }
+        if (region is MemoryRegion.Iwram)
+        {
+            if (address >= 0x03003128 && address < 0x030033a8)
+            {
+                if (value != 0x0)
+                {
+                    Console.WriteLine($"writing non zero to textgrid address={address:x8}, value={value:x2}");
+                }
+
+                if (address >= 0x03003188 && address < 0x030031a8)
+                {
+                    //Console.WriteLine(
+                      //  $"suite line write addr={address:X8} " +
+                       // $"off={address - 0x03003128:X3} value={value:X2} char={(value >= 32 && value < 127 ? (char)value : '.')}"); 
+                }
+            }
         }
         if (region is MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused)
         {
             //throw new Exception("Cannot Write to bios or rom or unused memory");
             return;
+        }
+
+        if (region is MemoryRegion.Sram && value != 0x0)
+        {
+            var x = 0;
+            //Console.WriteLine("Write to SRAM");
         }
 
         buffer[offset] = value;
@@ -118,7 +145,7 @@ public sealed class GbaBus
             return;
         }
 
-        Write8(address, (byte)(value & 0xFF));
+        Write8(address, (byte)value);
         Write8(address + 1, (byte)(value >> 8));
     }
 
@@ -130,10 +157,10 @@ public sealed class GbaBus
             return;
         }
 
-        Write8(address, (byte)(value & 0xFF));
-        Write8(address + 1, (byte)((value >> 8) & 0xFF));
-        Write8(address + 2, (byte)((value >> 16) & 0xFF));
-        Write8(address + 3, (byte)((value >> 24) & 0xFF));
+        Write8(address, (byte)value);
+        Write8(address + 1, (byte)(value >> 8));
+        Write8(address + 2, (byte)(value >> 16));
+        Write8(address + 3, (byte)(value >> 24));
     }
 
     private MemoryRegion ResolveRegion(uint address, out byte[] buffer, out int offset)
@@ -258,7 +285,7 @@ public sealed class GbaBus
         {
             Console.WriteLine("writing to dma");
         }
-        WriteIo16(address, (ushort)(value & 0xFFFF));
+        WriteIo16(address, (ushort)value);
         WriteIo16(address + 2, (ushort)(value >> 16));
     }
 }

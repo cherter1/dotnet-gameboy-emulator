@@ -38,6 +38,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         try
         {
             if (interrupts.ShouldServiceIrq(Cpsr.IrqDisable))
+            //if(false)
             {
                 EnterIrqException();
                 return 4;
@@ -48,9 +49,25 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0xE25EF004)
+            if (Registers.ProgramCounter == 0x0 && Cpsr.Mode == CpuMode.System)
             {
-                var x = 11;
+                Console.WriteLine("Bios in system mode");
+                var y = 1;
+            }
+
+            if (Registers.ProgramCounter == 0x08025254) //snprintf
+            {
+                var z = 1;
+            }
+
+            if (Registers.ProgramCounter == 0x080252c4) //snprintf return 
+            {
+                var z = 1;
+            }
+            
+            if (Registers.ProgramCounter == 0x08025264) //snprintf first inner function call return 
+            {
+                var z = 1;
             }
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
@@ -97,8 +114,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             {
                 // LDM, STM
                 decoded = "LDM/STM";
-                ExecuteBlockDataTransfer(instruction);
-                return 3;
+                return ExecuteBlockDataTransfer(instruction);
             }
 
             var bits27_26 = (instruction >> 26) & 0b11;
@@ -115,7 +131,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //TODO: SWI
                 decoded = "SWI";
                 ExecuteSoftwareInterrupt(instruction);
-                return 3;
+                return 4;
             }
 
             if (bits27_26 == 0b00)
@@ -144,14 +160,14 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 {
                     //TODO: Multiply
                     decoded = "MULTIPLY";
-                    return 3;
+                    return 1;
                 }
 
                 if ((instruction & 0x0F8000F0) == 0x00800090)
                 {
                     decoded = "MULTIPLY LONG";
                     //TODO: MultiplyLong
-                    return 3;
+                    return 1;
                 }
 
                 if ((instruction & 0x0E000090) == 0x00000090)
@@ -170,10 +186,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     return 1;
                 }
 
-                if (instruction == 0x11A0E00F)
-                {
-                    var z = 1;
-                }
                 //MSR
                 if ((instruction & 0x0DB0F000) == 0x0120F000)
                 {
@@ -181,10 +193,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     ExecuteMsr(instruction);
                     return 1;
                 }
-                // 0b_0000000_11_0_111_11_0_1111_000000000000 0x01BEF000
-                // 0b_0000000_10_0_101_00_0_1111_000000000000 0x0128F000
-
-                //TODO: Whatever else idek
 
                 decoded = "DATA PROC";
                 ExecuteArmDataProcessing(instruction);
@@ -276,14 +284,14 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     //format 4
                     decoded = "ALU OP f4";
                     this.ExecuteThumbFormat4(instruction);
+                    return 1;
                 }
                 else
                 {
                     //format 5
                     decoded = "ADD/CMP/MOV/bx f5";
-                    this.ExecuteThumbFormat5(instruction);
+                    return this.ExecuteThumbFormat5(instruction);
                 }
-                return 3;
             }
 
             if ((instruction & 0xF800) == 0x4800) //bits 15-11 == 0b01001
@@ -291,7 +299,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 6
                 decoded = "LDR PC f6";
                 this.ExecuteThumbFormat6(instruction);
-                return 3;
+                return 2;
             }
 
             if ((instruction & 0xF000) == 0x5000) //bits 15-12 == 0b0101
@@ -309,7 +317,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     this.ExecuteThumbFormat8(instruction);
                 }
 
-                return 3;
+                return 2;
             }
 
             if ((instruction & 0xE000) == 0x6000) //bits 15-13 == 0b011
@@ -317,7 +325,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 9
                 decoded = "LDR/STR immOff f9";
                 this.ExecuteThumbFormat9(instruction);
-                return 3;
+                return 2;
             }
 
             if ((instruction & 0xF000) == 0x8000) //bits 15-12 == 0b1000
@@ -325,7 +333,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 10
                 decoded = "LDR/STR HW f10";
                 this.ExecuteThumbFormat10(instruction);
-                return 3;
+                return 2;
             }
 
             if ((instruction & 0xF000) == 0x9000) //bits 15-12 == 0b1001
@@ -333,7 +341,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 11
                 decoded = "LDR/STR SP rel f11";
                 this.ExecuteThumbFormat11(instruction);
-                return 3;
+                return 2;
             }
 
             if ((instruction & 0xF000) == 0xA000) //bits 15-12 == 0b1010
@@ -341,7 +349,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 12
                 decoded = "SP or PC Load f12";
                 this.ExecuteThumbFormat12(instruction);
-                return 3;
+                return 2;
             }
 
             if ((instruction & 0xFF00) == 0xB000) //bits 15-8 == 0b10110000
@@ -349,32 +357,29 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 13
                 decoded = "offset SP f13";
                 this.ExecuteThumbFormat13(instruction);
-                return 3;
+                return 1;
             }
 
             if ((instruction & 0xF600) == 0xB400) //bits 15-12 == 0b1011 and bits 10-9 == 0b10
             {
                 //format 14
                 decoded = "PUSH/POP reg f14";
-                this.ExecuteThumbFormat14(instruction);
-                return 3;
+                return this.ExecuteThumbFormat14(instruction);
             }
 
             if ((instruction & 0xF000) == 0xC000) //bits 15-12 == 0b1100
             {
                 //format 15
                 decoded = "mult Load/store f15";
-                this.ExecuteThumbFormat15(instruction);
-                return 3;
+                return this.ExecuteThumbFormat15(instruction);
             }
 
-            //TODO: this may have to be checked before format 16
             if ((instruction & 0xFF00) == 0xDF00) //bits 15-8 == 0b11011111
             {
                 //format 17
                 decoded = "SWI f17";
                 this.ExecuteThumbFormat17(instruction);
-                return 3;
+                return 4;
             }
 
             if ((instruction & 0xF000) == 0xD000) //bits 15-12 == 0b1101
@@ -402,7 +407,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
 
             decoded = "NOTHING";
-            return 1;
+            throw new NotSupportedException("THUMB instruction could not be decoded");
         }
         finally
         {
@@ -492,7 +497,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         _count++;
     }
 
-    private void ExecuteBlockDataTransfer(uint instruction)
+    private int ExecuteBlockDataTransfer(uint instruction)
     {
         /*
            |..3 ..................2 ..................1 ..................0|
@@ -569,6 +574,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             Registers[rn] = finalAddress;
         }
+
+        return count + 1;
     }
 
     private void ExecuteArmSingleDataSwap(uint instruction)

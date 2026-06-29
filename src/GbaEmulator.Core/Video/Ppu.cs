@@ -101,6 +101,7 @@ public sealed class Ppu
         while (_cycleAccumulator >= CyclesPerScanline)
         {
             _cycleAccumulator -= CyclesPerScanline;
+            VerticalCount++;
 
             if (VerticalCount == 160)
             {
@@ -116,21 +117,26 @@ public sealed class Ppu
 
             if (VerticalCount == ((DisplayStatus >> 8) & 0xFF))
             {
-                var vCountIrqEnabled = BitUtils.IsBitSet(DisplayStatus, 2);
+                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, true);
+                var vCountIrqEnabled = BitUtils.IsBitSet(DisplayStatus, 5);
                 if (vCountIrqEnabled)
                 {
                     _interrupts.Request(InterruptType.VCounter);
                 }
             }
-
-            if (VerticalCount >= ScanLinesPerFrame - 1)
+            else
             {
-                VerticalCount = 0;
-                //leaving vBlank
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 0, false);
+                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, false);
             }
-            VerticalCount++;
 
+            if (VerticalCount < ScanLinesPerFrame)
+            {
+                continue;
+            }
+
+            VerticalCount = 0;
+            //leaving vBlank
+            DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 0, false);
         }
     }
 
