@@ -1,0 +1,33 @@
+    27f8:	2300      	movs	r3, #0
+    27fa:	469b      	mov	fp, r3 (fp = r11)-
+    27fc:	2601      	movs	r6, #1
+    27fe:	465f      	mov	r7, fp
+    2800:	9304      	str	r3, [sp, #16]
+    2802:	4b8a      	ldr	r3, [pc, #552]	@ (0x2a2c)
+    2804:	9303      	str	r3, [sp, #12]
+    2806:	4b8a      	ldr	r3, [pc, #552]	@ (0x2a30)
+    2808:	9307      	str	r3, [sp, #28]
+    280a:	4b8a      	ldr	r3, [pc, #552]	@ (0x2a34)
+    280c:	9305      	str	r3, [sp, #20]
+    280e:	4b8a      	ldr	r3, [pc, #552]	@ (0x2a38)
+    2810:	9309      	str	r3, [sp, #36]	@ 0x24
+    2812:	4b8a      	ldr	r3, [pc, #552]	@ (0x2a3c)
+    2814:	9302      	str	r3, [sp, #8]
+    2816:	22f8      	movs	r2, #248	@ 0xf8
+    2818:	2100      	movs	r1, #0
+    281a:	0092      	lsls	r2, r2, #2
+    281c:	9803      	ldr	r0, [sp, #12]
+    281e:	f022 fcc5 	bl	0x251ac FUN_080251ac
+    2822:	f01f fcf9 	bl	0x22218 FUN_08022218
+    2826:	f01f fd33 	bl	0x22290 FUN_08022290
+    282a:	4206      	tst	r6, r0
+    282c:	d00f      	beq.n	0x284e
+    282e:	9a05      	ldr	r2, [sp, #20]
+    2830:	9c07      	ldr	r4, [sp, #28]
+    2832:	00bb      	lsls	r3, r7, #2
+    2834:	5898      	ldr	r0, [r3, r2]
+    2836:	71e7      	strb	r7, [r4, #7]
+    2838:	f7ff fd38 	bl	0x22ac (FUN_080022ac) 
+    283c:	23ff      	movs	r3, #255	@ 0xff
+    283e:	71e3      	strb	r3, [r4, #7]
+    2840:	e7e9      	b.n	0x2816
