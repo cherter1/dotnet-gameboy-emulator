@@ -879,8 +879,17 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
     }
 
-    private void SetCarry(bool carry) =>
+    public void SetCarry(bool carry) =>
         Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 29, carry));
+
+    public void SetOverflow(bool overflow) =>
+        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 28, overflow));
+
+    public void SetNegative(bool negative) =>
+        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 31, negative));
+
+    public void SetZero(bool zero) =>
+        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 30, zero));
 
     private void UpdateArithmeticFlags(uint left, uint right, uint result, bool subtraction)
     {
