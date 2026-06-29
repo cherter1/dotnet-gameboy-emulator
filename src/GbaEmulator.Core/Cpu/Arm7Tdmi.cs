@@ -55,6 +55,21 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 var y = 1;
             }
 
+            if (Registers.ProgramCounter == 0x08025254) //snprintf
+            {
+                var z = 1;
+            }
+
+            if (Registers.ProgramCounter == 0x080252c4) //snprintf return 
+            {
+                var z = 1;
+            }
+            
+            if (Registers.ProgramCounter == 0x08025264) //snprintf first inner function call return 
+            {
+                var z = 1;
+            }
+
             return Cpsr.ThumbState ? StepThumb() : StepArm();
         }
         catch (Exception)

@@ -391,13 +391,13 @@ public sealed partial class Arm7Tdmi
                 bus.Write16(effectiveAddress, (ushort)Registers[rd]);
 
                 break;
-            case 0b01: //LDRH
-                Registers[rd] = bus.Read16(effectiveAddress);
-
-                break;
-            case 0b10: //LDSB
+            case 0b01: //LDSB
                 var loadedByte = bus.Read8(effectiveAddress);
                 Registers[rd] = (uint)BitUtils.SignExtend(loadedByte, 8);
+
+                break;
+            case 0b10: //LDRH
+                Registers[rd] = bus.Read16(effectiveAddress);
 
                 break;
             case 0b11: //LDSH
