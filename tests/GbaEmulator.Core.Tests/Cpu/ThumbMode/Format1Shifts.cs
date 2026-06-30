@@ -13,7 +13,7 @@ public sealed class Format1Shifts
     {
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
-        
+
         // 0x02000000: lsl r0, r1, #0
         bus.Write16(0x02000000, 0x0008);
 
@@ -21,7 +21,7 @@ public sealed class Format1Shifts
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
         cpu.SetThumbState(true);
-        
+
         // set flags high
         cpu.SetCarry(initialFlagValue);
         cpu.SetOverflow(initialFlagValue);
@@ -35,17 +35,17 @@ public sealed class Format1Shifts
         Assert.Equal(0x12345678u, cpu.Registers[0]);
         Assert.False(cpu.Cpsr.Negative);
         Assert.False(cpu.Cpsr.Zero);
-        
+
         Assert.Equal(initialFlagValue, cpu.Cpsr.Overflow);
         Assert.Equal(initialFlagValue, cpu.Cpsr.Carry);
     }
-    
+
     [Fact]
     public void LSL_NormalShift_CarryGetsOld31Bit()
     {
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
-        
+
         // 0x02000000: lsl r0, r1, #1
         bus.Write16(0x02000000, 0x0048);
 
@@ -60,7 +60,7 @@ public sealed class Format1Shifts
         //Assert
         Assert.Equal(0x2u, cpu.Registers[0]);
         Assert.True(cpu.Cpsr.Carry);
-        
+
         Assert.False(cpu.Cpsr.Overflow);
         Assert.False(cpu.Cpsr.Negative);
         Assert.False(cpu.Cpsr.Zero);
@@ -71,7 +71,7 @@ public sealed class Format1Shifts
     {
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
-        
+
         // 0x02000000: lsl r0, r1, #1
         bus.Write16(0x02000000, 0x0048);
 
@@ -92,13 +92,13 @@ public sealed class Format1Shifts
         Assert.False(cpu.Cpsr.Overflow);
         Assert.False(cpu.Cpsr.Zero);
     }
-    
+
     [Fact]
     public void LSL_ZeroResult_CarryClearedAndZeroFlagSetHigh()
     {
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
-        
+
         // 0x02000000: lsl r0, r1, #31
         bus.Write16(0x02000000, 0x07c8);
 
