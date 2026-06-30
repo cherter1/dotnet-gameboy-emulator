@@ -208,4 +208,240 @@ public sealed class Format2AddSub
         Assert.False(cpu.Cpsr.Zero);
         Assert.False(cpu.Cpsr.Overflow);
     }
+
+    [Fact]
+    public void SUB_SimpleSubtractNoBorrow_CarryFlagSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #1
+        bus.Write16(0x02000000, 0x1e48);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x10;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0xfu, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void SUB_SubtractToZero_CarryAndZeroFlagSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #1
+        bus.Write16(0x02000000, 0x1e48);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x1;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x0u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void SUB_PositiveMinusZero_CarryFlagSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #0
+        bus.Write16(0x02000000, 0x1e08);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x12345678;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x12345678u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void SUB_ZeroMinusZero_CarryAndZeroFlagSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #0
+        bus.Write16(0x02000000, 0x1e08);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x0;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x0u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void SUB_ZeroMinusOne_CarryNotSetAndNegativeSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #1
+        bus.Write16(0x02000000, 0x1e48);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x0;
+        cpu.SetThumbState(true);
+        cpu.SetCarry(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0xffffffffu, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Negative);
+
+        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void SUB_BorrowWithMaxImm_CarryNotSetAndNegativeSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #7
+        bus.Write16(0x02000000, 0x1fc8);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x3;
+        cpu.SetThumbState(true);
+        cpu.SetCarry(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0xfffffffcu, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Negative);
+
+        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void SUB_NegativeWrapsToPositiveResult_OverFlowAndCarrySet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #1
+        bus.Write16(0x02000000, 0x1e48);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x80000000;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x7fffffffu, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Overflow);
+
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Zero);
+    }
+
+    [Fact]
+    public void SUB_NegativeResultWithoutOverflow_CarryAndNegativeSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #7
+        bus.Write16(0x02000000, 0x1fc8);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x80000007;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x80000000u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Negative);
+
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Zero);
+    }
+
+    [Fact]
+    public void SUB_MaxImmToZeroResult_CarryAndZeroSet()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r0, r1, #7
+        bus.Write16(0x02000000, 0x1fc8);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x7;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x0u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
 }
