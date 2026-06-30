@@ -119,4 +119,162 @@ public sealed class Format1Shifts
         Assert.False(cpu.Cpsr.Overflow);
         Assert.False(cpu.Cpsr.Negative);
     }
+
+    [Fact]
+    public void LSR_NormalShiftOldBit0Set_CarryGetsSetHigh()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: lsr r0, r1, #1
+        bus.Write16(0x02000000, 0x0848);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x80000001;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x40000000u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Negative);
+    }
+
+    [Fact]
+    public void LSR_NormalShiftOldBit0NotSet_CarryCleared()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: lsr r0, r1, #1
+        bus.Write16(0x02000000, 0x0848);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x80000000;
+        cpu.SetThumbState(true);
+        cpu.SetCarry(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x40000000u, cpu.Registers[0]);
+
+        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Negative);
+    }
+
+    [Fact]
+    public void LSR_Shift31Old30BitSetHigh_CarryFlagSetHigh()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: lsr r0, r1, #31
+        bus.Write16(0x02000000, 0x0fc8);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x40000000;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x0u, cpu.Registers[0]);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Negative);
+    }
+
+    [Fact]
+    public void LSR_Bit30NotSet_CarryFlagClearedProducesZero()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: lsr r0, r1, #31
+        bus.Write16(0x02000000, 0x0fc8);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x80000000;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x1u, cpu.Registers[0]);
+
+        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Negative);
+    }
+
+    [Fact]
+    public void LSR_Shift32With31BitSetHigh_CarryAndZeroFlagSetHigh()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: lsr r0, r1, #32
+        bus.Write16(0x02000000, 0x0808);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x80000000;
+        cpu.SetThumbState(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x0u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Negative);
+    }
+
+    [Fact]
+    public void LSR_Shift32With31BitSetLow_CarrySetLowProducesZero()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: lsr r0, r1, #32
+        bus.Write16(0x02000000, 0x0808);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[1] = 0x7fffffff;
+        cpu.SetThumbState(true);
+        cpu.SetCarry(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x0u, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Zero);
+
+        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Cpsr.Negative);
+    }
 }

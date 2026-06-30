@@ -35,7 +35,7 @@ public sealed partial class Arm7Tdmi
                 if (offset == 0)
                 {
                     result = 0;
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 32));
+                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 31));
                     break;
                 }
 
