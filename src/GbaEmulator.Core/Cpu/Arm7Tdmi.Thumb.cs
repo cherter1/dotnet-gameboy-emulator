@@ -177,22 +177,38 @@ public sealed partial class Arm7Tdmi
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = Registers[rd] >> shiftAmount;
-                UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    if (shiftAmount > 31)
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
+                        result = 0;
+                    }
+                    else
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    }
                 }
+                UpdateNz(result);
                 Registers[rd] = result;
 
                 break;
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = (uint)((int)Registers[rd] >> shiftAmount);
-                UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    if (shiftAmount > 31)
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
+                        result = (Registers[rd] & 0x80000000) == 0x80000000 ? 0xffffffff : 0;
+                    }
+                    else
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    }
                 }
+                UpdateNz(result);
                 Registers[rd] = result;
 
                 break;
