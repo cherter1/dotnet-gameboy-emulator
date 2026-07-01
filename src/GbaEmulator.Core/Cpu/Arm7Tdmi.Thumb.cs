@@ -213,7 +213,7 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b0101: //ADC
-                ulong wide = Registers[rd] + Registers[rs] + cy;
+                var wide = (ulong)Registers[rd] + Registers[rs] + cy;
                 result = (uint)wide;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: false);
                 SetCarry(wide >> 32 != 0);
@@ -221,18 +221,21 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b0110: //SBC
-                result = Registers[rd] - Registers[rs] - ((~cy) & 1u);
-                //TODO: Flags N, Z, C, V
+                var longResult = (ulong)Registers[rd] - Registers[rs] - ((~cy) & 1u);
+                result = (uint)longResult;
+                UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: true);
+                SetCarry((ulong)Registers[rd] >= Registers[rs] - ((~cy) & 1u));
+                Registers[rd] = result;
 
                 break;
             case 0b0111: //ROR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                //TODO: change
+                //TODO: change ^^ Maybe Mod offset
                 result = BitOperations.RotateRight(Registers[rd], shiftAmount);
                 UpdateNz(result);
-                if (shiftAmount == 0)
+                if (shiftAmount != 0)
                 {
-                    //Set Carry
+                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
                 }
                 Registers[rd] = result;
 
@@ -246,7 +249,6 @@ public sealed partial class Arm7Tdmi
                 result = 0 - Registers[rs];
                 UpdateArithmeticFlags(0, Registers[rs], result, true);
                 Registers[rd] = result;
-                //TODO: maybe redo carry?
 
                 break;
             case 0b1010: //CMP
