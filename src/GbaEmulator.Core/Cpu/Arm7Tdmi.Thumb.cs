@@ -304,9 +304,9 @@ public sealed partial class Arm7Tdmi
         var rs = (instruction >> 3) & 0xF;
 
         var source = rs == 15 ? Registers[rs] + 2 : Registers[rs];
-        if (rd == 15)
+        if (rd == 15 || rs == 15)
         {
-            source &= ~1u;
+            source &= ~3u;
         }
 
         switch (opCode)
@@ -327,11 +327,11 @@ public sealed partial class Arm7Tdmi
             case 0b11: //BX
                 var target = source;
                 var setThumb = (target & 1) != 0;
-                var cpsr = BitUtils.SetBit(Cpsr.ToUInt32(), 5, setThumb); //Set Thumb State
+                var cpsr = BitUtils.SetBit(Cpsr.ToUInt32(), 5, setThumb);
                 Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
 
                 //32 bit align if entering arm else 16 bit aligned
-                target = !setThumb ? target & ~3u : target & ~1u;
+                target &= !setThumb ? ~3u : ~1u;
                 Registers.ProgramCounter = target;
                 return 3;
         }

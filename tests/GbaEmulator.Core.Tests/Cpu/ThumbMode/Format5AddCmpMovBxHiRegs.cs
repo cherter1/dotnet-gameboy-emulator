@@ -16,10 +16,193 @@ public sealed class Format5AddCmpMovBxHiRegs
         200000c:       4678            mov     r0, pc
         200000e:       46f8            mov     r8, pc
        2000010:       46c8            mov     r8, r9
-       2000012:       4778            bx      pc
-       2000014:       4770            bx      lr
-       2000016:       4700            bx      r0
+        2000012:       4778            bx      pc
+        2000014:       4770            bx      lr
+        2000016:       4700            bx      r0
      */
+    [Fact]
+    public void BX_HiRegLsbSet_StaysThumbModeAndSetsPcCorrectly()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000100: bx lr
+        bus.Write16(0x02000100, 0x4770);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.Registers[14] = 0x02000201;
+        cpu.SetThumbState(true);
+        cpu.SetOverflow(true);
+        cpu.SetNegative(true);
+        cpu.SetCarry(true);
+        cpu.SetZero(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x02000200u, cpu.Registers.ProgramCounter);
+        Assert.True(cpu.Cpsr.ThumbState);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void BX_HiRegLsbNotSet_SwapsToArmModePcSetCorrectly()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000100: bx lr
+        bus.Write16(0x02000100, 0x4770);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.Registers[14] = 0x02000200;
+        cpu.SetThumbState(true);
+        cpu.SetOverflow(true);
+        cpu.SetNegative(true);
+        cpu.SetCarry(true);
+        cpu.SetZero(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x02000200u, cpu.Registers.ProgramCounter);
+        Assert.False(cpu.Cpsr.ThumbState);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void BX_LoReg0BitSet_StaysThumbModePcSetCorrectly()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000100: bx r0
+        bus.Write16(0x02000100, 0x4700);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.Registers[0] = 0x02000201;
+        cpu.SetThumbState(true);
+        cpu.SetOverflow(true);
+        cpu.SetNegative(true);
+        cpu.SetCarry(true);
+        cpu.SetZero(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x02000200u, cpu.Registers.ProgramCounter);
+        Assert.True(cpu.Cpsr.ThumbState);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void BX_LoReg0BitNotSet_SwapsToArmModePcSetCorrectly()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000100: bx r0
+        bus.Write16(0x02000100, 0x4700);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.Registers[0] = 0x02000200;
+        cpu.SetThumbState(true);
+        cpu.SetOverflow(true);
+        cpu.SetNegative(true);
+        cpu.SetCarry(true);
+        cpu.SetZero(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x02000200u, cpu.Registers.ProgramCounter);
+        Assert.False(cpu.Cpsr.ThumbState);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void BX_PcUnaligned_SwapsToArmModePcSetToWordAlignedVisiblePc()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000102: bx pc
+        bus.Write16(0x02000102, 0x4778);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000102;
+        cpu.SetThumbState(true);
+        cpu.SetOverflow(true);
+        cpu.SetNegative(true);
+        cpu.SetCarry(true);
+        cpu.SetZero(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x02000104u, cpu.Registers.ProgramCounter);
+        Assert.False(cpu.Cpsr.ThumbState);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Cpsr.Overflow);
+    }
+
+    [Fact]
+    public void BX_PcAligned_SwapsToArmMode()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000100: bx pc
+        bus.Write16(0x02000100, 0x4778);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.SetThumbState(true);
+        cpu.SetOverflow(true);
+        cpu.SetNegative(true);
+        cpu.SetCarry(true);
+        cpu.SetZero(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x02000104u, cpu.Registers.ProgramCounter);
+        Assert.False(cpu.Cpsr.ThumbState);
+
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Cpsr.Overflow);
+    }
 
     [Fact]
     public void MOV_HiRegPcUnaligned_PcWordAlignedBeforeMov()
@@ -27,11 +210,11 @@ public sealed class Format5AddCmpMovBxHiRegs
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        // 0x08000102: mov r8, pc
-        bus.Write16(0x08000102, 0x46f8);
+        // 0x02000102: mov r8, pc
+        bus.Write16(0x02000102, 0x46f8);
 
         cpu.Reset(true);
-        cpu.Registers.ProgramCounter = 0x08000102;
+        cpu.Registers.ProgramCounter = 0x02000102;
         cpu.Registers[8] = 0x0;
         cpu.SetThumbState(true);
         cpu.SetOverflow(true);
@@ -43,7 +226,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Step();
 
         //Assert
-        Assert.Equal(0x08000104u, cpu.Registers[8]);
+        Assert.Equal(0x02000104u, cpu.Registers[8]);
 
         Assert.True(cpu.Cpsr.Carry);
         Assert.True(cpu.Cpsr.Zero);
@@ -57,11 +240,11 @@ public sealed class Format5AddCmpMovBxHiRegs
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        // 0x08000100: mov r0, pc
-        bus.Write16(0x08000100, 0x4678);
+        // 0x02000100: mov r0, pc
+        bus.Write16(0x02000100, 0x4678);
 
         cpu.Reset(true);
-        cpu.Registers.ProgramCounter = 0x08000100;
+        cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x0;
         cpu.SetThumbState(true);
         cpu.SetOverflow(true);
@@ -73,7 +256,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Step();
 
         //Assert
-        Assert.Equal(0x08000104u, cpu.Registers[0]);
+        Assert.Equal(0x02000104u, cpu.Registers[0]);
 
         Assert.True(cpu.Cpsr.Carry);
         Assert.True(cpu.Cpsr.Zero);
@@ -87,12 +270,12 @@ public sealed class Format5AddCmpMovBxHiRegs
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        // 0x08000100: cmp r8, pc
-        bus.Write16(0x08000100, 0x45f8);
+        // 0x02000100: cmp r8, pc
+        bus.Write16(0x02000100, 0x45f8);
 
         cpu.Reset(true);
-        cpu.Registers.ProgramCounter = 0x08000100;
-        cpu.Registers[8] = 0x08000104;
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.Registers[8] = 0x02000104;
         cpu.SetThumbState(true);
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
@@ -101,7 +284,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Step();
 
         //Assert
-        Assert.Equal(0x08000104u, cpu.Registers[8]);
+        Assert.Equal(0x02000104u, cpu.Registers[8]);
         Assert.True(cpu.Cpsr.Carry);
         Assert.True(cpu.Cpsr.Zero);
 
@@ -115,12 +298,12 @@ public sealed class Format5AddCmpMovBxHiRegs
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        // 0x08000100: cmp r0, pc
-        bus.Write16(0x08000100, 0x4578);
+        // 0x02000100: cmp r0, pc
+        bus.Write16(0x02000100, 0x4578);
 
         cpu.Reset(true);
-        cpu.Registers.ProgramCounter = 0x08000100;
-        cpu.Registers[0] = 0x08000100;
+        cpu.Registers.ProgramCounter = 0x02000100;
+        cpu.Registers[0] = 0x02000100;
         cpu.SetThumbState(true);
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
@@ -130,7 +313,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Step();
 
         //Assert
-        Assert.Equal(0x08000100u, cpu.Registers[0]);
+        Assert.Equal(0x02000100u, cpu.Registers[0]);
         Assert.True(cpu.Cpsr.Negative);
 
         Assert.False(cpu.Cpsr.Carry);
@@ -144,11 +327,11 @@ public sealed class Format5AddCmpMovBxHiRegs
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        // 0x08000100: add r8, pc
-        bus.Write16(0x08000100, 0x44f8);
+        // 0x02000100: add r8, pc
+        bus.Write16(0x02000100, 0x44f8);
 
         cpu.Reset(true);
-        cpu.Registers.ProgramCounter = 0x08000100;
+        cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[8] = 0x20;
         cpu.SetThumbState(true);
         cpu.SetCarry(true);
@@ -160,7 +343,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Step();
 
         //Assert
-        Assert.Equal(0x08000124u, cpu.Registers[8]);
+        Assert.Equal(0x02000124u, cpu.Registers[8]);
 
         Assert.True(cpu.Cpsr.Carry);
         Assert.True(cpu.Cpsr.Overflow);
@@ -174,11 +357,11 @@ public sealed class Format5AddCmpMovBxHiRegs
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        // 0x08000102: add r0, pc
-        bus.Write16(0x08000102, 0x4478);
+        // 0x02000102: add r0, pc
+        bus.Write16(0x02000102, 0x4478);
 
         cpu.Reset(true);
-        cpu.Registers.ProgramCounter = 0x08000102;
+        cpu.Registers.ProgramCounter = 0x02000102;
         cpu.Registers[0] = 0x20;
         cpu.SetThumbState(true);
         cpu.SetCarry(true);
@@ -190,7 +373,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Step();
 
         //Assert
-        Assert.Equal(0x08000124u, cpu.Registers[0]);
+        Assert.Equal(0x02000124u, cpu.Registers[0]);
 
         Assert.True(cpu.Cpsr.Carry);
         Assert.True(cpu.Cpsr.Overflow);
