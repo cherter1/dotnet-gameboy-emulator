@@ -346,10 +346,6 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_1_0_0_1|_Rd__|____Word8______| PC-Relative load (LDR with PC)
          */
-        if (instruction == 0x491B)
-        {
-            var x = 1;
-        }
 
         var rd = (instruction >> 8) & 0b111;
         var offset = (instruction & 0xFF) << 2;
