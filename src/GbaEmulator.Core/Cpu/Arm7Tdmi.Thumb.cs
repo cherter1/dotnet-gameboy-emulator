@@ -521,15 +521,9 @@ public sealed partial class Arm7Tdmi
         var source = BitUtils.IsBitSet(instruction, 11);
         var immediate = (instruction & 0xFF) << 2;
         var rd = (instruction >> 8) & 0b111;
-        //TODO: alignment
         var operand1 = source
             ? Registers.StackPointer
-            : Registers.ProgramCounter + 2;
-        if (!source && (operand1 & 0b1) == 1)
-        {
-            var x = 1;
-            Console.WriteLine("NEEDS ALIGNMENT ???????????????????????");
-        }
+            : (Registers.ProgramCounter + 2) & ~3u;
 
         Registers[rd] = operand1 + (uint)immediate;
     }
