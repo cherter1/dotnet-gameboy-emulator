@@ -431,15 +431,15 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_1_1|B|L|_Offset5_|_Rb__|_Rd__| Load/Store with immediate offset
          */
-        if (instruction == 0x6800)
-        {
-            var x = 1;
-        }
 
         var rd = instruction & 0b111;
         var rb = (instruction >> 3) & 0b111;
         var opCode = (instruction >> 11) & 0b11;
-        var offset = ((instruction >> 6) & 0x1F) << 2;
+        var offset = (instruction >> 6) & 0x1F;
+        if ((opCode & 0b10) == 0)
+        {
+            offset <<= 2;
+        }
         var effectiveAddress = Registers[rb] + (uint)offset;
 
         switch (opCode)
