@@ -6,21 +6,6 @@ namespace GbaEmulator.Core.Tests.Cpu.ThumbMode;
 
 public sealed class Format9LoadStoreWithImmOffset
 {
-    /*
-            2000000:       6008            str     r0, [r1, #0]
-            2000002:       6048            str     r0, [r1, #4]
-            2000004:       67c8            str     r0, [r1, #124]  @ 0x7c
-            2000006:       6808            ldr     r0, [r1, #0]
-            2000008:       6848            ldr     r0, [r1, #4]
-            200000a:       6fc8            ldr     r0, [r1, #124]  @ 0x7c
-            200000c:       7008            strb    r0, [r1, #0]
-            200000e:       7148            strb    r0, [r1, #5]
-            2000010:       77c8            strb    r0, [r1, #31]
-      2000012:       7808            ldrb    r0, [r1, #0]
-      2000014:       7948            ldrb    r0, [r1, #5]
-      2000016:       7fc8            ldrb    r0, [r1, #31] 
-     */
-
     [Fact]
     public void STR_ZeroOffset_FlagsUnchangedAndWordStoredAtR1Address()
     {

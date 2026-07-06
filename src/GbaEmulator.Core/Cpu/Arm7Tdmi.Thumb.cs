@@ -469,7 +469,6 @@ public sealed partial class Arm7Tdmi
            |..........1 ..................0|
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |1_0_0_0|L|_Offset5_|_Rb__|_Rd__| Load/Store halfword
-           |1_0_0_0|0|0_0_0_0_1|1_0_0|1_1_0|
          */
 
         var rd = instruction & 0b111;
