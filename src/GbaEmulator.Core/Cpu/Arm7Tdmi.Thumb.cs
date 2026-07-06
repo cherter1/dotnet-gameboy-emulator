@@ -536,7 +536,6 @@ public sealed partial class Arm7Tdmi
            |1_0_1_1_0_0_0_0|S|__SWord7_____| (S = sign flag) - add offset to stack pointer
          */
 
-        //todo: look here
         var signed = BitUtils.IsBitSet(instruction, 7);
         var imm = (instruction & 0x7F) << 2;
 
@@ -587,9 +586,6 @@ public sealed partial class Arm7Tdmi
                 var result = bus.Read32(Registers.StackPointer);
                 if (reg == 8)
                 {
-                    var cpsr = Cpsr.ToUInt32();
-                    cpsr = BitUtils.SetBit(cpsr, 5, (result & 1) != 0);
-                    Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
                     Registers[15] = result & ~1u;
                 }
                 else
