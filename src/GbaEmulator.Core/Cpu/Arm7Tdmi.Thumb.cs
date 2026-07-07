@@ -35,7 +35,7 @@ public sealed partial class Arm7Tdmi
                 if (offset == 0)
                 {
                     result = 0;
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 32));
+                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 31));
                     break;
                 }
 
@@ -177,27 +177,43 @@ public sealed partial class Arm7Tdmi
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = Registers[rd] >> shiftAmount;
-                UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    if (shiftAmount > 31)
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
+                        result = 0;
+                    }
+                    else
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    }
                 }
+                UpdateNz(result);
                 Registers[rd] = result;
 
                 break;
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = (uint)((int)Registers[rd] >> shiftAmount);
-                UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    if (shiftAmount > 31)
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
+                        result = (Registers[rd] & 0x80000000) == 0x80000000 ? 0xffffffff : 0;
+                    }
+                    else
+                    {
+                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    }
                 }
+                UpdateNz(result);
                 Registers[rd] = result;
 
                 break;
             case 0b0101: //ADC
-                ulong wide = Registers[rd] + Registers[rs] + cy;
+                var wide = (ulong)Registers[rd] + Registers[rs] + cy;
                 result = (uint)wide;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: false);
                 SetCarry(wide >> 32 != 0);
@@ -205,18 +221,21 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b0110: //SBC
-                result = Registers[rd] - Registers[rs] - ((~cy) & 1u);
-                //TODO: Flags N, Z, C, V
+                var longResult = (ulong)Registers[rd] - Registers[rs] - ((~cy) & 1u);
+                result = (uint)longResult;
+                UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: true);
+                SetCarry((ulong)Registers[rd] >= Registers[rs] - ((~cy) & 1u));
+                Registers[rd] = result;
 
                 break;
             case 0b0111: //ROR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                //TODO: change
+                //TODO: change ^^ Maybe Mod offset
                 result = BitOperations.RotateRight(Registers[rd], shiftAmount);
                 UpdateNz(result);
-                if (shiftAmount == 0)
+                if (shiftAmount != 0)
                 {
-                    //Set Carry
+                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
                 }
                 Registers[rd] = result;
 
@@ -230,7 +249,6 @@ public sealed partial class Arm7Tdmi
                 result = 0 - Registers[rs];
                 UpdateArithmeticFlags(0, Registers[rs], result, true);
                 Registers[rd] = result;
-                //TODO: maybe redo carry?
 
                 break;
             case 0b1010: //CMP
@@ -286,9 +304,9 @@ public sealed partial class Arm7Tdmi
         var rs = (instruction >> 3) & 0xF;
 
         var source = rs == 15 ? Registers[rs] + 2 : Registers[rs];
-        if (rd == 15)
+        if (rd == 15 || rs == 15)
         {
-            source &= ~1u;
+            source &= ~3u;
         }
 
         switch (opCode)
@@ -309,11 +327,11 @@ public sealed partial class Arm7Tdmi
             case 0b11: //BX
                 var target = source;
                 var setThumb = (target & 1) != 0;
-                var cpsr = BitUtils.SetBit(Cpsr.ToUInt32(), 5, setThumb); //Set Thumb State
+                var cpsr = BitUtils.SetBit(Cpsr.ToUInt32(), 5, setThumb);
                 Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
 
                 //32 bit align if entering arm else 16 bit aligned
-                target = !setThumb ? target & ~3u : target & ~1u;
+                target &= !setThumb ? ~3u : ~1u;
                 Registers.ProgramCounter = target;
                 return 3;
         }
@@ -328,10 +346,6 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_1_0_0_1|_Rd__|____Word8______| PC-Relative load (LDR with PC)
          */
-        if (instruction == 0x491B)
-        {
-            var x = 1;
-        }
 
         var rd = (instruction >> 8) & 0b111;
         var offset = (instruction & 0xFF) << 2;
@@ -417,15 +431,15 @@ public sealed partial class Arm7Tdmi
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |0_1_1|B|L|_Offset5_|_Rb__|_Rd__| Load/Store with immediate offset
          */
-        if (instruction == 0x6800)
-        {
-            var x = 1;
-        }
 
         var rd = instruction & 0b111;
         var rb = (instruction >> 3) & 0b111;
         var opCode = (instruction >> 11) & 0b11;
-        var offset = ((instruction >> 6) & 0x1F) << 2;
+        var offset = (instruction >> 6) & 0x1F;
+        if ((opCode & 0b10) == 0)
+        {
+            offset <<= 2;
+        }
         var effectiveAddress = Registers[rb] + (uint)offset;
 
         switch (opCode)
@@ -455,7 +469,6 @@ public sealed partial class Arm7Tdmi
            |..........1 ..................0|
            |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |1_0_0_0|L|_Offset5_|_Rb__|_Rd__| Load/Store halfword
-           |1_0_0_0|0|0_0_0_0_1|1_0_0|1_1_0|
          */
 
         var rd = instruction & 0b111;
@@ -508,15 +521,9 @@ public sealed partial class Arm7Tdmi
         var source = BitUtils.IsBitSet(instruction, 11);
         var immediate = (instruction & 0xFF) << 2;
         var rd = (instruction >> 8) & 0b111;
-        //TODO: alignment
         var operand1 = source
             ? Registers.StackPointer
-            : Registers.ProgramCounter + 2;
-        if (!source && (operand1 & 0b1) == 1)
-        {
-            var x = 1;
-            Console.WriteLine("NEEDS ALIGNMENT ???????????????????????");
-        }
+            : (Registers.ProgramCounter + 2) & ~3u;
 
         Registers[rd] = operand1 + (uint)immediate;
     }
@@ -529,7 +536,6 @@ public sealed partial class Arm7Tdmi
            |1_0_1_1_0_0_0_0|S|__SWord7_____| (S = sign flag) - add offset to stack pointer
          */
 
-        //todo: look here
         var signed = BitUtils.IsBitSet(instruction, 7);
         var imm = (instruction & 0x7F) << 2;
 
@@ -580,9 +586,6 @@ public sealed partial class Arm7Tdmi
                 var result = bus.Read32(Registers.StackPointer);
                 if (reg == 8)
                 {
-                    var cpsr = Cpsr.ToUInt32();
-                    cpsr = BitUtils.SetBit(cpsr, 5, (result & 1) != 0);
-                    Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
                     Registers[15] = result & ~1u;
                 }
                 else
@@ -603,10 +606,11 @@ public sealed partial class Arm7Tdmi
            |1_1_0_0|L|_Rb__|____RList______| multiple load/store
          */
 
-        var transferCount = 0;
+        var transferCount = BitOperations.PopCount(instruction & 0xFFu);
         var isLoad = BitUtils.IsBitSet(instruction, 11);
         var rb = (instruction >> 8) & 0b111;
         var address = Registers[rb];
+        var finalAddress = address + (uint)(transferCount * 4);
 
         for (int reg = 0; reg < 8; reg++)
         {
@@ -614,20 +618,30 @@ public sealed partial class Arm7Tdmi
             if (!shouldTransfer)
                 continue;
 
-            transferCount++;
             if (isLoad) //LDMIA
             {
                 Registers[reg] = bus.Read32(address);
             }
             else //STMIA
             {
-                bus.Write32(address, Registers[reg]);
+                if (reg == rb && reg != BitOperations.TrailingZeroCount(instruction))
+                {
+                    bus.Write32(address, finalAddress);
+                }
+                else
+                {
+                    bus.Write32(address, Registers[reg]);
+                }
             }
 
             address += 4u;
         }
 
-        Registers[rb] = address;
+        if (!isLoad || !BitUtils.IsBitSet(instruction, rb))
+        {
+            Registers[rb] = finalAddress;
+        }
+
         return transferCount + 1;
     }
 
@@ -660,31 +674,7 @@ public sealed partial class Arm7Tdmi
 
         var comment = instruction & 0xFF;
         Console.WriteLine("THUMB SWI Enter: comment = " + comment.ToString("X8"));
-        Console.WriteLine($"old Mode: {Cpsr.Mode}, old thumb: {Cpsr.ThumbState}, return address: {Registers.LinkRegister:x8}");
-        if (comment == 0xb)
-        {
-            var source = Registers[0];
-            var destination = Registers[1];
-            var control = Registers[2];
-            var count = control & 0x001F_FFFFu;
-            var fixedSource = (control & 0x01000000u) != 0;
-            var wordMode = (control & 0x04000000u) != 0;
 
-            var unitSize = wordMode ? 4u : 2u;
-            var byteCount = count * unitSize;
-            var end = destination + byteCount;
-
-            Console.WriteLine(
-                $"CpuSet src={source:X8} dst={destination:X8}-{end:X8} " +
-                $"control={control:X8} count={count} unitSize={unitSize} " +
-                $"fixedSource={fixedSource}");
-            if (destination == 0x0)
-            {
-                var x = 1;
-            }
-        }
-
-        //TODO: maybe goes after setting bits and modes a few lines below
         Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
 
         var newCpsr = Cpsr.ToUInt32();
@@ -693,16 +683,8 @@ public sealed partial class Arm7Tdmi
         newCpsr = BitUtils.SetBit(newCpsr, 5, false);
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
-        // 0x81e3bd4
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
-
-        if (_count >= 1)
-        {
-            //throw new LockRecursionException();
-        }
-
-        _count++;
     }
 
     private void ExecuteThumbFormat18(ushort instruction)
