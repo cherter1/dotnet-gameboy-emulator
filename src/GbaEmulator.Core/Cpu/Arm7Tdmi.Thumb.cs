@@ -606,10 +606,11 @@ public sealed partial class Arm7Tdmi
            |1_1_0_0|L|_Rb__|____RList______| multiple load/store
          */
 
-        var transferCount = 0;
+        var transferCount = BitOperations.PopCount(instruction & 0xFFu);
         var isLoad = BitUtils.IsBitSet(instruction, 11);
         var rb = (instruction >> 8) & 0b111;
         var address = Registers[rb];
+        var finalAddress = address + (uint)(transferCount * 4);
 
         for (int reg = 0; reg < 8; reg++)
         {
@@ -617,20 +618,30 @@ public sealed partial class Arm7Tdmi
             if (!shouldTransfer)
                 continue;
 
-            transferCount++;
             if (isLoad) //LDMIA
             {
                 Registers[reg] = bus.Read32(address);
             }
             else //STMIA
             {
-                bus.Write32(address, Registers[reg]);
+                if (reg == rb && reg != BitOperations.TrailingZeroCount(instruction))
+                {
+                    bus.Write32(address, finalAddress);
+                }
+                else
+                {
+                    bus.Write32(address, Registers[reg]);
+                }
             }
 
             address += 4u;
         }
 
-        Registers[rb] = address;
+        if (!isLoad || !BitUtils.IsBitSet(instruction, rb))
+        {
+            Registers[rb] = finalAddress;
+        }
+
         return transferCount + 1;
     }
 
@@ -663,31 +674,7 @@ public sealed partial class Arm7Tdmi
 
         var comment = instruction & 0xFF;
         Console.WriteLine("THUMB SWI Enter: comment = " + comment.ToString("X8"));
-        Console.WriteLine($"old Mode: {Cpsr.Mode}, old thumb: {Cpsr.ThumbState}, return address: {Registers.LinkRegister:x8}");
-        if (comment == 0xb)
-        {
-            var source = Registers[0];
-            var destination = Registers[1];
-            var control = Registers[2];
-            var count = control & 0x001F_FFFFu;
-            var fixedSource = (control & 0x01000000u) != 0;
-            var wordMode = (control & 0x04000000u) != 0;
 
-            var unitSize = wordMode ? 4u : 2u;
-            var byteCount = count * unitSize;
-            var end = destination + byteCount;
-
-            Console.WriteLine(
-                $"CpuSet src={source:X8} dst={destination:X8}-{end:X8} " +
-                $"control={control:X8} count={count} unitSize={unitSize} " +
-                $"fixedSource={fixedSource}");
-            if (destination == 0x0)
-            {
-                var x = 1;
-            }
-        }
-
-        //TODO: maybe goes after setting bits and modes a few lines below
         Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
 
         var newCpsr = Cpsr.ToUInt32();
@@ -696,16 +683,8 @@ public sealed partial class Arm7Tdmi
         newCpsr = BitUtils.SetBit(newCpsr, 5, false);
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
-        // 0x81e3bd4
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
-
-        if (_count >= 1)
-        {
-            //throw new LockRecursionException();
-        }
-
-        _count++;
     }
 
     private void ExecuteThumbFormat18(ushort instruction)

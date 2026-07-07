@@ -467,7 +467,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
     }
 
-    private int _count = 0;
     private void ExecuteSoftwareInterrupt(uint instruction)
     {
         /*
@@ -489,12 +488,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
         Registers.ProgramCounter = 0x8; //vector address 0x8
-        if (_count >= 3)
-        {
-            //throw new LockRecursionException();
-        }
-
-        _count++;
     }
 
     private int ExecuteBlockDataTransfer(uint instruction)
