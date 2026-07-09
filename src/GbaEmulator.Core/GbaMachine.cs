@@ -52,7 +52,8 @@ public sealed class GbaMachine
         var timers = new TimerController(interrupts);
         var dma = new DmaController(interrupts);
         var ppu = new Ppu(interrupts, dma);
-        var bus = new GbaBus(interrupts, timers, dma, ppu, keypad);
+        var memory = new GbaMemory();
+        var bus = new GbaBus(interrupts, timers, dma, ppu, keypad, memory);
         var cpu = new Arm7Tdmi(bus, interrupts);
 
         var cartridge = options.RomPath is { Length: > 0 } romPath && File.Exists(romPath)

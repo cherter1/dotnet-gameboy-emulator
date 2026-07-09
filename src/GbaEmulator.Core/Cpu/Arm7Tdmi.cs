@@ -17,7 +17,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     public void Reset(bool skipBios)
     {
         Registers = new RegisterBank(() => Cpsr.Mode);
-        bus.Registers = Registers;
+        //bus.Registers = Registers;
         Registers.InitializeForGba();
 
         Cpsr = new ProgramStatusRegister
