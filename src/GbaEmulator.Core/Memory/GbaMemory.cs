@@ -10,4 +10,5 @@ public sealed class GbaMemory
     public readonly byte[] Oam = new byte[0x400]; //1KB
     public byte[] Rom = [];
     public readonly byte[] Sram = new byte[0x10000]; //64KB
+    public readonly IoRegisters Io = new();
 }

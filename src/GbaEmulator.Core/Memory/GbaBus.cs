@@ -56,6 +56,12 @@ public sealed class GbaBus
 
     public void LoadCartridge(GbaCartridge? cartridge) => _memory.Rom = cartridge?.RomData ?? [];
 
+    public uint Read32New(uint address)
+    {
+        var aligned = address & ~3u;
+        return 0;
+    }
+
     public byte Read8(uint address)
     {
         //if (TryReadIo(address, out var ioValue))
@@ -154,9 +160,9 @@ public sealed class GbaBus
                 offset = (int)((address - 0x03000000) % (uint)_memory.Iwram.Length);
                 return MemoryRegion.Iwram;
             case 0x04:
-                //buffer = _memory.IoRegisters;
-                //offset = (int)((address - 0x04000000) % (uint)_memory.IoRegisters.Length);
-                //return MemoryRegion.Io;
+                buffer = [];
+                offset = 0;
+                return MemoryRegion.Io;
             case 0x05:
                 buffer = _memory.PaletteRam;
                 offset = (int)((address - 0x05000000) % (uint)_memory.PaletteRam.Length);

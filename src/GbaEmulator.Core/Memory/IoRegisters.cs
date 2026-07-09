@@ -2,6 +2,16 @@ namespace GbaEmulator.Core.Memory;
 
 public sealed class IoRegisters
 {
+    public uint ReadIo32Aligned(uint address)
+    {
+        return 0;
+    }
+
+    public uint ReadIo16Aligned(uint address)
+    {
+        return 0;
+    }
+
     #region Display
 
     /// <summary>

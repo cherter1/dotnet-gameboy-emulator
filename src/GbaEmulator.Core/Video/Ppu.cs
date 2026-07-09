@@ -15,79 +15,21 @@ public sealed class Ppu
 
     private readonly InterruptController _interrupts;
     private readonly DmaController _dma;
+    private readonly GbaMemory _memory;
     private byte[] _vram = [];
     private byte[] _paletteRam = [];
     private int _cycleAccumulator;
 
-    public Ppu(InterruptController interrupts, DmaController dma)
+    public Ppu(InterruptController interrupts, DmaController dma, GbaMemory memory)
     {
         _interrupts = interrupts;
+        _memory = memory;
         _dma = dma;
         FrameBuffer = new FrameBuffer(ScreenWidth, ScreenHeight);
     }
 
     public FrameBuffer FrameBuffer { get; }
 
-    /// <summary>
-    /// REG_DISPCNT: 0x04000000
-    /// </summary>
-    private ushort DisplayControl { get; set; }
-    /// <summary>
-    /// REG_DISPSTAT: 0x04000004
-    /// </summary>
-    private ushort DisplayStatus { get; set; }
-    /// <summary>
-    /// LCY/REG_VCOUNT: 0x04000006
-    /// </summary>
-    private ushort VerticalCount { get; set; }
-    /// <summary>
-    /// REG_BG0CNT: 0x04000008
-    /// </summary>
-    private ushort Bg0Control { get; set; }
-    /// <summary>
-    /// REG_BG0HOFS: 0x04000010
-    /// </summary>
-    private ushort Bg0HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG0VOFS: 0x04000012
-    /// </summary>
-    private ushort Bg0VerticalOffset { get; set; }
-    /// <summary>
-    /// REG_BG1CNT: 0x0400000A
-    /// </summary>
-    private ushort Bg1Control { get; set; }
-    /// <summary>
-    /// REG_BG1HOFS: 0x04000014
-    /// </summary>
-    private ushort Bg1HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG1VOFS: 0x04000016
-    /// </summary>
-    private ushort Bg1VerticalOffset { get; set; }
-    /// <summary>
-    /// REG_BG2CNT: 0x0400000C
-    /// </summary>
-    private ushort Bg2Control { get; set; }
-    /// <summary>
-    /// REG_BG2HOFS: 0x04000018
-    /// </summary>
-    private ushort Bg2HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG2VOFS: 0x0400001A
-    /// </summary>
-    private ushort Bg2VerticalOffset { get; set; }
-    /// <summary>
-    /// REG_BG3CNT: 0x0400000E
-    /// </summary>
-    private ushort Bg3Control { get; set; }
-    /// <summary>
-    /// REG_BG3HOFS: 0x0400001C
-    /// </summary>
-    private ushort Bg3HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG3VOFS: 0x0400001E
-    /// </summary>
-    private ushort Bg3VerticalOffset { get; set; }
 
     public void ConnectMemory(byte[] vRam, byte[] paletteRam)
     {
@@ -101,13 +43,13 @@ public sealed class Ppu
         while (_cycleAccumulator >= CyclesPerScanline)
         {
             _cycleAccumulator -= CyclesPerScanline;
-            VerticalCount++;
+            _memory.Io.REG_VCOUNT++;
 
-            if (VerticalCount == 160)
+            if (_memory.Io.REG_VCOUNT == 160)
             {
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 0, true);
+                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, true);
                 _dma.RunDmas(DmaTimingType.VBlank, bus);
-                var vBlankIrqEnabled = BitUtils.IsBitSet(DisplayStatus, 3);
+                var vBlankIrqEnabled = BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 3);
                 if (vBlankIrqEnabled)
                 {
                     _interrupts.Request(InterruptType.VBlank);
@@ -115,10 +57,10 @@ public sealed class Ppu
                 RenderFrame();
             }
 
-            if (VerticalCount == ((DisplayStatus >> 8) & 0xFF))
+            if (_memory.Io.REG_VCOUNT == ((_memory.Io.REG_DISPSTAT >> 8) & 0xFF))
             {
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, true);
-                var vCountIrqEnabled = BitUtils.IsBitSet(DisplayStatus, 5);
+                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, true);
+                var vCountIrqEnabled = BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 5);
                 if (vCountIrqEnabled)
                 {
                     _interrupts.Request(InterruptType.VCounter);
@@ -126,17 +68,17 @@ public sealed class Ppu
             }
             else
             {
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, false);
+                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, false);
             }
 
-            if (VerticalCount < ScanLinesPerFrame)
+            if (_memory.Io.REG_VCOUNT < ScanLinesPerFrame)
             {
                 continue;
             }
 
-            VerticalCount = 0;
+            _memory.Io.REG_VCOUNT = 0;
             //leaving vBlank
-            DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 0, false);
+            _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, false);
         }
     }
 
@@ -250,12 +192,11 @@ public sealed class Ppu
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset);
         return ConvertBgr555ToArgb(bgr555);
-        //return bgr555;
     }
 
     private void RenderFrame()
     {
-        var modeBits = DisplayControl & 0x7; //bits 0-2
+        var modeBits =_memory.Io.REG_DISPCNT & 0x7; //bits 0-2
         switch (modeBits)
         {
             case 0:

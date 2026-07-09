@@ -51,8 +51,8 @@ public sealed class GbaMachine
         var keypad = new KeypadState();
         var timers = new TimerController(interrupts);
         var dma = new DmaController(interrupts);
-        var ppu = new Ppu(interrupts, dma);
         var memory = new GbaMemory();
+        var ppu = new Ppu(interrupts, dma, memory);
         var bus = new GbaBus(interrupts, timers, dma, ppu, keypad, memory);
         var cpu = new Arm7Tdmi(bus, interrupts);
 
