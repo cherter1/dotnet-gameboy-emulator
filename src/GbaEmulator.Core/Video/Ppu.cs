@@ -30,7 +30,6 @@ public sealed class Ppu
 
     public FrameBuffer FrameBuffer { get; }
 
-
     public void ConnectMemory(byte[] vRam, byte[] paletteRam)
     {
         _vram = vRam;
@@ -196,7 +195,7 @@ public sealed class Ppu
 
     private void RenderFrame()
     {
-        var modeBits =_memory.Io.REG_DISPCNT & 0x7; //bits 0-2
+        var modeBits = _memory.Io.REG_DISPCNT & 0x7; //bits 0-2
         switch (modeBits)
         {
             case 0:

@@ -1,3 +1,4 @@
+using System.Numerics;
 using GbaEmulator.Core.Bios;
 using GbaEmulator.Core.Cpu;
 using GbaEmulator.Core.Dma;
@@ -58,8 +59,23 @@ public sealed class GbaBus
 
     public uint Read32New(uint address)
     {
+        uint raw;
         var aligned = address & ~3u;
-        return 0;
+        var region = ResolveRegion(aligned, out var buffer, out var offset);
+        if (region is MemoryRegion.Io)
+        {
+            // Read Io
+        }
+        if (region is MemoryRegion.Unused)
+        {
+            return 0x0;
+        }
+
+        raw = (uint)((buffer[offset + 3] << 24) |
+                     (buffer[offset + 2] << 16) |
+                     (buffer[offset + 1] << 8) |
+                     buffer[offset]);
+        return BitOperations.RotateRight(raw, (int)((address & 3u) * 8));
     }
 
     public byte Read8(uint address)
