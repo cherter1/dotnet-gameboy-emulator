@@ -4,17 +4,194 @@ public sealed class IoRegisters
 {
     public uint ReadIo32Aligned(uint address)
     {
-        return 0;
+        if ((address & 3u) != 0)
+        {
+            Console.WriteLine("ReadIo32Aligned called with non word aligned address");
+            //throw new InvalidOperationException("ReadIo32Aligned called with non word aligned address");
+        }
+
+        var lo = GetMappedRegister(address);
+        var hi = GetMappedRegister(address + 2);
+        return (uint)((hi << 16) | lo);
     }
 
-    public uint ReadIo16Aligned(uint address)
+    public ushort ReadIo16Aligned(uint address)
     {
-        return 0;
+        if ((address & 1u) != 0)
+        {
+            Console.WriteLine("ReadIo16Aligned called with non halfword aligned address");
+            //throw new InvalidOperationException("ReadIo16Aligned called with non halfword aligned address");
+        }
+
+        return GetMappedRegister(address);
     }
 
-    public ushort GetMappedRegister(uint address) =>
+    public byte ReadIo8(uint address)
+    {
+        var aligned = address & ~1u;
+        var registerValue = GetMappedRegister(aligned);
+        //LSB if aligned, MSB if unaligned
+        return (byte)((registerValue >> ((int)(address & 1) * 8)) & 0xFF);
+    }
+
+    public void WriteIo32Aligned(uint address, uint value)
+    {
+        if ((address & 3u) != 0)
+        {
+            Console.WriteLine("WriteIo32Aligned called with non word aligned address");
+            //throw new InvalidOperationException("WriteIo32Aligned called with non word aligned address");
+        }
+
+        WriteIo16Aligned(address, (ushort)value);
+        WriteIo16Aligned(address + 2, (ushort)(value >> 16));
+    }
+
+    public void WriteIo16Aligned(uint address, ushort value)
+    {
+        if ((address & 1u) != 0)
+        {
+            Console.WriteLine("WriteIo16Aligned called with non halfword aligned address");
+            //throw new InvalidOperationException("WriteIo16Aligned called with non halfword aligned address");
+        }
+        
+        switch (address)
+        {
+            //TODO: watch writeonly
+            //Display
+            case 0x04000000:
+                REG_DISPCNT = value;
+                break;
+            case 0x04000004: 
+                REG_DISPSTAT = value;
+                break;
+            case 0x04000006: 
+                REG_VCOUNT = value;
+                break;
+            case 0x04000008: 
+                REG_BG0CNT = value;
+                break;
+            case 0x0400000A:
+                REG_BG1CNT = value;
+                break;
+            case 0x0400000C: 
+                REG_BG2CNT = value;
+                break;
+            case 0x0400000E:
+                REG_BG3CNT = value;
+                break;
+            case 0x04000010:
+                REG_BG0HOFS = value;
+                break;
+            case 0x04000012:
+                REG_BG0VOFS = value;
+                break;
+            case 0x04000014:
+                REG_BG1HOFS = value;
+                break;
+            case 0x04000016:
+                REG_BG1VOFS = value;
+                break;
+            case 0x04000018:
+                REG_BG2HOFS = value;
+                break;
+            case 0x0400001A:
+                REG_BG2VOFS = value;
+                break;
+            case 0x0400001C:
+                REG_BG3HOFS = value;
+                break;
+            case 0x0400001E:
+                REG_BG3VOFS = value;
+                break;
+            case 0x04000020:
+                REG_BG2PA = value;
+                break;
+            case 0x04000022:
+                REG_BG2PB = value;
+                break;
+            case 0x04000024:
+                REG_BG2PC = value;
+                break;
+            case 0x04000026:
+                REG_BG2PD = value;
+                break;
+            case 0x04000028:
+                REG_BG2X = 0; //shiftlater
+                break;
+            case 0x0400002A:
+                REG_BG2X = 0; //shiftlater
+                break;
+            case 0x0400002C:
+                REG_BG2Y = 0; //shiftlater
+                break;
+            case 0x0400002E:
+                REG_BG2Y = 0; //shiftlater
+                break;
+            case 0x04000030:
+                REG_BG3PA = value;
+                break;
+            case 0x04000032:
+                REG_BG3PB = value;
+                break;
+            case 0x04000034:
+                REG_BG3PC = value;
+                break;
+            case 0x04000036:
+                REG_BG3PD = value;
+                break;
+            case 0x04000038:
+                REG_BG3X = 0; //shiftlater
+                break;
+            case 0x0400003A:
+                REG_BG3X = 0; //shiftlater
+                break;
+            case 0x0400003C:
+                REG_BG3Y = 0; //shiftlater
+                break;
+            case 0x0400003E:
+                REG_BG3Y = 0; //shiftlater
+                break;
+            case 0x04000040:
+                REG_WIN0H = value;
+                break;
+            case 0x04000042:
+                REG_WIN1H = value;
+                break;
+            case 0x04000044:
+                REG_WIN0V = value;
+                break;
+            case 0x04000046:
+                REG_WIN1V = value;
+                break;
+            case 0x04000048:
+                REG_WININ = value;
+                break;
+            case 0x0400004A:
+                REG_WINOUT = value;
+                break;
+            case 0x0400004C:
+                REG_MOSAIC = value;
+                break;
+            case 0x04000050:
+                REG_BLDCNT = value;
+                break;
+            case 0x04000052:
+                REG_BLDALPHA = 1;
+                break;
+            case 0x04000054:
+                REG_BLDY = 1;
+                break;
+            default:        
+                Console.WriteLine("dum");
+                break;
+        }
+    }
+
+    private ushort GetMappedRegister(uint address) =>
         address switch
         {
+            //TODO: watch writeonly
+            //Display
             0x04000000 => REG_DISPCNT,
             0x04000004 => REG_DISPSTAT,
             0x04000006 => REG_VCOUNT,
@@ -51,6 +228,11 @@ public sealed class IoRegisters
             0x04000044 => REG_WIN0V,
             0x04000046 => REG_WIN1V,
             0x04000048 => REG_WININ,
+            0x0400004A => REG_WINOUT,
+            0x0400004C => REG_MOSAIC,
+            0x04000050 => REG_BLDCNT,
+            0x04000052 => REG_BLDALPHA,
+            0x04000054 => REG_BLDY,
             _ => 0 //TODO: add openBus behavior
         };
 
@@ -184,6 +366,35 @@ public sealed class IoRegisters
     /// 0x04000048
     /// </summary>
     public ushort REG_WININ { get; set; }
+    /// <summary>
+    /// 0x0400004A
+    /// </summary>
+    public ushort REG_WINOUT { get; set; }
+    /// <summary>
+    /// 0x0400004C
+    /// </summary>
+    public ushort REG_MOSAIC { get; set; }
+    /// <summary>
+    /// 0x04000050
+    /// </summary>
+    public ushort REG_BLDCNT { get; set; }
+    /// <summary>
+    /// 0x04000052
+    /// </summary>
+    public ushort REG_BLDALPHA { get; set; }
+    /// <summary>
+    /// 0x04000054
+    /// </summary>
+    public ushort REG_BLDY { get; set; }
 
+    #endregion
+
+    #region Sound
+    #endregion
+
+    #region Dma
+    #endregion
+
+    #region Timers
     #endregion
 }

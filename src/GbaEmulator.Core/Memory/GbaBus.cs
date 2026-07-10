@@ -57,28 +57,81 @@ public sealed class GbaBus
 
     public void LoadCartridge(GbaCartridge? cartridge) => _memory.Rom = cartridge?.RomData ?? [];
 
-    public uint Read32New(uint address)
+    public uint Read32(uint address)
     {
         uint raw;
         var aligned = address & ~3u;
         var region = ResolveRegion(aligned, out var buffer, out var offset);
-        if (region is MemoryRegion.Io)
+
+        switch (region)
         {
-            // Read Io
-        }
-        if (region is MemoryRegion.Unused)
-        {
-            return 0x0;
+            case MemoryRegion.Io:
+                raw = _memory.Io.ReadIo32Aligned(aligned);
+
+                break;
+            case MemoryRegion.Unused:
+                return 0x0; //temp
+            default:
+                raw = (uint)((buffer[offset + 3] << 24) |
+                             (buffer[offset + 2] << 16) |
+                             (buffer[offset + 1] << 8) |
+                             buffer[offset]);
+                break;
         }
 
-        raw = (uint)((buffer[offset + 3] << 24) |
-                     (buffer[offset + 2] << 16) |
-                     (buffer[offset + 1] << 8) |
-                     buffer[offset]);
         return BitOperations.RotateRight(raw, (int)((address & 3u) * 8));
     }
 
+    public ushort Read16(uint address)
+    {
+        address &= ~1u;
+        var region = ResolveRegion(address, out var buffer, out var offset);
+        return region switch
+        {
+            MemoryRegion.Unused => 0,
+            MemoryRegion.Io => _memory.Io.ReadIo16Aligned(address),
+            _ => (ushort)((buffer[offset + 1] << 8) | buffer[offset])
+        };
+    }
+
     public byte Read8(uint address)
+    {
+        var region = ResolveRegion(address, out var buffer, out var offset);
+        if (region is MemoryRegion.Unused)
+        {
+            return 0;
+        }
+        if (region is MemoryRegion.Io)
+        {
+           return _memory.Io.ReadIo8(address);
+        }
+
+        return buffer[offset];
+    }
+
+    public void Write32New(uint address, uint value)
+    {
+        address &= ~3u;
+        var region = ResolveRegion(address, out var buffer, out var offset);
+
+        if (region is MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused)
+        {
+            //throw new Exception("Cannot Write to bios or rom or unused memory");
+            return;
+        }
+
+        if (region is MemoryRegion.Io)
+        {
+            _memory.Io.WriteIo32Aligned(address, value);
+        }
+
+        buffer[offset + 3] = (byte)(value >> 24);
+        buffer[offset + 2] = (byte)(value >> 16);
+        buffer[offset + 1] = (byte)(value >> 8);
+        buffer[offset] = (byte)value;
+    }
+
+    public byte Read8x(uint address)
     {
         //if (TryReadIo(address, out var ioValue))
         //{
@@ -99,14 +152,14 @@ public sealed class GbaBus
         return buffer[offset];
     }
 
-    public ushort Read16(uint address)
+    public ushort Read16x(uint address)
     {
         var lo = Read8(address);
         var hi = Read8(address + 1);
         return (ushort)((hi << 8) | lo);
     }
 
-    public uint Read32(uint address)
+    public uint Read32x(uint address)
     {
         var b0 = Read8(address);
         var b1 = Read8(address + 1);
