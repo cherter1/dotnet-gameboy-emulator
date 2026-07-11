@@ -97,16 +97,12 @@ public sealed class GbaBus
     public byte Read8(uint address)
     {
         var region = ResolveRegion(address, out var buffer, out var offset);
-        if (region is MemoryRegion.Unused)
+        return region switch
         {
-            return 0;
-        }
-        if (region is MemoryRegion.Io)
-        {
-           return _memory.Io.ReadIo8(address);
-        }
-
-        return buffer[offset];
+            MemoryRegion.Unused => 0,
+            MemoryRegion.Io => _memory.Io.ReadIo8(address),
+            _ => buffer[offset]
+        };
     }
 
     public void Write32New(uint address, uint value)

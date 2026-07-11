@@ -53,7 +53,7 @@ public sealed class IoRegisters
             Console.WriteLine("WriteIo16Aligned called with non halfword aligned address");
             //throw new InvalidOperationException("WriteIo16Aligned called with non halfword aligned address");
         }
-        
+
         switch (address)
         {
             //TODO: watch writeonly
@@ -61,19 +61,19 @@ public sealed class IoRegisters
             case 0x04000000:
                 REG_DISPCNT = value;
                 break;
-            case 0x04000004: 
+            case 0x04000004:
                 REG_DISPSTAT = value;
                 break;
-            case 0x04000006: 
+            case 0x04000006:
                 REG_VCOUNT = value;
                 break;
-            case 0x04000008: 
+            case 0x04000008:
                 REG_BG0CNT = value;
                 break;
             case 0x0400000A:
                 REG_BG1CNT = value;
                 break;
-            case 0x0400000C: 
+            case 0x0400000C:
                 REG_BG2CNT = value;
                 break;
             case 0x0400000E:
@@ -181,7 +181,7 @@ public sealed class IoRegisters
             case 0x04000054:
                 REG_BLDY = 1;
                 break;
-            default:        
+            default:
                 Console.WriteLine("dum");
                 break;
         }
@@ -233,6 +233,24 @@ public sealed class IoRegisters
             0x04000050 => REG_BLDCNT,
             0x04000052 => REG_BLDALPHA,
             0x04000054 => REG_BLDY,
+            //Sound
+            //Display
+            0x040000B0 => (ushort)REG_DMA0SAD, //shiftlater
+            0x040000B4 => (ushort)REG_DMA0DAD, //shiftlater
+            0x040000B8 => REG_DMA0CNT_L,
+            0x040000BA => REG_DMA0CNT_H,
+            0x040000BC => (ushort)REG_DMA1SAD, //shiftlater
+            0x040000C0 => (ushort)REG_DMA1DAD, //shiftlater
+            0x040000C4 => REG_DMA1CNT_L,
+            0x040000C6 => REG_DMA1CNT_H,
+            0x040000C8 => (ushort)REG_DMA2SAD, //shiftlater
+            0x040000CC => (ushort)REG_DMA2DAD, //shiftlater
+            0x040000D0 => REG_DMA2CNT_L,
+            0x040000D2 => REG_DMA2CNT_H,
+            0x040000D4 => (ushort)REG_DMA3SAD, //shiftlater
+            0x040000D8 => (ushort)REG_DMA3DAD, //shiftlater
+            0x040000DC => REG_DMA3CNT_L,
+            0x040000DE => REG_DMA3CNT_H,
             _ => 0 //TODO: add openBus behavior
         };
 
@@ -393,6 +411,71 @@ public sealed class IoRegisters
     #endregion
 
     #region Dma
+
+    /// <summary>
+    /// 0x040000B0
+    /// </summary>
+    public uint REG_DMA0SAD { get; set; }
+    /// <summary>
+    /// 0x040000B4
+    /// </summary>
+    public uint REG_DMA0DAD { get; set; }
+    /// <summary>
+    /// 0x040000B8
+    /// </summary>
+    public ushort REG_DMA0CNT_L { get; set; }
+    /// <summary>
+    /// 0x040000BA
+    /// </summary>
+    public ushort REG_DMA0CNT_H { get; set; }
+    /// <summary>
+    /// 0x040000BC
+    /// </summary>
+    public uint REG_DMA1SAD { get; set; }
+    /// <summary>
+    /// 0x040000C0
+    /// </summary>
+    public uint REG_DMA1DAD { get; set; }
+    /// <summary>
+    /// 0x040000C4
+    /// </summary>
+    public ushort REG_DMA1CNT_L { get; set; }
+    /// <summary>
+    /// 0x040000C6
+    /// </summary>
+    public ushort REG_DMA1CNT_H { get; set; }
+    /// <summary>
+    /// 0x040000C8
+    /// </summary>
+    public uint REG_DMA2SAD { get; set; }
+    /// <summary>
+    /// 0x040000CC
+    /// </summary>
+    public uint REG_DMA2DAD { get; set; }
+    /// <summary>
+    /// 0x040000D0
+    /// </summary>
+    public ushort REG_DMA2CNT_L { get; set; }
+    /// <summary>
+    /// 0x040000D2
+    /// </summary>
+    public ushort REG_DMA2CNT_H { get; set; }
+    /// <summary>
+    /// 0x040000D4
+    /// </summary>
+    public uint REG_DMA3SAD { get; set; }
+    /// <summary>
+    /// 0x040000D8
+    /// </summary>
+    public uint REG_DMA3DAD { get; set; }
+    /// <summary>
+    /// 0x040000DC
+    /// </summary>
+    public ushort REG_DMA3CNT_L { get; set; }
+    /// <summary>
+    /// 0x040000DE
+    /// </summary>
+    public ushort REG_DMA3CNT_H { get; set; }
     #endregion
 
     #region Timers
