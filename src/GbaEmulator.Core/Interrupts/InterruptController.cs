@@ -2,53 +2,10 @@ using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Interrupts;
 
-public sealed class InterruptController
+public sealed class InterruptController(GbaMemory memory)
 {
-    private readonly GbaMemory _memory;
+    public bool ShouldServiceIrq(bool irqDisabled) =>
+        memory.Io.REG_IME && !irqDisabled && (memory.Io.REG_IE & memory.Io.REG_IF) != 0;
 
-    public InterruptController(GbaMemory memory)
-    {
-        _memory = memory;
-    }
-    /// <summary>
-    /// REG_IE: 0x04000200
-    /// </summary>
-    private ushort InterruptEnable { get; set; }
-    /// <summary>
-    /// REG_IF: 0x04000202
-    /// </summary>
-    private ushort InterruptFlags { get; set; }
-    /// <summary>
-    /// REG_IME: 0x04000208
-    /// </summary>
-    private bool InterruptMasterEnable { get; set; }
-
-    public bool ShouldServiceIrq(bool irqDisabled) => _memory.Io.REG_IME && !irqDisabled && (_memory.Io.REG_IE & _memory.Io.REG_IF) != 0;
-
-    public void Request(InterruptType interrupt) => _memory.Io.REG_IF |= (ushort)interrupt;
-
-    public ushort Read16(uint address) =>
-        address switch
-        {
-            0x04000200 => InterruptEnable,
-            0x04000202 => InterruptFlags,
-            0x04000208 => (ushort)(InterruptMasterEnable ? 1 : 0),
-            _ => 0
-        };
-
-    public void Write16(uint address, ushort value)
-    {
-        switch (address)
-        {
-            case 0x04000200:
-                InterruptEnable = value;
-                break;
-            case 0x04000202:
-                InterruptFlags &= (ushort)~value;
-                break;
-            case 0x04000208:
-                InterruptMasterEnable = (value & 1) != 0;
-                break;
-        }
-    }
+    public void Request(InterruptType interrupt) => memory.Io.REG_IF |= (ushort)interrupt;
 }

@@ -209,29 +209,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
     private int StepThumb()
     {
-        /*
-           |..........1 ..................0|
-           |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-        1  |0_0_0|OP_|_Offset5_|_Rs__|_Rd__| LSL, LSR, ASR (lo reg 5 bit shifter imm value)
-        3  |0_0_1|OP_|_Rd__|__Offset8______| MOV, CMP, ADD, SUB (8b imm)
-        4  |0_1_0_0_0_0|__OP___|_Rs__|_Rd__| ALU OPS (Lo reg pair) - AND, EOR, LSL, LSR, ASR, ADC, SBC, ROR, TST, NEG, CMP, CMN, ORR, MUL, BIC, MVN
-        5  |0_1_0_0_0_1|OP_|H|H|Rs/Hs|Rd/Hd| (h1-7, h2-6) - ADD, CMP, MOV (lo and hi reg or hi reg pair), BX
-        6  |0_1_0_0_1|_Rd__|____Word8______| PC-Relative load (LDR with PC)
-        7  |0_1_0_1|L|B|0|_Ro__|_Rb__|_Rd__| Load/Store with reg offset
-        8  |0_1_0_1|H|S|1|_Ro__|_Rb__|_Rd__| Load/Store sign-extended byte/halfword
-        9  |0_1_1|B|L|_Offset5_|_Rb__|_Rd__| Load/Store with immediate offset
-       10  |1_0_0_0|L|_Offset5_|_Rb__|_Rd__| Load/Store halfword
-       11  |1_0_0_1|L|_Rd__|____Word8______| SP-relative Load/Store
-       12  |1_0_1_0|S|_Rd__|____Word8______| (S = pc or sp) - Load address
-       13  |1_0_1_1_0_0_0_0|S|__SWord8_____| (S = sign flag) - add offset to stack pointer
-       14  |1_0_1_1|L|1_0|R|____RList______| push/pop registers
-       15  |1_1_0_0|L|_Rb__|____RList______| multiple load/store
-       16  |1_1_0_1|_Cond__|____SOffset8___| conditional branch
-       17  |1_1_0_1_1_1_1_1|____Value8_____| software interrupt
-       18  |1_1_1_0_0|_____Offset11________| unconditional branch
-       19  |1_1_1_1|H|_____Offset11________| long branch with link
-           no BLX for this cpu only since its armv4T
-         */
         var instructionAddress = Registers.ProgramCounter;
         var instruction = bus.Read16(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 2;

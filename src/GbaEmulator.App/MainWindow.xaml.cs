@@ -64,7 +64,7 @@ public partial class MainWindow
 
     private void OnFrameTick(object? sender, EventArgs e)
     {
-        long now  = _clock.ElapsedTicks;
+        long now = _clock.ElapsedTicks;
         if (now < _nextFrameTicks)
         {
             return;

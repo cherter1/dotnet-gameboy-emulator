@@ -4,19 +4,10 @@ using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Timers;
 
-public sealed class TimerChannel
+public sealed class TimerChannel(GbaMemory memory, int index)
 {
-    private readonly GbaMemory _memory;
-    private readonly int _index;
-
     private static readonly int[] PrescalerValues = [1, 64, 256, 1024];
     private int _prescalerAccumulator;
-
-    public TimerChannel(GbaMemory memory, int index)
-    {
-        _memory = memory;
-        _index = index;
-    }
 
     private ushort Reload
     {
@@ -60,62 +51,62 @@ public sealed class TimerChannel
             Counter = Reload;
             if ((Control & 0x0040) != 0)
             {
-                interrupts.Request((InterruptType)((ushort)InterruptType.Timer0 << _index));
+                interrupts.Request((InterruptType)((ushort)InterruptType.Timer0 << index));
             }
         }
     }
 
     private ushort ResolveChannelControl()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_TM0CNT,
-            1 => _memory.Io.REG_TM1CNT,
-            2 => _memory.Io.REG_TM2CNT,
-            3 => _memory.Io.REG_TM3CNT,
+            0 => memory.Io.REG_TM0CNT,
+            1 => memory.Io.REG_TM1CNT,
+            2 => memory.Io.REG_TM2CNT,
+            3 => memory.Io.REG_TM3CNT,
             _ => throw new UnreachableException("Invalid Timer channel index")
         };
     }
 
     private ushort ResolveChannelReload()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_TM0D_RELOAD,
-            1 => _memory.Io.REG_TM1D_RELOAD,
-            2 => _memory.Io.REG_TM2D_RELOAD,
-            3 => _memory.Io.REG_TM3D_RELOAD,
+            0 => memory.Io.REG_TM0D_RELOAD,
+            1 => memory.Io.REG_TM1D_RELOAD,
+            2 => memory.Io.REG_TM2D_RELOAD,
+            3 => memory.Io.REG_TM3D_RELOAD,
             _ => throw new UnreachableException("Invalid Timer channel index")
         };
     }
 
     private ushort ResolveChannelCounter()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_TM0D_COUNTER,
-            1 => _memory.Io.REG_TM1D_COUNTER,
-            2 => _memory.Io.REG_TM2D_COUNTER,
-            3 => _memory.Io.REG_TM3D_COUNTER,
+            0 => memory.Io.REG_TM0D_COUNTER,
+            1 => memory.Io.REG_TM1D_COUNTER,
+            2 => memory.Io.REG_TM2D_COUNTER,
+            3 => memory.Io.REG_TM3D_COUNTER,
             _ => throw new UnreachableException("Invalid Timer channel index")
         };
     }
 
     private void SetChannelCounter(ushort value)
     {
-        switch (_index)
+        switch (index)
         {
             case 0:
-                _memory.Io.REG_TM0D_COUNTER = value;
+                memory.Io.REG_TM0D_COUNTER = value;
                 break;
             case 1:
-                _memory.Io.REG_TM1D_COUNTER = value;
+                memory.Io.REG_TM1D_COUNTER = value;
                 break;
             case 2:
-                _memory.Io.REG_TM2D_COUNTER = value;
+                memory.Io.REG_TM2D_COUNTER = value;
                 break;
             case 3:
-                _memory.Io.REG_TM3D_COUNTER = value;
+                memory.Io.REG_TM3D_COUNTER = value;
                 break;
             default:
                 throw new UnreachableException("Invalid Timer channel index");

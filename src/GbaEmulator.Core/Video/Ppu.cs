@@ -16,8 +16,6 @@ public sealed class Ppu
     private readonly InterruptController _interrupts;
     private readonly DmaController _dma;
     private readonly GbaMemory _memory;
-    private byte[] _vram = [];
-    private byte[] _paletteRam = [];
     private int _cycleAccumulator;
 
     public Ppu(InterruptController interrupts, DmaController dma, GbaMemory memory)
@@ -29,12 +27,6 @@ public sealed class Ppu
     }
 
     public FrameBuffer FrameBuffer { get; }
-
-    public void ConnectMemory(byte[] vRam, byte[] paletteRam)
-    {
-        _vram = vRam;
-        _paletteRam = paletteRam;
-    }
 
     public void Step(int cycles, GbaBus bus)
     {
@@ -249,13 +241,13 @@ public sealed class Ppu
             for (var x = 0; x < ScreenWidth; x++)
             {
                 var offset = ((y * ScreenWidth) + x) * 2;
-                if (offset + 1 >= _vram.Length)
+                if (offset + 1 >= _memory.Vram.Length)
                 {
                     FrameBuffer.SetPixel(x, y, 0xFF000000);
                     continue;
                 }
 
-                var bgr555 = (ushort)(_vram[offset] | (_vram[offset + 1] << 8));
+                var bgr555 = (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
                 FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
             }
         }

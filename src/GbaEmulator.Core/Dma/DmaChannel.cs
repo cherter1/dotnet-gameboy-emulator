@@ -3,15 +3,8 @@ using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Dma;
 
-internal sealed class DmaChannel
+internal sealed class DmaChannel(GbaMemory memory, int index)
 {
-    private readonly GbaMemory _memory;
-    private readonly int _index;
-    public DmaChannel(GbaMemory memory, int index)
-    {
-        _memory = memory;
-        _index = index;
-    }
     /// <summary>
     /// REG_DMA0SAD: 0x040000B0 27bits
     /// REG_DMA1SAD: 0x040000BC 28bits
@@ -59,31 +52,31 @@ internal sealed class DmaChannel
 
     private uint ResolveChannelSource()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_DMA0SAD,
-            1 => _memory.Io.REG_DMA1SAD,
-            2 => _memory.Io.REG_DMA2SAD,
-            3 => _memory.Io.REG_DMA3SAD,
+            0 => memory.Io.REG_DMA0SAD,
+            1 => memory.Io.REG_DMA1SAD,
+            2 => memory.Io.REG_DMA2SAD,
+            3 => memory.Io.REG_DMA3SAD,
             _ => throw new UnreachableException("Invalid DMA channel index")
         };
     }
 
     private void SetChannelSource(uint value)
     {
-        switch (_index)
+        switch (index)
         {
             case 0:
-                _memory.Io.REG_DMA0SAD = value;
+                memory.Io.REG_DMA0SAD = value;
                 break;
             case 1:
-                _memory.Io.REG_DMA1SAD = value;
+                memory.Io.REG_DMA1SAD = value;
                 break;
             case 2:
-                _memory.Io.REG_DMA2SAD = value;
+                memory.Io.REG_DMA2SAD = value;
                 break;
             case 3:
-                _memory.Io.REG_DMA3SAD = value;
+                memory.Io.REG_DMA3SAD = value;
                 break;
             default:
                 throw new UnreachableException("Invalid DMA channel index");
@@ -92,31 +85,31 @@ internal sealed class DmaChannel
 
     private uint ResolveChannelDestination()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_DMA0DAD,
-            1 => _memory.Io.REG_DMA1DAD,
-            2 => _memory.Io.REG_DMA2DAD,
-            3 => _memory.Io.REG_DMA3DAD,
+            0 => memory.Io.REG_DMA0DAD,
+            1 => memory.Io.REG_DMA1DAD,
+            2 => memory.Io.REG_DMA2DAD,
+            3 => memory.Io.REG_DMA3DAD,
             _ => throw new UnreachableException("Invalid DMA channel index")
         };
     }
 
     private void SetChannelDestination(uint value)
     {
-        switch (_index)
+        switch (index)
         {
             case 0:
-                _memory.Io.REG_DMA0DAD = value;
+                memory.Io.REG_DMA0DAD = value;
                 break;
             case 1:
-                _memory.Io.REG_DMA1DAD = value;
+                memory.Io.REG_DMA1DAD = value;
                 break;
             case 2:
-                _memory.Io.REG_DMA2DAD = value;
+                memory.Io.REG_DMA2DAD = value;
                 break;
             case 3:
-                _memory.Io.REG_DMA3DAD = value;
+                memory.Io.REG_DMA3DAD = value;
                 break;
             default:
                 throw new UnreachableException("Invalid DMA channel index");
@@ -125,31 +118,31 @@ internal sealed class DmaChannel
 
     private ushort ResolveChannelCount()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_DMA0CNT_L,
-            1 => _memory.Io.REG_DMA1CNT_L,
-            2 => _memory.Io.REG_DMA2CNT_L,
-            3 => _memory.Io.REG_DMA3CNT_L,
+            0 => memory.Io.REG_DMA0CNT_L,
+            1 => memory.Io.REG_DMA1CNT_L,
+            2 => memory.Io.REG_DMA2CNT_L,
+            3 => memory.Io.REG_DMA3CNT_L,
             _ => throw new UnreachableException("Invalid DMA channel index")
         };
     }
 
     private void SetChannelCount(ushort value)
     {
-        switch (_index)
+        switch (index)
         {
             case 0:
-                _memory.Io.REG_DMA0CNT_L = value;
+                memory.Io.REG_DMA0CNT_L = value;
                 break;
             case 1:
-                _memory.Io.REG_DMA1CNT_L = value;
+                memory.Io.REG_DMA1CNT_L = value;
                 break;
             case 2:
-                _memory.Io.REG_DMA2CNT_L = value;
+                memory.Io.REG_DMA2CNT_L = value;
                 break;
             case 3:
-                _memory.Io.REG_DMA3CNT_L = value;
+                memory.Io.REG_DMA3CNT_L = value;
                 break;
             default:
                 throw new UnreachableException("Invalid DMA channel index");
@@ -158,31 +151,31 @@ internal sealed class DmaChannel
 
     private ushort ResolveChannelControl()
     {
-        return _index switch
+        return index switch
         {
-            0 => _memory.Io.REG_DMA0CNT_H,
-            1 => _memory.Io.REG_DMA1CNT_H,
-            2 => _memory.Io.REG_DMA2CNT_H,
-            3 => _memory.Io.REG_DMA3CNT_H,
+            0 => memory.Io.REG_DMA0CNT_H,
+            1 => memory.Io.REG_DMA1CNT_H,
+            2 => memory.Io.REG_DMA2CNT_H,
+            3 => memory.Io.REG_DMA3CNT_H,
             _ => throw new UnreachableException("Invalid DMA channel index")
         };
     }
 
     private void SetChannelControl(ushort value)
     {
-        switch (_index)
+        switch (index)
         {
             case 0:
-                _memory.Io.REG_DMA0CNT_H = value;
+                memory.Io.REG_DMA0CNT_H = value;
                 break;
             case 1:
-                _memory.Io.REG_DMA1CNT_H = value;
+                memory.Io.REG_DMA1CNT_H = value;
                 break;
             case 2:
-                _memory.Io.REG_DMA2CNT_H = value;
+                memory.Io.REG_DMA2CNT_H = value;
                 break;
             case 3:
-                _memory.Io.REG_DMA3CNT_H = value;
+                memory.Io.REG_DMA3CNT_H = value;
                 break;
             default:
                 throw new UnreachableException("Invalid DMA channel index");

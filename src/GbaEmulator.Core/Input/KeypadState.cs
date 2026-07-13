@@ -10,10 +10,6 @@ public sealed class KeypadState
     {
         _memory = memory;
     }
-    
-    private ushort _state = 0x03FF;
-
-    public ushort ReadKeyInput() => _state;
 
     public void SetPressed(GbaButton button, bool pressed)
     {

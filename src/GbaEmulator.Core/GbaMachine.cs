@@ -53,7 +53,7 @@ public sealed class GbaMachine
         var timers = new TimerController(interrupts, memory);
         var dma = new DmaController(interrupts, memory);
         var ppu = new Ppu(interrupts, dma, memory);
-        var bus = new GbaBus(interrupts, timers, dma, ppu, keypad, memory);
+        var bus = new GbaBus(memory);
         var cpu = new Arm7Tdmi(bus, interrupts);
 
         var cartridge = options.RomPath is { Length: > 0 } romPath && File.Exists(romPath)
@@ -68,11 +68,11 @@ public sealed class GbaMachine
         return machine;
     }
 
-    public void Reset() => Cpu.Reset(_skipBios);
+    private void Reset() => Cpu.Reset(_skipBios);
 
     public void RunFrame() => RunCycles(Ppu.CyclesPerFrame);
 
-    public void RunCycles(int cycles)
+    private void RunCycles(int cycles)
     {
         var consumed = 0;
         while (consumed < cycles)
