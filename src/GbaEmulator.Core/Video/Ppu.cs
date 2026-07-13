@@ -83,31 +83,31 @@ public sealed class Ppu
 
     private ushort ReadPalette16(int offset)
     {
-        if (offset < 0 || offset + 1 >= _paletteRam.Length)
+        if (offset < 0 || offset + 1 >= _memory.PaletteRam.Length)
         {
             return 0;
         }
 
-        return (ushort)(_paletteRam[offset] | (_paletteRam[offset + 1] << 8));
+        return (ushort)(_memory.PaletteRam[offset] | (_memory.PaletteRam[offset + 1] << 8));
     }
 
     private byte ReadVram8(int offset)
     {
-        if (offset < 0 || offset + 1 >= _vram.Length)
+        if (offset < 0 || offset + 1 >= _memory.Vram.Length)
         {
             return 0;
         }
 
-        return _vram[offset];
+        return _memory.Vram[offset];
     }
 
     private ushort ReadVram16(int offset)
     {
-        if (offset < 0 || offset + 1 >= _vram.Length)
+        if (offset < 0 || offset + 1 >= _memory.Vram.Length)
         {
             return 0;
         }
-        return (ushort)(_vram[offset] | (_vram[offset + 1] << 8));
+        return (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
     }
 
     private uint ReadBgPaletteColor(int paletteIndex)

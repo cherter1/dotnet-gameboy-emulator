@@ -21,18 +21,20 @@ public sealed class GbaBusTests
     [Fact]
     public void KeypadRegister_UsesActiveLowBits()
     {
-        var keypad = new KeypadState();
-        var bus = CreateBus(keypad);
+        GbaMemory memory = new ();
+        var keypad = new KeypadState(memory);
+        var bus = CreateBus(keypad, memory);
         keypad.SetPressed(GbaButton.A, true);
 
         Assert.Equal((ushort)0x03FE, bus.Read16(0x04000130));
     }
 
-    private static GbaBus CreateBus(KeypadState? keypad = null)
+    private static GbaBus CreateBus(KeypadState? keypad = null, GbaMemory? memory = null)
     {
-        var interrupts = new InterruptController();
-        var dma = new DmaController(interrupts);
-        keypad ??= new KeypadState();
-        return new GbaBus(interrupts, new TimerController(interrupts), dma, new Ppu(interrupts, dma), keypad);
+        memory ??= new GbaMemory();
+        var interrupts = new InterruptController(memory);
+        var dma = new DmaController(interrupts, memory);
+        keypad ??= new KeypadState(memory);
+        return new GbaBus(interrupts, new TimerController(interrupts, memory), dma, new Ppu(interrupts, dma, memory), keypad, memory);
     }
 }

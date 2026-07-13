@@ -12,9 +12,10 @@ public class CpuUtilities
 {
     public static (Arm7Tdmi Cpu, GbaBus Bus) CreateCpu()
     {
-        var interrupts = new InterruptController();
-        var dma = new DmaController(interrupts);
-        var bus = new GbaBus(interrupts, new TimerController(interrupts), dma, new Ppu(interrupts, dma), new KeypadState());
+        var memory = new GbaMemory();
+        var interrupts = new InterruptController(memory);
+        var dma = new DmaController(interrupts, memory);
+        var bus = new GbaBus(interrupts, new TimerController(interrupts, memory), dma, new Ppu(interrupts, dma, memory), new KeypadState(memory), memory);
         return (new Arm7Tdmi(bus, interrupts), bus);
     }
 }

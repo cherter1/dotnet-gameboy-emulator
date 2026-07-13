@@ -281,6 +281,48 @@ public sealed class IoRegisters
                 }
                 break;
             #endregion
+            #region Timers
+            case 0x04000100:
+                REG_TM0D_RELOAD = value;
+                break;
+            case 0x04000102:
+                REG_TM0CNT = value;
+                if ((value & 0x0080) != 0)
+                {
+                    REG_TM0D_COUNTER = REG_TM0D_RELOAD;
+                }
+                break;
+            case 0x04000104:
+                REG_TM1D_RELOAD = value;
+                break;
+            case 0x04000106:
+                REG_TM1CNT = value;
+                if ((value & 0x0080) != 0)
+                {
+                    REG_TM1D_COUNTER = REG_TM1D_RELOAD;
+                }
+                break;
+            case 0x04000108:
+                REG_TM2D_RELOAD = value;
+                break;
+            case 0x0400010A:
+                REG_TM2CNT = value;
+                if ((value & 0x0080) != 0)
+                {
+                    REG_TM2D_COUNTER = REG_TM2D_RELOAD;
+                }
+                break;
+            case 0x0400010C:
+                REG_TM3D_RELOAD = value;
+                break;
+            case 0x0400010E:
+                REG_TM3CNT = value;
+                if ((value & 0x0080) != 0)
+                {
+                    REG_TM3D_COUNTER = REG_TM3D_RELOAD;
+                }
+                break;
+            #endregion
             #region Interrupts
             case 0x04000200:
                 REG_IE = value;
@@ -293,7 +335,7 @@ public sealed class IoRegisters
                 break;
             #endregion
             default:
-                Console.WriteLine($"Unmapped IO write at Address:{address:x8}, Value:{value:x8}");
+                //Console.WriteLine($"Unmapped IO write at Address:{address:x8}, Value:{value:x8}");
                 break;
         }
     }
@@ -364,8 +406,18 @@ public sealed class IoRegisters
             0x040000DC => REG_DMA3CNT_L,
             0x040000DE => REG_DMA3CNT_H,
             #endregion
+            #region Timers
+            0x04000100 => REG_TM0D_COUNTER,
+            0x04000102 => REG_TM0CNT,
+            0x04000104 => REG_TM1D_COUNTER,
+            0x04000106 => REG_TM1CNT,
+            0x04000108 => REG_TM2D_COUNTER,
+            0x0400010A => REG_TM2CNT,
+            0x0400010C => REG_TM3D_COUNTER,
+            0x0400010E => REG_TM3CNT,
+            #endregion
             #region Keypad
-            0x04000130 =>  0x03ff, //REG_KEYINPUT,
+            0x04000130 => REG_KEYINPUT,
             0x04000132 => REG_KEYCNT,
             #endregion
             #region Interrupts
@@ -601,6 +653,43 @@ public sealed class IoRegisters
     #endregion
 
     #region Timers
+
+    /// <summary>
+    /// 0x04000100
+    /// </summary>
+    public ushort REG_TM0D_RELOAD { get; set; }
+    public ushort REG_TM0D_COUNTER { get; set; }
+    /// <summary>
+    /// 0x04000102
+    /// </summary>
+    public ushort REG_TM0CNT { get; set; }
+    /// <summary>
+    /// 0x04000104
+    /// </summary>
+    public ushort REG_TM1D_RELOAD { get; set; }
+    public ushort REG_TM1D_COUNTER { get; set; }
+    /// <summary>
+    /// 0x04000106
+    /// </summary>
+    public ushort REG_TM1CNT { get; set; }
+    /// <summary>
+    /// 0x04000108
+    /// </summary>
+    public ushort REG_TM2D_RELOAD { get; set; }
+    public ushort REG_TM2D_COUNTER { get; set; }
+    /// <summary>
+    /// 0x0400010A
+    /// </summary>
+    public ushort REG_TM2CNT { get; set; }
+    /// <summary>
+    /// 0x0400010C
+    /// </summary>
+    public ushort REG_TM3D_RELOAD { get; set; }
+    public ushort REG_TM3D_COUNTER { get; set; }
+    /// <summary>
+    /// 0x0400010E
+    /// </summary>
+    public ushort REG_TM3CNT { get; set; }
     #endregion
 
     #region Keypad
@@ -608,7 +697,7 @@ public sealed class IoRegisters
     /// <summary>
     /// 0x04000130
     /// </summary>
-    public ushort REG_KEYINPUT { get; set; }
+    public ushort REG_KEYINPUT { get; set; } = 0x3ff;
     /// <summary>
     /// 0x04000132
     /// </summary>

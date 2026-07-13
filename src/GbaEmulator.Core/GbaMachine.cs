@@ -49,8 +49,8 @@ public sealed class GbaMachine
     {
         var memory = new GbaMemory();
         var interrupts = new InterruptController(memory);
-        var keypad = new KeypadState();
-        var timers = new TimerController(interrupts);
+        var keypad = new KeypadState(memory);
+        var timers = new TimerController(interrupts, memory);
         var dma = new DmaController(interrupts, memory);
         var ppu = new Ppu(interrupts, dma, memory);
         var bus = new GbaBus(interrupts, timers, dma, ppu, keypad, memory);
@@ -78,6 +78,7 @@ public sealed class GbaMachine
         while (consumed < cycles)
         {
             var instructionCycles = Cpu.Step();
+            Dma.RunDmas(DmaTimingType.Immediately, Bus);
             Timers.Step(instructionCycles);
             Ppu.Step(instructionCycles, Bus);
             consumed += instructionCycles;

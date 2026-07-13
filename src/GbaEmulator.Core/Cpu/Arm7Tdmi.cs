@@ -17,7 +17,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     public void Reset(bool skipBios)
     {
         Registers = new RegisterBank(() => Cpsr.Mode);
-        //bus.Registers = Registers;
         Registers.InitializeForGba();
 
         Cpsr = new ProgramStatusRegister
@@ -38,7 +37,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         try
         {
             if (interrupts.ShouldServiceIrq(Cpsr.IrqDisable))
-            //if(false)
             {
                 EnterIrqException();
                 return 4;
@@ -56,16 +54,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
 
             if (Registers.ProgramCounter == 0x08025254) //snprintf
-            {
-                var z = 1;
-            }
-
-            if (Registers.ProgramCounter == 0x080252c4) //snprintf return 
-            {
-                var z = 1;
-            }
-            
-            if (Registers.ProgramCounter == 0x08025264) //snprintf first inner function call return 
             {
                 var z = 1;
             }
