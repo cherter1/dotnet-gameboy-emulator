@@ -8,10 +8,10 @@ public sealed class DmaController
     private readonly DmaChannel[] _channels;
     private readonly InterruptController _interrupts;
 
-    internal DmaController(InterruptController interrupts)
+    internal DmaController(InterruptController interrupts, GbaMemory memory)
     {
         _interrupts = interrupts;
-        _channels = Enumerable.Range(0, 4).Select(_ => new DmaChannel()).ToArray();
+        _channels = Enumerable.Range(0, 4).Select((_, index) => new DmaChannel(memory, index)).ToArray();
     }
 
     public void RunDmas(DmaTimingType timingType, GbaBus bus)

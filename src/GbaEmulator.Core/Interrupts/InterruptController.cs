@@ -1,7 +1,15 @@
+using GbaEmulator.Core.Memory;
+
 namespace GbaEmulator.Core.Interrupts;
 
 public sealed class InterruptController
 {
+    private readonly GbaMemory _memory;
+
+    public InterruptController(GbaMemory memory)
+    {
+        _memory = memory;
+    }
     /// <summary>
     /// REG_IE: 0x04000200
     /// </summary>
@@ -15,9 +23,9 @@ public sealed class InterruptController
     /// </summary>
     private bool InterruptMasterEnable { get; set; }
 
-    public bool ShouldServiceIrq(bool irqDisabled) => InterruptMasterEnable && !irqDisabled && (InterruptEnable & InterruptFlags) != 0;
+    public bool ShouldServiceIrq(bool irqDisabled) => _memory.Io.REG_IME && !irqDisabled && (_memory.Io.REG_IE & _memory.Io.REG_IF) != 0;
 
-    public void Request(InterruptType interrupt) => InterruptFlags |= (ushort)interrupt;
+    public void Request(InterruptType interrupt) => _memory.Io.REG_IF |= (ushort)interrupt;
 
     public ushort Read16(uint address) =>
         address switch

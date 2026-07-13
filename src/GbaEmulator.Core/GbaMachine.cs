@@ -47,11 +47,11 @@ public sealed class GbaMachine
 
     public static GbaMachine Create(GbaMachineOptions options)
     {
-        var interrupts = new InterruptController();
+        var memory = new GbaMemory();
+        var interrupts = new InterruptController(memory);
         var keypad = new KeypadState();
         var timers = new TimerController(interrupts);
-        var dma = new DmaController(interrupts);
-        var memory = new GbaMemory();
+        var dma = new DmaController(interrupts, memory);
         var ppu = new Ppu(interrupts, dma, memory);
         var bus = new GbaBus(interrupts, timers, dma, ppu, keypad, memory);
         var cpu = new Arm7Tdmi(bus, interrupts);

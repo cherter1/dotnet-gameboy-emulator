@@ -46,6 +46,15 @@ public sealed class IoRegisters
         WriteIo16Aligned(address + 2, (ushort)(value >> 16));
     }
 
+    public void WriteIo8(uint address, byte value)
+    {
+        var aligned = address & ~1u;
+        var existingValue = GetMappedRegister(aligned);
+        var shift = (int)(address & 1) * 8;
+        var merged = (ushort)((existingValue & ~(0xFF << shift)) | (value << shift));
+        WriteIo16Aligned(aligned, merged);
+    }
+
     public void WriteIo16Aligned(uint address, ushort value)
     {
         if ((address & 1u) != 0)
@@ -182,8 +191,109 @@ public sealed class IoRegisters
                 REG_BLDY = 1;
                 break;
             #endregion
+            #region Dma
+            case 0x040000B0:
+                REG_DMA0SAD = (REG_DMA0SAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000B2:
+                REG_DMA0SAD = (REG_DMA0SAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000B4:
+                REG_DMA0DAD = (REG_DMA0DAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000B6:
+                REG_DMA0DAD = (REG_DMA0DAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000B8:
+                REG_DMA0CNT_L = value == 0 ? (ushort)0x4000 : value;
+                break;
+            case 0x040000BA:
+                REG_DMA0CNT_H = value;
+                if ((value & 0x8000) != 0)
+                {
+                    //RunDmas(DmaTimingType.Immediately, bus);
+                }
+                break;
+            case 0x040000BC:
+                REG_DMA1SAD = (REG_DMA1SAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000BE:
+                REG_DMA1SAD = (REG_DMA1SAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000C0:
+                REG_DMA1DAD = (REG_DMA1DAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000C2:
+                REG_DMA1DAD = (REG_DMA1DAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000C4:
+                REG_DMA1CNT_L = value == 0 ? (ushort)0x4000 : value;
+                break;
+            case 0x040000C6:
+                REG_DMA1CNT_H = value;
+                if ((value & 0x8000) != 0)
+                {
+                    //RunDmas(DmaTimingType.Immediately, bus);
+                }
+                break;
+            case 0x040000C8:
+                REG_DMA2SAD = (REG_DMA2SAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000CA:
+                REG_DMA2SAD = (REG_DMA2SAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000CC:
+                REG_DMA2DAD = (REG_DMA2DAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000CE:
+                REG_DMA2DAD = (REG_DMA2DAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000D0:
+                REG_DMA2CNT_L = value == 0 ? (ushort)0x4000 : value;
+                break;
+            case 0x040000D2:
+                REG_DMA2CNT_H = value;
+                if ((value & 0x8000) != 0)
+                {
+                    //RunDmas(DmaTimingType.Immediately, bus);
+                }
+                break;
+            case 0x040000D4:
+                REG_DMA3SAD = (REG_DMA3SAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000D6:
+                REG_DMA3SAD = (REG_DMA3SAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000D8:
+                REG_DMA3DAD = (REG_DMA3DAD & 0xFFFF0000u) | value;
+                break;
+            case 0x040000DA:
+                REG_DMA3DAD = (REG_DMA3DAD & 0x0000FFFFu) | (uint)(value << 16);
+                break;
+            case 0x040000DC:
+                REG_DMA3CNT_L = value == 0 ? (ushort)0x4000 : value;
+                break;
+            case 0x040000DE:
+                REG_DMA3CNT_H = value;
+                if ((value & 0x8000) != 0)
+                {
+                    //RunDmas(DmaTimingType.Immediately, bus);
+                }
+                break;
+            #endregion
+            #region Interrupts
+            case 0x04000200:
+                REG_IE = value;
+                break;
+            case 0x04000202:
+                REG_IF &= (ushort)~value;
+                break;
+            case 0x04000208:
+                REG_IME = (value & 1) != 0;
+                break;
+            #endregion
             default:
-                Console.WriteLine("dum");
+                Console.WriteLine($"Unmapped IO write at Address:{address:x8}, Value:{value:x8}");
                 break;
         }
     }
@@ -192,7 +302,7 @@ public sealed class IoRegisters
         address switch
         {
             //TODO: watch writeonly
-            //Display
+            #region Display
             0x04000000 => REG_DISPCNT,
             0x04000004 => REG_DISPSTAT,
             0x04000006 => REG_VCOUNT,
@@ -234,8 +344,9 @@ public sealed class IoRegisters
             0x04000050 => REG_BLDCNT,
             0x04000052 => REG_BLDALPHA,
             0x04000054 => REG_BLDY,
+            #endregion
             //Sound
-            //Dma
+            #region Dma
             0x040000B0 => (ushort)REG_DMA0SAD, //shiftlater
             0x040000B4 => (ushort)REG_DMA0DAD, //shiftlater
             0x040000B8 => REG_DMA0CNT_L,
@@ -252,6 +363,16 @@ public sealed class IoRegisters
             0x040000D8 => (ushort)REG_DMA3DAD, //shiftlater
             0x040000DC => REG_DMA3CNT_L,
             0x040000DE => REG_DMA3CNT_H,
+            #endregion
+            #region Keypad
+            0x04000130 =>  0x03ff, //REG_KEYINPUT,
+            0x04000132 => REG_KEYCNT,
+            #endregion
+            #region Interrupts
+            0x04000200 => REG_IE,
+            0x04000202 => REG_IF,
+            0x04000208 => (ushort)(REG_IME ? 1 : 0),
+            #endregion
             _ => 0 //TODO: add openBus behavior
         };
 
@@ -480,5 +601,33 @@ public sealed class IoRegisters
     #endregion
 
     #region Timers
+    #endregion
+
+    #region Keypad
+
+    /// <summary>
+    /// 0x04000130
+    /// </summary>
+    public ushort REG_KEYINPUT { get; set; }
+    /// <summary>
+    /// 0x04000132
+    /// </summary>
+    public ushort REG_KEYCNT { get; set; }
+    #endregion
+
+    #region Interrupts
+    
+    /// <summary>
+    /// 0x04000200
+    /// </summary>
+    public ushort REG_IE { get; set; }
+    /// <summary>
+    /// 0x04000202
+    /// </summary>
+    public ushort REG_IF { get; set; }
+    /// <summary>
+    /// 0x04000208
+    /// </summary>
+    public bool REG_IME { get; set; }
     #endregion
 }

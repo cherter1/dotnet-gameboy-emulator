@@ -105,26 +105,61 @@ public sealed class GbaBus
         };
     }
 
-    public void Write32New(uint address, uint value)
+    public void Write32(uint address, uint value)
     {
         address &= ~3u;
         var region = ResolveRegion(address, out var buffer, out var offset);
 
-        if (region is MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused)
+        switch (region)
         {
-            //throw new Exception("Cannot Write to bios or rom or unused memory");
-            return;
+            case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
+                //throw new Exception("Cannot Write to bios or rom or unused memory");
+                return;
+            case MemoryRegion.Io:
+                _memory.Io.WriteIo32Aligned(address, value);
+                break;
+            default:
+                buffer[offset + 3] = (byte)(value >> 24);
+                buffer[offset + 2] = (byte)(value >> 16);
+                buffer[offset + 1] = (byte)(value >> 8);
+                buffer[offset] = (byte)value;
+                break;
         }
+    }
 
-        if (region is MemoryRegion.Io)
+    public void Write16(uint address, ushort value)
+    {
+        address &= ~1u;
+        var region = ResolveRegion(address, out var buffer, out var offset);
+        switch (region)
         {
-            _memory.Io.WriteIo32Aligned(address, value);
+            case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
+                //throw new Exception("Cannot Write to bios or rom or unused memory");
+                return;
+            case MemoryRegion.Io:
+                _memory.Io.WriteIo16Aligned(address, value);
+                break;
+            default:
+                buffer[offset + 1] = (byte)(value >> 8);
+                buffer[offset] = (byte)value;
+                break;
         }
+    }
 
-        buffer[offset + 3] = (byte)(value >> 24);
-        buffer[offset + 2] = (byte)(value >> 16);
-        buffer[offset + 1] = (byte)(value >> 8);
-        buffer[offset] = (byte)value;
+    public void Write8(uint address, byte value)
+    {
+        var region = ResolveRegion(address, out var buffer, out var offset);
+        switch (region)
+        {
+            case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
+                return;
+            case MemoryRegion.Io:
+                _memory.Io.WriteIo8(address, value);
+                break;
+            default:
+                buffer[offset] = value;
+                break;
+        }
     }
 
     public byte Read8x(uint address)
@@ -164,7 +199,7 @@ public sealed class GbaBus
         return (uint)((b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
     }
 
-    public void Write8(uint address, byte value)
+    public void Write8x(uint address, byte value)
     {
         if (TryWriteIo(address, value))
         {
@@ -182,7 +217,7 @@ public sealed class GbaBus
         buffer[offset] = value;
     }
 
-    public void Write16(uint address, ushort value)
+    public void Write16x(uint address, ushort value)
     {
         if (address is >= 0x04000000 and <= 0x040003FE)
         {
@@ -194,7 +229,7 @@ public sealed class GbaBus
         Write8(address + 1, (byte)(value >> 8));
     }
 
-    public void Write32(uint address, uint value)
+    public void Write32x(uint address, uint value)
     {
         if (address is >= 0x04000000 and <= 0x040003FC)
         {
