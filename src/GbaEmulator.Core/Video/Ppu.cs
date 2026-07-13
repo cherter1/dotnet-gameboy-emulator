@@ -81,82 +81,6 @@ public sealed class Ppu
         }
     }
 
-    public ushort Read16(uint address) =>
-        address switch
-        {
-            0x04000000 => DisplayControl,
-            0x04000004 => DisplayStatus,
-            0x04000006 => VerticalCount,
-            0x04000008 => Bg0Control,
-            0x0400000A => Bg1Control,
-            0x0400000C => Bg2Control,
-            0x0400000E => Bg3Control,
-            0x04000010 => Bg0HorizontalOffset,
-            0x04000012 => Bg0VerticalOffset,
-            0x04000014 => Bg1HorizontalOffset,
-            0x04000016 => Bg1VerticalOffset,
-            0x04000018 => Bg2HorizontalOffset,
-            0x0400001A => Bg2VerticalOffset,
-            0x0400001C => Bg3HorizontalOffset,
-            0x0400001E => Bg3VerticalOffset,
-            _ => 0
-        };
-
-    public void Write16(uint address, ushort value)
-    {
-        switch (address)
-        {
-            case 0x04000000:
-                DisplayControl = value;
-                break;
-            case 0x04000004:
-                DisplayStatus = (ushort)((DisplayStatus & 0x0007) | (value & 0xfff8));
-                break;
-            case 0x04000008:
-                Bg0Control = value;
-                break;
-            case 0x0400000A:
-                Bg1Control = value;
-                Console.WriteLine("write to bg1cnt");
-                break;
-            case 0x0400000C:
-                Bg2Control = value;
-                break;
-            case 0x0400000E:
-                Bg3Control = value;
-                break;
-            case 0x04000010:
-                Bg0HorizontalOffset = value;
-                break;
-            case 0x04000012:
-                Bg0VerticalOffset = value;
-                break;
-            case 0x04000014:
-                Bg1HorizontalOffset = (ushort)(value & 0x1FF);
-                Console.WriteLine("write to bg1hofs");
-                break;
-            case 0x04000016:
-                Bg1VerticalOffset = (ushort)(value & 0x1FF);
-                Console.WriteLine("write to bg1vofs");
-                break;
-            case 0x04000018:
-                Bg2HorizontalOffset = value;
-                break;
-            case 0x0400001A:
-                Bg2VerticalOffset = value;
-                break;
-            case 0x0400001C:
-                Bg3HorizontalOffset = value;
-                break;
-            case 0x0400001E:
-                Bg3VerticalOffset = value;
-                break;
-            default:
-                Console.WriteLine($"Writing to unmapped ppu IO register {address:x8}");
-                break;
-        }
-    }
-
     private ushort ReadPalette16(int offset)
     {
         if (offset < 0 || offset + 1 >= _paletteRam.Length)
@@ -232,39 +156,39 @@ public sealed class Ppu
         //screenblocks tilemap
         HashSet<int> graphicsOffsets = [];
         int countofG = 0;
-        var bg0Enabled = BitUtils.IsBitSet(DisplayControl, 8);
-        var bg1Enabled = BitUtils.IsBitSet(DisplayControl, 9);
-        var bg2Enabled = BitUtils.IsBitSet(DisplayControl, 10);
-        var bg3Enabled = BitUtils.IsBitSet(DisplayControl, 11);
+        var bg0Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 8);
+        var bg1Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 9);
+        var bg2Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 10);
+        var bg3Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 11);
         if (bg0Enabled || bg1Enabled || bg2Enabled || bg3Enabled)
         {
             var x = 1;
             //var z = _vram.Count(q => q != 0);
         }
-        var charBaseBlock = (Bg1Control >> 2) & 0b11;
+        var charBaseBlock = (_memory.Io.REG_BG1CNT >> 2) & 0b11;
         var startOffsetOfCharTileData = charBaseBlock * 0x4000; // + 0x0600000 for address
-        var screenBaseBlock = (Bg1Control >> 8) & 0x1F;
+        var screenBaseBlock = (_memory.Io.REG_BG1CNT >> 8) & 0x1F;
         var startOffsetOfCharTileMap = screenBaseBlock * 0x800; // + 0x0600000 for address
         // 00 = 256x256 (32x32 tiles)
         // 01 = 512x256 (64x32 tiles)
         // 10 = 256x512 (32x64 tiles)
         // 11 = 512x512 (64x64 tiles)
-        var tileMapSizeText = (Bg1Control >> 14) & 0b11;
+        var tileMapSizeText = (_memory.Io.REG_BG1CNT >> 14) & 0b11;
         if (tileMapSizeText != 0)
         {
             var z = 1;
         }
-        var is8bpp = BitUtils.IsBitSet(Bg1Control, 7);
+        var is8bpp = BitUtils.IsBitSet(_memory.Io.REG_BG1CNT, 7);
 
         for (var y = 0; y < ScreenHeight; y++)
         {
-            var backgroundY = (y + Bg1VerticalOffset) & 0xFF;
+            var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
             var tileMapY = backgroundY >> 3;
             var pixelYInsideTile = backgroundY & 7;
 
             for (var x = 0; x < ScreenWidth; x++)
             {
-                var backgroundX = (x + Bg1HorizontalOffset) & 0xFF;
+                var backgroundX = (x + _memory.Io.REG_BG1HOFS) & 0xFF;
                 var tileMapX = backgroundX / 8;
                 var pixelXInsideTile = backgroundX % 8;
 

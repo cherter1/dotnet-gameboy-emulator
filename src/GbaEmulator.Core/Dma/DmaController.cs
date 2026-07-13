@@ -14,11 +14,6 @@ public sealed class DmaController
         _channels = Enumerable.Range(0, 4).Select(_ => new DmaChannel()).ToArray();
     }
 
-    private bool TryResolveChannelIndex(uint address)
-    {
-        return false;
-    }
-
     public void RunDmas(DmaTimingType timingType, GbaBus bus)
     {
         foreach (var channel in _channels)

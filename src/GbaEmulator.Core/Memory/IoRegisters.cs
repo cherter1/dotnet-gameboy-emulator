@@ -57,12 +57,12 @@ public sealed class IoRegisters
         switch (address)
         {
             //TODO: watch writeonly
-            //Display
+            #region Display
             case 0x04000000:
                 REG_DISPCNT = value;
                 break;
             case 0x04000004:
-                REG_DISPSTAT = value;
+                REG_DISPSTAT = (ushort)((REG_DISPSTAT & 0x0007) | (value & 0xfff8));
                 break;
             case 0x04000006:
                 REG_VCOUNT = value;
@@ -80,28 +80,28 @@ public sealed class IoRegisters
                 REG_BG3CNT = value;
                 break;
             case 0x04000010:
-                REG_BG0HOFS = value;
+                REG_BG0HOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x04000012:
-                REG_BG0VOFS = value;
+                REG_BG0VOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x04000014:
-                REG_BG1HOFS = value;
+                REG_BG1HOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x04000016:
-                REG_BG1VOFS = value;
+                REG_BG1VOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x04000018:
-                REG_BG2HOFS = value;
+                REG_BG2HOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x0400001A:
-                REG_BG2VOFS = value;
+                REG_BG2VOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x0400001C:
-                REG_BG3HOFS = value;
+                REG_BG3HOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x0400001E:
-                REG_BG3VOFS = value;
+                REG_BG3VOFS = (ushort)(value & 0x1ff);
                 break;
             case 0x04000020:
                 REG_BG2PA = value;
@@ -181,6 +181,7 @@ public sealed class IoRegisters
             case 0x04000054:
                 REG_BLDY = 1;
                 break;
+            #endregion
             default:
                 Console.WriteLine("dum");
                 break;
@@ -234,7 +235,7 @@ public sealed class IoRegisters
             0x04000052 => REG_BLDALPHA,
             0x04000054 => REG_BLDY,
             //Sound
-            //Display
+            //Dma
             0x040000B0 => (ushort)REG_DMA0SAD, //shiftlater
             0x040000B4 => (ushort)REG_DMA0DAD, //shiftlater
             0x040000B8 => REG_DMA0CNT_L,
