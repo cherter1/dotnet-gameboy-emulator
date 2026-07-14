@@ -58,11 +58,36 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
                 count++;
             }
-            if (Registers.ProgramCounter == 0x08007a1a) //run return
+            /*
+             *8c into r1 but i get 50 @0x08024650
+0802BCC8 should clear z flag but mine doesnt therefore branch isnt taken cmp r3, r4
+r3 = 0x50 and r4 = 0x50 instruction 0x42a3
+CPSR = ZC set thumb mode
+next instrution is 0x0802bcca: d8bc bhi 0x0802bc46
+mgba goes to 0802bc46 after mine goes to 0802bccc mgba's r3 = a0, r4 = 8c
+
+0x080027de ldr r2, [r2, #0] mine moves 0x50 should move 0x8c r2 holds address 0x03002c0
+
+earlier 0802bc3c: 4643 mov r3, r8 shouldve moved a into 3 but didnt work right on mine even tho my r8 = 0xa 
+             */
+            if (Registers.ProgramCounter == 0x08025404) //_svfprintf_r branch inside sprintf after first function
             {
                 var x = 1;
             }
-            if (Registers.ProgramCounter == 0x080027e6) //snprintf return call after running suite
+            if (Registers.ProgramCounter == 0x08025408) //_svfprintf_r return
+            {
+                var x = 1;
+            }
+            
+            if (Registers.ProgramCounter == 0x0802bc70) //random sbc call in the middle of stuff
+            {
+                var x = 1;
+            }
+            if (Registers.ProgramCounter == 0x080231de) //if statement at bottom of _svfprintf_r
+            {
+                var x = 1;
+            }
+            if (Registers.ProgramCounter == 0x080027e2) //sprintf call after running suite
             {
                 var x = 1;
             }
