@@ -32,6 +32,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     public void SetThumbState(bool enabled) =>
         Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 5, enabled));
 
+    private int count = 0;
     public int Step()
     {
         try
@@ -45,6 +46,25 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             if (Registers.ProgramCounter % 2 == 1)
             {
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+            }
+
+            if (Registers.ProgramCounter == 0x08007a18) //run test call
+            {
+                if (count == 60)
+                {
+                    var x = 1;
+                    
+                }
+
+                count++;
+            }
+            if (Registers.ProgramCounter == 0x08007a1a) //run return
+            {
+                var x = 1;
+            }
+            if (Registers.ProgramCounter == 0x080027e6) //snprintf return call after running suite
+            {
+                var x = 1;
             }
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
