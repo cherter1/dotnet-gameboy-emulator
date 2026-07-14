@@ -9,7 +9,7 @@ namespace GbaEmulator.Core.Cpu;
 //Armv4TM arm version
 public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 {
-    private readonly CpuTrace?[] _traces = new CpuTrace?[4096];
+    private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
     private int _traceIndex;
     public RegisterBank Registers { get; private set; } = null!;
     public ProgramStatusRegister Cpsr { get; private set; } = new() { Mode = CpuMode.System, IrqDisable = true };
@@ -45,17 +45,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             if (Registers.ProgramCounter % 2 == 1)
             {
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
-            }
-
-            if (Registers.ProgramCounter == 0x0 && Cpsr.Mode == CpuMode.System)
-            {
-                Console.WriteLine("Bios in system mode");
-                var y = 1;
-            }
-
-            if (Registers.ProgramCounter == 0x08025254) //snprintf
-            {
-                var z = 1;
             }
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
@@ -148,6 +137,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 {
                     //TODO: Multiply
                     decoded = "MULTIPLY";
+                    this.ExecuteArmMultiply(instruction);
                     return 1;
                 }
 
@@ -155,6 +145,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 {
                     decoded = "MULTIPLY LONG";
                     //TODO: MultiplyLong
+                    this.ExecuteArmMultiplyLong(instruction);
                     return 1;
                 }
 
@@ -187,15 +178,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 return 1;
             }
 
-            if ((instruction & 0x0C000000) == 0x04000000)
-            {
-                decoded = "NO IDEA WHAT THIS MASK IS";
-                return 3;
-            }
-
             decoded = "NOT SUPPORTED";
             throw new NotSupportedException($"Unhandled ARM instruction 0x{instruction:X8}");
-
         }
         finally
         {
@@ -390,10 +374,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
            |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |_Cond__|1_0_1|L|___________________Offset______________________| B,BL,BLX
          */
-        if (instruction == 0xea000059)
-        {
-            var x = 1;
-        }
 
         var link = BitUtils.IsBitSet(instruction, 24);
         var offset = BitUtils.SignExtend((int)(instruction & 0x00FFFFFF) << 2, 26);
@@ -416,10 +396,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
            no BLX for this cpu only since its armv4T
          */
 
-        if (instruction == 0xe12fff11)
-        {
-            var x = 0;
-        }
         var rn = (int)instruction & 0xF;
         var target = Registers[rn];
 
@@ -572,10 +548,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
           |_Cond__|0_1_0|P|U|B|W|L|__Rn___|__Rd___|_________Offset________| TransImm9
           |_Cond__|0_1_1|P|U|B|W|L|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| TransReg9
          */
-        if (instruction == 0xe510f004)
-        {
-            var x = 1;
-        }
 
         var isOffsetImmediate = (instruction & 0x02000000) == 0;
         var preIndex = BitUtils.IsBitSet(instruction, 24);
@@ -648,7 +620,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         var immOffset = ((instruction >> 4) & 0xF0) | (instruction & 0x0F);
         var rm = (int)instruction & 0x0F;
         var offset = immediate ? immOffset : Registers[rm];
-        
+
         var updatedAddress = isUp
             ? baseAddress + offset
             : baseAddress - offset;

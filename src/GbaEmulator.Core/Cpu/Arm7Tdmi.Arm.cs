@@ -4,6 +4,53 @@ namespace GbaEmulator.Core.Cpu;
 
 public sealed partial class Arm7Tdmi
 {
+    private void ExecuteArmMultiply(uint instruction)
+    {
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_0_0_0_0_0|A|S|__Rd___|__Rn___|__Rs___|1_0_0_1|__Rm___| Mul
+         */
+
+        var rm = (int)instruction & 0xF;
+        var rs = (int)(instruction >> 8) & 0xf;
+        var rn = (int)(instruction >> 12) & 0xf;
+        var rd = (int)(instruction >> 16) & 0xf;
+        var setFlags = BitUtils.IsBitSet(instruction, 20);
+        var accumulate = BitUtils.IsBitSet(instruction, 21);
+
+        var result = Registers[rm] * Registers[rs];
+        if (accumulate)
+        {
+            result += Registers[rn];
+        }
+
+        if (setFlags)
+        {
+            SetNegative(BitUtils.IsBitSet(result, 31));
+            SetZero(result == 0);
+        }
+
+        Registers[rd] = result;
+    }
+
+    private void ExecuteArmMultiplyLong(uint instruction)
+    {
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_0_0_0_1|U|A|S|__RdHi_|__RdLo_|__Rs___|1_0_0_1|__Rm___| Mul
+         */
+
+        var rm = instruction & 0xF;
+        var rs = (instruction >> 8) & 0xf;
+        var rdLo = (instruction >> 12) & 0xf;
+        var rdHi = (instruction >> 16) & 0xf;
+        var setFlags = BitUtils.IsBitSet(instruction, 20);
+        var accumulate = BitUtils.IsBitSet(instruction, 21);
+        var signed = BitUtils.IsBitSet(instruction, 22);
+    }
+
     private void ExecuteArmDataProcessing(uint instruction)
     {
         /*
