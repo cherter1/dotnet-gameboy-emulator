@@ -32,7 +32,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     public void SetThumbState(bool enabled) =>
         Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 5, enabled));
 
-    private int count = 0;
     public int Step()
     {
         try
@@ -46,50 +45,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             if (Registers.ProgramCounter % 2 == 1)
             {
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
-            }
-
-            if (Registers.ProgramCounter == 0x08007a18) //run test call
-            {
-                if (count == 60)
-                {
-                    var x = 1;
-                    
-                }
-
-                count++;
-            }
-            /*
-             *8c into r1 but i get 50 @0x08024650
-0802BCC8 should clear z flag but mine doesnt therefore branch isnt taken cmp r3, r4
-r3 = 0x50 and r4 = 0x50 instruction 0x42a3
-CPSR = ZC set thumb mode
-next instrution is 0x0802bcca: d8bc bhi 0x0802bc46
-mgba goes to 0802bc46 after mine goes to 0802bccc mgba's r3 = a0, r4 = 8c
-
-0x080027de ldr r2, [r2, #0] mine moves 0x50 should move 0x8c r2 holds address 0x03002c0
-
-earlier 0802bc3c: 4643 mov r3, r8 shouldve moved a into 3 but didnt work right on mine even tho my r8 = 0xa 
-             */
-            if (Registers.ProgramCounter == 0x08025404) //_svfprintf_r branch inside sprintf after first function
-            {
-                var x = 1;
-            }
-            if (Registers.ProgramCounter == 0x08025408) //_svfprintf_r return
-            {
-                var x = 1;
-            }
-            
-            if (Registers.ProgramCounter == 0x0802bc70) //random sbc call in the middle of stuff
-            {
-                var x = 1;
-            }
-            if (Registers.ProgramCounter == 0x080231de) //if statement at bottom of _svfprintf_r
-            {
-                var x = 1;
-            }
-            if (Registers.ProgramCounter == 0x080027e2) //sprintf call after running suite
-            {
-                var x = 1;
             }
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
@@ -784,24 +739,23 @@ earlier 0802bc3c: 4643 mov r3, r8 shouldve moved a into 3 but didnt work right o
     private uint ComputeShiftedRegisterOperand(uint instruction, out bool carryOut)
     {
         var rm = (int)(instruction & 0xF);
-        var shiftAmount = (int)((instruction >> 7) & 0x1F);
+        var rs = (int)(instruction >> 8) & 0xF;
+        var registerShift = BitUtils.IsBitSet(instruction, 4);
+        var shiftAmount = registerShift
+            ? (int)(Registers[rs] & 0xFF)
+            : (int)((instruction >> 7) & 0x1F);
+
         var shiftType = (instruction >> 5) & 0x3;
         var value = rm == 15
             ? Registers.ProgramCounter + 4
             : Registers[rm];
 
-        if (shiftAmount == 0)
-        {
-            carryOut = Cpsr.Carry;
-            return value;
-        }
-
         return shiftType switch
         {
             0 => ShiftLeft(value, shiftAmount, out carryOut),
-            1 => ShiftRightLogical(value, shiftAmount, out carryOut),
-            2 => ShiftRightArithmetic(value, shiftAmount, out carryOut),
-            3 => RotateRight(value, shiftAmount, out carryOut),
+            1 => ShiftRightLogical(value, shiftAmount, registerShift, out carryOut),
+            2 => ShiftRightArithmetic(value, shiftAmount, registerShift, out carryOut),
+            3 => RotateRight(value, shiftAmount, registerShift, out carryOut),
             _ => throw new UnreachableException()
         };
     }
@@ -892,25 +846,50 @@ earlier 0802bc3c: 4643 mov r3, r8 shouldve moved a into 3 but didnt work right o
         Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
     }
 
-    private static uint ShiftLeft(uint value, int amount, out bool carryOut)
+    private uint ShiftLeft(uint value, int amount, out bool carryOut)
     {
+        if (amount is 0)
+        {
+            carryOut = Cpsr.Carry;
+            return value;
+        }
+        if (amount >= 32)
+        {
+            //last bit shifted out if == 32 otherwise always no carry out
+            carryOut = amount == 32 && BitUtils.IsBitSet(value, 0);
+            return 0;
+        }
+
         carryOut = ((value >> (32 - amount)) & 1U) != 0;
         return value << amount;
     }
 
-    private static uint ShiftRightLogical(uint value, int amount, out bool carryOut)
+    private uint ShiftRightLogical(uint value, int amount, bool registerShift, out bool carryOut)
     {
-        carryOut = ((value >> (amount - 1)) & 1U) != 0;
-        return value >> amount;
+        switch (amount)
+        {
+            case 0 when registerShift:
+                carryOut = Cpsr.Carry;
+                return value;
+            case 0:
+                carryOut = BitUtils.IsBitSet(value, 31);
+                return 0;
+            case >= 32:
+                carryOut = amount == 32 && BitUtils.IsBitSet(value, 31);
+                return 0;
+            default:
+                carryOut = ((value >> (amount - 1)) & 1U) != 0;
+                return value >> amount;
+        }
     }
 
-    private static uint ShiftRightArithmetic(uint value, int amount, out bool carryOut)
+    private static uint ShiftRightArithmetic(uint value, int amount, bool registerShift, out bool carryOut)
     {
         carryOut = ((value >> (amount - 1)) & 1U) != 0;
         return (uint)((int)value >> amount);
     }
 
-    private static uint RotateRight(uint value, int amount, out bool carryOut)
+    private static uint RotateRight(uint value, int amount, bool registerShift, out bool carryOut)
     {
         var result = BitUtils.RotateRight(value, amount);
         carryOut = BitUtils.IsBitSet(result, 31);

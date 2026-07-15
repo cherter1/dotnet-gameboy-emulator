@@ -61,6 +61,10 @@ public sealed partial class Arm7Tdmi
           |_Cond__|0_0_1|___Op__|S|__Rn___|__Rd___|_Shift_|___Immediate___| DataProc
          */
 
+        if (instruction == 0xe1b00011)
+        {
+            var x = 0;
+        }
         var immediate = BitUtils.IsBitSet(instruction, 25);
         var opcode = (instruction >> 21) & 0xF;
         var setFlags = BitUtils.IsBitSet(instruction, 20);
