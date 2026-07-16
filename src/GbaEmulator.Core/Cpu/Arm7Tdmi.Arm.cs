@@ -83,6 +83,7 @@ public sealed partial class Arm7Tdmi
 
         var cy = Cpsr.Carry ? 1u : 0u;
         uint result;
+        ulong wide;
         switch (opcode)
         {
             case 0x0: //AND
@@ -138,7 +139,7 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0x5: //ADC
-                ulong wide = (ulong)operand1 + operand2 + cy;
+                wide = (ulong)operand1 + operand2 + cy;
                 result = (uint)wide;
                 Registers[rd] = result;
                 if (setFlags)
@@ -150,24 +151,25 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0x6: //SBC
-                result = operand1 - operand2 + cy - 1u;
-                Registers[rd] = result;
+                wide = (ulong)operand1 - operand2 + cy - 1u;
+                Registers[rd] = (uint)wide;
                 if (setFlags)
                 {
-                    UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+                    UpdateArithmeticFlags(operand1, operand2, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
-                    SetCarry((ulong)operand1 >= operand2 + cy - 1u);
+                    SetCarry((long)wide >= 0);
                 }
 
                 break;
             case 0x7: //RSC
-                result = operand2 - operand1 + cy - 1u;
-                Registers[rd] = result;
+                wide = (ulong)operand2 - operand1 + cy - 1u;
+                Registers[rd] = (uint)wide;
                 if (setFlags)
                 {
-                    UpdateArithmeticFlags(operand2, operand1, result, subtraction: true);
+                    UpdateArithmeticFlags(operand2, operand1, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
-                    SetCarry((ulong)operand2 >= operand1 + cy - 1u);
+                    SetCarry((long)wide >= 0);
+                    //SetCarry((ulong)operand2 >= operand1 + cy - 1u);
                 }
 
                 break;

@@ -64,4 +64,30 @@ public sealed class AdcSbcRscTests
         Assert.False(cpu.Cpsr.Negative);
         Assert.False(cpu.Cpsr.Overflow);
     }
+
+    [Fact]
+    public void RSCS__test()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: rscs r0, r1, r2
+        bus.Write32(0x02000000, 0xE0f10002);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[0] = 0x1;
+        cpu.Registers[1] = 0;
+        cpu.Registers[2] = 0x7fffffff;
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x7ffffffeu, cpu.Registers[0]);
+        Assert.True(cpu.Cpsr.Carry);
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
 }

@@ -47,6 +47,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
+            if (Registers.ProgramCounter == 0x080266BA)
+            {
+                var x = 1;
+            }
+
             return Cpsr.ThumbState ? StepThumb() : StepArm();
         }
         catch (Exception)
@@ -356,7 +361,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
 
             decoded = "NOTHING";
-            throw new NotSupportedException("THUMB instruction could not be decoded");
+            throw new NotSupportedException($"THUMB instruction could not be decoded instruction: {instruction:x4}");
         }
         finally
         {

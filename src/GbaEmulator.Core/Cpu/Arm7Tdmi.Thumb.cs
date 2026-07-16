@@ -304,15 +304,15 @@ public sealed partial class Arm7Tdmi
         var rs = (instruction >> 3) & 0xF;
 
         var source = rs == 15 ? Registers[rs] + 2 : Registers[rs];
-        if (rd == 15 || rs == 15)
-        {
-            source &= ~3u;
-        }
 
         switch (opCode)
         {
             case 0b00: //ADD
                 Registers[rd] += source;
+                if (rd == 15)
+                {
+                    Registers[rd] &= ~1u;
+                }
 
                 break;
             case 0b01: //CMP
@@ -322,6 +322,10 @@ public sealed partial class Arm7Tdmi
                 break;
             case 0b10: //MOV
                 Registers[rd] = source;
+                if (rd == 15)
+                {
+                    Registers[rd] &= ~1u;
+                }
 
                 break;
             case 0b11: //BX
