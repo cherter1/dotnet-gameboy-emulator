@@ -169,7 +169,6 @@ public sealed partial class Arm7Tdmi
                     UpdateArithmeticFlags(operand2, operand1, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
                     SetCarry((long)wide >= 0);
-                    //SetCarry((ulong)operand2 >= operand1 + cy - 1u);
                 }
 
                 break;

@@ -46,8 +46,9 @@ public sealed partial class Arm7Tdmi
             case 0b10: //ASR
                 if (offset == 0)
                 {
-                    result = (uint)(sourceValue >> 31);
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 31));
+                    var carryOut = BitUtils.IsBitSet((uint)sourceValue, 31); 
+                    result = carryOut ? 0xFFFFFFFF : 0;
+                    SetCarry(carryOut);
                     break;
                 }
 
@@ -165,49 +166,24 @@ public sealed partial class Arm7Tdmi
                 break;
             case 0b0010: //LSL
                 var shiftAmount = (int)(Registers[rs] & 0xFF);
-                result = Registers[rd] << shiftAmount;
+                result = this.ShiftLeft(Registers[rd], shiftAmount, out bool carryOut);
+                SetCarry(carryOut);
                 UpdateNz(result);
-                if (shiftAmount != 0)
-                {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], 32 - shiftAmount));
-                }
                 Registers[rd] = result;
 
                 break;
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                result = Registers[rd] >> shiftAmount;
-                if (shiftAmount != 0)
-                {
-                    if (shiftAmount > 31)
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
-                        result = 0;
-                    }
-                    else
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
-                    }
-                }
+                result = this.ShiftRightLogical(Registers[rd], shiftAmount, true, out carryOut);
+                SetCarry(carryOut);
                 UpdateNz(result);
                 Registers[rd] = result;
 
                 break;
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                result = (uint)((int)Registers[rd] >> shiftAmount);
-                if (shiftAmount != 0)
-                {
-                    if (shiftAmount > 31)
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
-                        result = (Registers[rd] & 0x80000000) == 0x80000000 ? 0xffffffff : 0;
-                    }
-                    else
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
-                    }
-                }
+                result = this.ShiftRightArithmetic(Registers[rd], shiftAmount, true, out carryOut);
+                SetCarry(carryOut);
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -230,13 +206,9 @@ public sealed partial class Arm7Tdmi
                 break;
             case 0b0111: //ROR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                //TODO: change ^^ Maybe Mod offset
-                result = BitOperations.RotateRight(Registers[rd], shiftAmount);
+                result = this.RotateRight(Registers[rd], shiftAmount, true, out carryOut);
                 UpdateNz(result);
-                if (shiftAmount != 0)
-                {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
-                }
+                SetCarry(carryOut);
                 Registers[rd] = result;
 
                 break;
@@ -335,7 +307,7 @@ public sealed partial class Arm7Tdmi
                 Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
 
                 //32 bit align if entering arm else 16 bit aligned
-                target &= !setThumb ? ~3u : ~1u;
+                target &= setThumb ? ~1u : ~3u;
                 Registers.ProgramCounter = target;
                 return 3;
         }

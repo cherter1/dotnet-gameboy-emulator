@@ -855,20 +855,19 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
     private uint ShiftLeft(uint value, int amount, out bool carryOut)
     {
-        if (amount is 0)
+        switch (amount)
         {
-            carryOut = Cpsr.Carry;
-            return value;
+            case 0:
+                carryOut = Cpsr.Carry;
+                return value;
+            case >= 32:
+                //last bit shifted out if == 32 otherwise always no carry out
+                carryOut = amount == 32 && BitUtils.IsBitSet(value, 0);
+                return 0;
+            default:
+                carryOut = ((value >> (32 - amount)) & 1U) != 0;
+                return value << amount;
         }
-        if (amount >= 32)
-        {
-            //last bit shifted out if == 32 otherwise always no carry out
-            carryOut = amount == 32 && BitUtils.IsBitSet(value, 0);
-            return 0;
-        }
-
-        carryOut = ((value >> (32 - amount)) & 1U) != 0;
-        return value << amount;
     }
 
     private uint ShiftRightLogical(uint value, int amount, bool registerShift, out bool carryOut)
@@ -892,20 +891,19 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
     private uint ShiftRightArithmetic(uint value, int amount, bool registerShift, out bool carryOut)
     {
-        if ((amount == 0 && !registerShift) || amount >= 32)
+        switch (amount)
         {
-            carryOut = BitUtils.IsBitSet(value, 31);
-            return carryOut ? 0xFFFFFFFF : 0;
+            case 0 when !registerShift:
+            case >= 32:
+                carryOut = BitUtils.IsBitSet(value, 31);
+                return carryOut ? 0xFFFFFFFF : 0;
+            case 0:
+                carryOut = Cpsr.Carry;
+                return value;
+            default:
+                carryOut = ((value >> (amount - 1)) & 1U) != 0;
+                return (uint)((int)value >> amount);
         }
-
-        if (amount == 0)
-        {
-            carryOut = Cpsr.Carry;
-            return value;
-        }
-
-        carryOut = ((value >> (amount - 1)) & 1U) != 0;
-        return (uint)((int)value >> amount);
     }
 
     private uint RotateRight(uint value, int amount, bool registerShift, out bool carryOut)
