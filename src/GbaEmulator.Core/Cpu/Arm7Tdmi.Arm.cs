@@ -61,10 +61,6 @@ public sealed partial class Arm7Tdmi
           |_Cond__|0_0_1|___Op__|S|__Rn___|__Rd___|_Shift_|___Immediate___| DataProc
          */
 
-        if (instruction == 0xe1b00011)
-        {
-            var x = 0;
-        }
         var immediate = BitUtils.IsBitSet(instruction, 25);
         var opcode = (instruction >> 21) & 0xF;
         var setFlags = BitUtils.IsBitSet(instruction, 20);
@@ -75,11 +71,12 @@ public sealed partial class Arm7Tdmi
             var x = 1;
         }
 
-        var operand1 = rn == 15 ? Registers[rn] + 4 : Registers[rn];
-        if (!immediate && !BitUtils.IsBitSet(instruction, 4))
-        {
-            //operand1 += 4; //plus 12 if shift is specified in instruction normally +8 because of prefetching
-        }
+        var operand1 = rn == 15 
+            ? BitUtils.IsBitSet(instruction, 4) && !immediate
+                ? Registers.ProgramCounter + 8 // rn and/or rm = instAddr + 12 if shifted register operand
+                : Registers.ProgramCounter + 4 //otherwise instAddr + 8
+            : Registers[rn];
+
         var operand2 = immediate
             ? DecodeImmediateOperand(instruction, out var carryOut)
             : ComputeShiftedRegisterOperand(instruction, out carryOut);
@@ -141,7 +138,7 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0x5: //ADC
-                ulong wide = operand1 + operand2 + cy;
+                ulong wide = (ulong)operand1 + operand2 + cy;
                 result = (uint)wide;
                 Registers[rd] = result;
                 if (setFlags)

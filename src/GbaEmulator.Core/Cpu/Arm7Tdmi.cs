@@ -747,7 +747,9 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         var shiftType = (instruction >> 5) & 0x3;
         var value = rm == 15
-            ? Registers.ProgramCounter + 4
+            ? registerShift
+                ? Registers.ProgramCounter + 8 // rn and/or rm = instAddr + 12 if shifted register operand
+                : Registers.ProgramCounter + 4 //otherwise instAddr + 8
             : Registers[rm];
 
         return shiftType switch
@@ -883,14 +885,34 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
     }
 
-    private static uint ShiftRightArithmetic(uint value, int amount, bool registerShift, out bool carryOut)
+    private uint ShiftRightArithmetic(uint value, int amount, bool registerShift, out bool carryOut)
     {
+        if ((amount == 0 && !registerShift) || amount >= 32)
+        {
+            carryOut = BitUtils.IsBitSet(value, 31);
+            return carryOut ? 0xFFFFFFFF : 0;
+        }
+
+        if (amount == 0)
+        {
+            carryOut = Cpsr.Carry;
+            return value;
+        }
+
         carryOut = ((value >> (amount - 1)) & 1U) != 0;
         return (uint)((int)value >> amount);
     }
 
-    private static uint RotateRight(uint value, int amount, bool registerShift, out bool carryOut)
+    private uint RotateRight(uint value, int amount, bool registerShift, out bool carryOut)
     {
+        if (amount == 0 && !registerShift)
+        {
+            carryOut = BitUtils.IsBitSet(value, 0);
+            var rotated = BitUtils.RotateRight(value, 1);
+            rotated = BitUtils.SetBit(rotated, 31, Cpsr.Carry);
+            return rotated;
+        }
+
         var result = BitUtils.RotateRight(value, amount);
         carryOut = BitUtils.IsBitSet(result, 31);
         return result;
