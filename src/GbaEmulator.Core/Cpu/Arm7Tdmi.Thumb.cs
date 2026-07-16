@@ -221,10 +221,10 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b0110: //SBC
-                var longResult = (ulong)Registers[rd] - Registers[rs] - ((~cy) & 1u);
+                var longResult = (ulong)Registers[rd] - Registers[rs] + cy - 1u;
                 result = (uint)longResult;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: true);
-                SetCarry((ulong)Registers[rd] >= Registers[rs] - ((~cy) & 1u));
+                SetCarry((long)longResult >= 0);
                 Registers[rd] = result;
 
                 break;
