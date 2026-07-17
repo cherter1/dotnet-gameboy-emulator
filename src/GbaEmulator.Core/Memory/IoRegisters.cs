@@ -77,10 +77,12 @@ public sealed class IoRegisters
                 REG_VCOUNT = value;
                 break;
             case 0x04000008:
-                REG_BG0CNT = value;
+                //bit 15 forced low for bg 0 and 1
+                REG_BG0CNT = (ushort)(value & 0xdfff);
                 break;
             case 0x0400000A:
-                REG_BG1CNT = value;
+                //bit 15 forced low for bg 0 and 1
+                REG_BG1CNT = (ushort)(value & 0xdfff);
                 break;
             case 0x0400000C:
                 REG_BG2CNT = value;

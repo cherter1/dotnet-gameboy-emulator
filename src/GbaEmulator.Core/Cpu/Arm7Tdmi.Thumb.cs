@@ -90,8 +90,8 @@ public sealed partial class Arm7Tdmi
             result = Registers[rs] + operand2;
         }
 
-        Registers[rd] = result;
         UpdateArithmeticFlags(Registers[rs], operand2, result, opCode);
+        Registers[rd] = result;
     }
 
     private void ExecuteThumbFormat3(ushort instruction)
