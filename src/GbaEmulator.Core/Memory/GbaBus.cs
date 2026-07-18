@@ -60,7 +60,6 @@ public sealed class GbaBus(GbaMemory memory)
         switch (region)
         {
             case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
-                //throw new Exception("Cannot Write to bios or rom or unused memory");
                 return;
             case MemoryRegion.Io:
                 memory.Io.WriteIo32Aligned(address, value);
@@ -81,7 +80,6 @@ public sealed class GbaBus(GbaMemory memory)
         switch (region)
         {
             case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
-                //throw new Exception("Cannot Write to bios or rom or unused memory");
                 return;
             case MemoryRegion.Io:
                 memory.Io.WriteIo16Aligned(address, value);
