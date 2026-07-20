@@ -138,6 +138,16 @@ public sealed class Ppu
         }
     }
 
+    private byte ReadPalette8(int offset)
+    {
+        if (offset < 0 || offset + 1 >= _memory.PaletteRam.Length)
+        {
+            return 0;
+        }
+
+        return _memory.PaletteRam[offset];
+    }
+
     private ushort ReadPalette16(int offset)
     {
         if (offset < 0 || offset + 1 >= _memory.PaletteRam.Length)
@@ -194,6 +204,7 @@ public sealed class Ppu
                 break;
             case 4:
                 //render mode 4
+                RenderMode4(scanLine);
                 break;
             case 5:
                 //render mode 5
@@ -309,6 +320,31 @@ public sealed class Ppu
 
             var bgr555 = (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
             FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
+        }
+    }
+
+    private void RenderMode4(int y)
+    {
+        var useFrame1 = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 4);
+        var dispCnt = _memory.Io.REG_DISPCNT;
+        var bg2 = _memory.Io.REG_BG2CNT;
+        var bg2hofs = _memory.Io.REG_BG2HOFS;
+        var bg2vofs = _memory.Io.REG_BG2VOFS;
+        var bg2x = _memory.Io.REG_BG2X;
+        var bg2y = _memory.Io.REG_BG2Y;
+        var bg2pa = _memory.Io.REG_BG2PA;
+        var bg2pb = _memory.Io.REG_BG2PB;
+        var bg2pc = _memory.Io.REG_BG2PC;
+        var bg2pd = _memory.Io.REG_BG2PD;
+
+        for (var x = 0; x < ScreenWidth; x++)
+        {
+            var startOffset = !useFrame1 ? 0 : 0xA000;
+            var vramPixelOffset = (y * ScreenWidth) + x + startOffset;
+            var paletteIndex = ReadVram8(vramPixelOffset);
+            var color = ReadBgPaletteColor(paletteIndex);
+            
+            FrameBuffer.SetPixel(x, y, color);
         }
     }
 

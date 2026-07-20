@@ -24,6 +24,8 @@ public sealed class DmaController
                 continue;
             }
 
+            var index = Array.IndexOf(_channels, channel);
+            Console.WriteLine($"Writing Dma {index}");
             var destIncType = (channel.Control >> 5) & 0b11;
             var sourceIncType = (channel.Control >> 7) & 0b11;
             var repeat = ((channel.Control >> 9) & 1) == 1;
