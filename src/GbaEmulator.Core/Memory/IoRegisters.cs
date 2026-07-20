@@ -336,6 +336,11 @@ public sealed class IoRegisters
                 REG_IME = (value & 1) != 0;
                 break;
             #endregion
+            #region Cartridge and System Control
+            case 0x04000204:
+                REG_WAITCNT = (ushort)(value & 0x7FFF);
+                break;
+            #endregion
             default:
                 //Console.WriteLine($"Unmapped IO write at Address:{address:x8}, Value:{value:x8}");
                 break;
@@ -426,6 +431,9 @@ public sealed class IoRegisters
             0x04000200 => REG_IE,
             0x04000202 => REG_IF,
             0x04000208 => (ushort)(REG_IME ? 1 : 0),
+            #endregion
+            #region Cartridge and System Control
+            0x04000204 => REG_WAITCNT,
             #endregion
             _ => 0 //TODO: add openBus behavior
         };
@@ -584,6 +592,71 @@ public sealed class IoRegisters
     #endregion
 
     #region Sound
+
+    /// <summary>
+    /// 0x04000060
+    /// </summary>
+    public ushort REG_SOUND1CNT_L { get; set; }
+    /// <summary>
+    /// 0x04000062
+    /// </summary>
+    public ushort REG_SOUND1CNT_H { get; set; }
+    /// <summary>
+    /// 0x04000064
+    /// </summary>
+    public ushort REG_SOUND1CNT_X { get; set; }
+    /// <summary>
+    /// 0x04000068
+    /// </summary>
+    public ushort REG_SOUND2CNT_L { get; set; }
+    /// <summary>
+    /// 0x0400006C
+    /// </summary>
+    public ushort REG_SOUND2CNT_H { get; set; }
+    /// <summary>
+    /// 0x04000070
+    /// </summary>
+    public ushort REG_SOUND3CNT_L { get; set; }
+    /// <summary>
+    /// 0x04000072
+    /// </summary>
+    public ushort REG_SOUND3CNT_H { get; set; }
+    /// <summary>
+    /// 0x04000074
+    /// </summary>
+    public ushort REG_SOUND3CNT_X { get; set; }
+    /// <summary>
+    /// 0x04000078
+    /// </summary>
+    public ushort REG_SOUND4CNT_L { get; set; }
+    /// <summary>
+    /// 0x0400007C
+    /// </summary>
+    public ushort REG_SOUND4CNT_H { get; set; }
+    /// <summary>
+    /// 0x04000080
+    /// </summary>
+    public ushort REG_SOUNDCNT_L { get; set; }
+    /// <summary>
+    /// 0x04000082
+    /// </summary>
+    public ushort REG_SOUNDCNT_H { get; set; }
+    /// <summary>
+    /// 0x04000084
+    /// </summary>
+    public ushort REG_SOUNDCNT_X { get; set; }
+    /// <summary>
+    /// 0x04000088
+    /// </summary>
+    public ushort REG_SOUNDBIAS { get; set; }
+    /// <summary>
+    /// 0x040000A0
+    /// </summary>
+    public uint REG_FIFO_A { get; set; }
+    /// <summary>
+    /// 0x040000A4
+    /// </summary>
+    public uint REG_FIFO_B { get; set; }
     #endregion
 
     #region Dma
@@ -694,6 +767,9 @@ public sealed class IoRegisters
     public ushort REG_TM3CNT { get; set; }
     #endregion
 
+    #region Serial Communication (1)
+    #endregion
+
     #region Keypad
 
     /// <summary>
@@ -704,6 +780,9 @@ public sealed class IoRegisters
     /// 0x04000132
     /// </summary>
     public ushort REG_KEYCNT { get; set; }
+    #endregion
+
+    #region Serial Communication (2)
     #endregion
 
     #region Interrupts
@@ -720,5 +799,17 @@ public sealed class IoRegisters
     /// 0x04000208
     /// </summary>
     public bool REG_IME { get; set; }
+    #endregion
+    
+    #region Cartridge and System Control
+    
+    /// <summary>
+    /// 0x04000204
+    /// </summary>
+    public ushort REG_WAITCNT { get; set; }
+    /// <summary>
+    /// 0x04000300
+    /// </summary>
+    public ushort REG_HALTCNT { get; set; }
     #endregion
 }
