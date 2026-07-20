@@ -11,12 +11,12 @@ public sealed class Ppu
     private const int ScreenHeight = 160;
     private const int CyclesPerScanline = 1232;
     private const int ScanLinesPerFrame = 228;
+    private const int HBlankStartCycle = 1006;
     public const int CyclesPerFrame = CyclesPerScanline * ScanLinesPerFrame;
 
     private readonly InterruptController _interrupts;
     private readonly DmaController _dma;
     private readonly GbaMemory _memory;
-    private int _cycleAccumulator;
 
     public Ppu(InterruptController interrupts, DmaController dma, GbaMemory memory)
     {
@@ -28,48 +28,113 @@ public sealed class Ppu
 
     public FrameBuffer FrameBuffer { get; }
 
+    private int _scanlineCycle;
+    private bool IsInHBlank => _scanlineCycle >= HBlankStartCycle;
+
     public void Step(int cycles, GbaBus bus)
     {
-        _cycleAccumulator += cycles;
-        while (_cycleAccumulator >= CyclesPerScanline)
+        while (cycles > 0)
         {
-            _cycleAccumulator -= CyclesPerScanline;
-            _memory.Io.REG_VCOUNT++;
+            int nextBoundary = IsInHBlank ? CyclesPerScanline : HBlankStartCycle;
+            int cyclesUntilBoundary = nextBoundary - _scanlineCycle;
+            int consumed = Math.Min(cycles, cyclesUntilBoundary);
+            
+            _scanlineCycle += consumed;
+            cycles -= consumed;
 
-            if (_memory.Io.REG_VCOUNT == 160)
+            if (_scanlineCycle != nextBoundary)
             {
-                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, true);
-                _dma.RunDmas(DmaTimingType.VBlank, bus);
-                var vBlankIrqEnabled = BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 3);
-                if (vBlankIrqEnabled)
-                {
-                    _interrupts.Request(InterruptType.VBlank);
-                }
-                RenderFrame();
+                continue; //continue til hblank start,
             }
 
-            if (_memory.Io.REG_VCOUNT == ((_memory.Io.REG_DISPSTAT >> 8) & 0xFF))
+            if (nextBoundary == HBlankStartCycle)
             {
-                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, true);
-                var vCountIrqEnabled = BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 5);
-                if (vCountIrqEnabled)
-                {
-                    _interrupts.Request(InterruptType.VCounter);
-                }
+                EnterHBlank(bus); // enter hblank, trigger dma, interrupt, and renderScanLine
             }
             else
             {
-                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, false);
+                EndScanline(bus); // leave hblank, update vcount, enter vblank when appropriate
             }
+        }
+    }
 
-            if (_memory.Io.REG_VCOUNT < ScanLinesPerFrame)
-            {
-                continue;
-            }
+    private void EnterHBlank(GbaBus bus)
+    {
+        BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, true); //set hblank
 
-            _memory.Io.REG_VCOUNT = 0;
-            //leaving vBlank
-            _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, false);
+        if (_memory.Io.REG_VCOUNT < ScreenHeight)
+        {
+            _dma.RunDmas(DmaTimingType.Hblank, bus);
+        }
+
+        if (BitUtils.IsBitSet(_memory.Io.REG_VCOUNT, 4)) // hlbank irq enabled
+        {
+            _interrupts.Request(InterruptType.HBlank);
+        }
+
+        if (_memory.Io.REG_VCOUNT < ScreenHeight) //Only Render Visible scan lines
+        {
+            RenderScanLine(_memory.Io.REG_VCOUNT);
+        }
+    }
+
+    private void EndScanline(GbaBus bus)
+    {
+        BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, false); // leave hblank unset bit
+
+        _scanlineCycle = 0;
+        
+        int nextLine = _memory.Io.REG_VCOUNT + 1;
+
+        if (nextLine == ScanLinesPerFrame)
+        {
+            nextLine = 0;
+        }
+        
+        _memory.Io.REG_VCOUNT = (ushort)nextLine;
+        
+        UpdateVBlankState(bus); // on scanline 160 enter blank, and do dma and interrupt, on zero leave blank
+        UpdateVCountMatch(); // check if vcount triggered and do interrupt
+    }
+
+    private void UpdateVBlankState(GbaBus bus)
+    {
+        ushort vcount = _memory.Io.REG_VCOUNT;
+
+        switch (vcount)
+        {
+            case ScreenHeight:
+                {
+                    BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, true);
+            
+                    _dma.RunDmas(DmaTimingType.VBlank, bus);
+
+                    if (BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 3)) //vblank irq enabled
+                    {
+                        _interrupts.Request(InterruptType.VBlank);
+                    }
+
+                    break;
+                }
+            case 0:
+                BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, false); // leave vblank
+                break;
+        }
+    }
+
+    private void UpdateVCountMatch()
+    {
+        ushort dispStat = _memory.Io.REG_DISPSTAT;
+        int compareValue = (dispStat >> 8) & 0xFF;
+        bool wasMatching = BitUtils.IsBitSet(dispStat, 2); //vcount triggered status
+        bool isMatching = _memory.Io.REG_VCOUNT == compareValue; //trigger if line trigger from DISPSTAT equals vcount reg
+        BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, isMatching); //set based on line trigger
+
+        if (!wasMatching &&
+            isMatching &&
+            BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 5)) //trigger interrupt if vcount enabled and if vcount == trigger vlaue and wasnt already set
+        {
+            _interrupts.Request(InterruptType.VCounter);
         }
     }
 
@@ -109,13 +174,13 @@ public sealed class Ppu
         return ConvertBgr555ToArgb(bgr555);
     }
 
-    private void RenderFrame()
+    private void RenderScanLine(int scanLine)
     {
         var modeBits = _memory.Io.REG_DISPCNT & 0x7; //bits 0-2
         switch (modeBits)
         {
             case 0:
-                RenderMode0();
+                RenderMode0(scanLine);
                 break;
             case 1:
                 //render mode 1
@@ -125,7 +190,7 @@ public sealed class Ppu
                 break;
             case 3:
                 //render mode 3
-                RenderMode3();
+                RenderMode3(scanLine);
                 break;
             case 4:
                 //render mode 4
@@ -135,12 +200,12 @@ public sealed class Ppu
                 break;
             default:
                 //not valid mode just render jibber jabber
-                RenderFallbackPattern();
+                RenderFallbackPattern(scanLine);
                 break;
         }
     }
 
-    private void RenderMode0()
+    private void RenderMode0(int y)
     {
         //tiles are arrrays of indices into palette memory
         // bg are arrays of indices into tilemaps
@@ -172,98 +237,89 @@ public sealed class Ppu
         }
         var is8bpp = BitUtils.IsBitSet(_memory.Io.REG_BG1CNT, 7);
 
-        for (var y = 0; y < ScreenHeight; y++)
+        var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
+        var tileMapY = backgroundY >> 3;
+        var pixelYInsideTile = backgroundY & 7;
+
+        for (var x = 0; x < ScreenWidth; x++)
         {
-            var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
-            var tileMapY = backgroundY >> 3;
-            var pixelYInsideTile = backgroundY & 7;
+            var backgroundX = (x + _memory.Io.REG_BG1HOFS) & 0xFF;
+            var tileMapX = backgroundX / 8;
+            var pixelXInsideTile = backgroundX % 8;
 
-            for (var x = 0; x < ScreenWidth; x++)
+            var tileMapIndex = tileMapY * 32 + tileMapX;
+            var tileMapEntryOffset = startOffsetOfCharTileMap + tileMapIndex * 2;
+
+            var tileMapEntry = ReadVram16(tileMapEntryOffset);
+            var hFlip = (tileMapEntry & 0x0400) != 0;
+            var vFlip = (tileMapEntry & 0x0800) != 0;
+            if (vFlip || hFlip)
             {
-                var backgroundX = (x + _memory.Io.REG_BG1HOFS) & 0xFF;
-                var tileMapX = backgroundX / 8;
-                var pixelXInsideTile = backgroundX % 8;
-
-                var tileMapIndex = tileMapY * 32 + tileMapX;
-                var tileMapEntryOffset = startOffsetOfCharTileMap + tileMapIndex * 2;
-
-                var tileMapEntry = ReadVram16(tileMapEntryOffset);
-                var hFlip = (tileMapEntry & 0x0400) != 0;
-                var vFlip = (tileMapEntry & 0x0800) != 0;
-                if (vFlip || hFlip)
-                {
-                    var f = 1;
-                }
-                var tileIndex = tileMapEntry & 0x03FF;
-                var paletteBank = (tileMapEntry >> 12) & 0xF;
-
-                var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
-
-                var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
-                var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
-
-                graphicsOffsets.Add(tileGraphicsOffset);
-                if (tileGraphicsOffset == 0x44e0)
-                {
-                    var l = 1;
-                    countofG++;
-                }
-                var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
-
-                var colorIndex = (pixelXInsideTile % 2) == 0
-                    ? twoPackedPixelIndexes & 0x0F
-                    : twoPackedPixelIndexes >> 4;
-
-                if (colorIndex == 0)
-                {
-                    //var backDrop = ReadBgPaletteColor(0);
-                    //FrameBuffer.SetPixel(x, y, backDrop);
-                    //continue;
-                }
-
-                var paletteIndex = paletteBank * 16 + colorIndex;
-                var color = ReadBgPaletteColor(paletteIndex);
-
-                FrameBuffer.SetPixel(x, y, color);
+                var f = 1;
             }
+            var tileIndex = tileMapEntry & 0x03FF;
+            var paletteBank = (tileMapEntry >> 12) & 0xF;
+
+            var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
+
+            var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
+            var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
+
+            graphicsOffsets.Add(tileGraphicsOffset);
+            if (tileGraphicsOffset == 0x44e0)
+            {
+                var l = 1;
+                countofG++;
+            }
+            var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
+
+            var colorIndex = (pixelXInsideTile % 2) == 0
+                ? twoPackedPixelIndexes & 0x0F
+                : twoPackedPixelIndexes >> 4;
+
+            if (colorIndex == 0)
+            {
+                //var backDrop = ReadBgPaletteColor(0);
+                //FrameBuffer.SetPixel(x, y, backDrop);
+                //continue;
+            }
+
+            var paletteIndex = paletteBank * 16 + colorIndex;
+            var color = ReadBgPaletteColor(paletteIndex);
+
+            FrameBuffer.SetPixel(x, y, color);
         }
     }
 
-    public void RenderMode1()
+    public void RenderMode1(int y)
     {
         
     }
 
-    private void RenderMode3()
+    private void RenderMode3(int y)
     {
-        for (var y = 0; y < ScreenHeight; y++)
+        for (var x = 0; x < ScreenWidth; x++)
         {
-            for (var x = 0; x < ScreenWidth; x++)
+            var offset = ((y * ScreenWidth) + x) * 2;
+            if (offset + 1 >= _memory.Vram.Length)
             {
-                var offset = ((y * ScreenWidth) + x) * 2;
-                if (offset + 1 >= _memory.Vram.Length)
-                {
-                    FrameBuffer.SetPixel(x, y, 0xFF000000);
-                    continue;
-                }
-
-                var bgr555 = (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
-                FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
+                FrameBuffer.SetPixel(x, y, 0xFF000000);
+                continue;
             }
+
+            var bgr555 = (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
+            FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
         }
     }
 
-    private void RenderFallbackPattern()
+    private void RenderFallbackPattern(int y)
     {
-        for (var y = 0; y < ScreenHeight; y++)
+        for (var x = 0; x < ScreenWidth; x++)
         {
-            for (var x = 0; x < ScreenWidth; x++)
-            {
-                var red = (byte)(x * 255 / ScreenWidth);
-                var green = (byte)(y * 255 / ScreenHeight);
-                var blue = (byte)(((x / 8) ^ (y / 8)) * 18);
-                FrameBuffer.SetPixel(x, y, 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue);
-            }
+            var red = (byte)(x * 255 / ScreenWidth);
+            var green = (byte)(y * 255 / ScreenHeight);
+            var blue = (byte)(((x / 8) ^ (y / 8)) * 18);
+            FrameBuffer.SetPixel(x, y, 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue);
         }
     }
 

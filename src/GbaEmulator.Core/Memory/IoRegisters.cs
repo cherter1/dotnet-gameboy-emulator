@@ -30,7 +30,7 @@ public sealed class IoRegisters
     {
         var aligned = address & ~1u;
         var registerValue = GetMappedRegister(aligned);
-        //LSB if aligned, MSB if unaligned
+        //LSByte if aligned, MSByte if unaligned
         return (byte)((registerValue >> ((int)(address & 1) * 8)) & 0xFF);
     }
 
