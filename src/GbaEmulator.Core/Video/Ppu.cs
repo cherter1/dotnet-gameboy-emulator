@@ -342,7 +342,7 @@ public sealed class Ppu
             var startOffset = !useFrame1 ? 0 : 0xA000;
             var vramPixelOffset = (y * ScreenWidth) + x + startOffset;
             var paletteIndex = ReadVram8(vramPixelOffset);
-            var color = ReadBgPaletteColor(paletteIndex);
+            var color = ReadBgPaletteColor(paletteIndex * 2);
             
             FrameBuffer.SetPixel(x, y, color);
         }

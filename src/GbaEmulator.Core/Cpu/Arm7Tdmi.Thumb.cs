@@ -208,7 +208,10 @@ public sealed partial class Arm7Tdmi
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.RotateRight(Registers[rd], shiftAmount, true, out carryOut);
                 UpdateNz(result);
-                SetCarry(carryOut);
+                if (shiftAmount != 0)
+                {
+                    SetCarry(carryOut);
+                }
                 Registers[rd] = result;
 
                 break;
@@ -276,11 +279,12 @@ public sealed partial class Arm7Tdmi
         var rs = (instruction >> 3) & 0xF;
 
         var source = rs == 15 ? Registers[rs] + 2 : Registers[rs];
+        var destOperand = rd == 15 ? Registers[rd] + 2 : Registers[rd];
 
         switch (opCode)
         {
             case 0b00: //ADD
-                Registers[rd] += source;
+                Registers[rd] = destOperand + source;
                 if (rd == 15)
                 {
                     Registers[rd] &= ~1u;
@@ -288,8 +292,8 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b01: //CMP
-                var result = Registers[rd] - source;
-                UpdateArithmeticFlags(Registers[rd], source, result, subtraction: true);
+                var result = destOperand - source;
+                UpdateArithmeticFlags(destOperand, source, result, subtraction: true);
 
                 break;
             case 0b10: //MOV
@@ -387,12 +391,25 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b10: //LDRH
-                Registers[rd] = bus.Read16(effectiveAddress);
+                uint value = bus.Read16(effectiveAddress);
+                if ((effectiveAddress & 1) != 0)
+                {
+                    value = BitOperations.RotateRight(value, 8);
+                }
+
+                Registers[rd] = value;
 
                 break;
             case 0b11: //LDSH
                 var loadedHalfword = bus.Read16(effectiveAddress);
-                Registers[rd] = (uint)BitUtils.SignExtend(loadedHalfword, 16);
+                if ((effectiveAddress & 1) != 0)
+                {
+                    Registers[rd] = (uint)BitUtils.SignExtend((loadedHalfword >> 8) & 0xff, 8);
+                }
+                else
+                {
+                    Registers[rd] = (uint)BitUtils.SignExtend(loadedHalfword, 16);
+                }
 
                 break;
             default:
@@ -455,7 +472,13 @@ public sealed partial class Arm7Tdmi
 
         if (isLoad) //LDRH
         {
-            Registers[rd] = bus.Read16(effectiveAddress);
+            uint value = bus.Read16(effectiveAddress);
+            if ((effectiveAddress & 1) != 0)
+            {
+                value = BitOperations.RotateRight(value, 8);
+            }
+
+            Registers[rd] = value;
         }
         else //STRH
         {
@@ -559,7 +582,7 @@ public sealed partial class Arm7Tdmi
                     continue;
 
                 transferCount++;
-                var result = bus.Read32(Registers.StackPointer);
+                var result = bus.Read32(Registers.StackPointer & ~3u);
                 if (reg == 8)
                 {
                     Registers[15] = result & ~1u;
@@ -587,6 +610,20 @@ public sealed partial class Arm7Tdmi
         var rb = (instruction >> 8) & 0b111;
         var address = Registers[rb];
         var finalAddress = address + (uint)(transferCount * 4);
+
+        if (transferCount == 0)
+        {
+            Registers[rb] += 0x40;
+            if (isLoad)
+            {
+                Registers[15] = bus.Read32(address & ~3u);
+            }
+            else
+            {
+                bus.Write32(address, Registers[15] + 4);
+            }
+            return 2;
+        }
 
         for (int reg = 0; reg < 8; reg++)
         {
