@@ -38,7 +38,7 @@ public sealed class Ppu
             int nextBoundary = IsInHBlank ? CyclesPerScanline : HBlankStartCycle;
             int cyclesUntilBoundary = nextBoundary - _scanlineCycle;
             int consumed = Math.Min(cycles, cyclesUntilBoundary);
-            
+
             _scanlineCycle += consumed;
             cycles -= consumed;
 
@@ -60,7 +60,7 @@ public sealed class Ppu
 
     private void EnterHBlank(GbaBus bus)
     {
-        BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, true); //set hblank
+        _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, true); //set hblank
 
         if (_memory.Io.REG_VCOUNT < ScreenHeight)
         {
@@ -80,19 +80,19 @@ public sealed class Ppu
 
     private void EndScanline(GbaBus bus)
     {
-        BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, false); // leave hblank unset bit
+        _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, false); // leave hblank unset bit
 
         _scanlineCycle = 0;
-        
+
         int nextLine = _memory.Io.REG_VCOUNT + 1;
 
         if (nextLine == ScanLinesPerFrame)
         {
             nextLine = 0;
         }
-        
+
         _memory.Io.REG_VCOUNT = (ushort)nextLine;
-        
+
         UpdateVBlankState(bus); // on scanline 160 enter blank, and do dma and interrupt, on zero leave blank
         UpdateVCountMatch(); // check if vcount triggered and do interrupt
     }
@@ -105,8 +105,8 @@ public sealed class Ppu
         {
             case ScreenHeight:
                 {
-                    BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, true);
-            
+                    _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, true);
+
                     _dma.RunDmas(DmaTimingType.VBlank, bus);
 
                     if (BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 3)) //vblank irq enabled
@@ -117,7 +117,7 @@ public sealed class Ppu
                     break;
                 }
             case 0:
-                BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, false); // leave vblank
+                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, false); // leave vblank
                 break;
         }
     }
@@ -128,7 +128,7 @@ public sealed class Ppu
         int compareValue = (dispStat >> 8) & 0xFF;
         bool wasMatching = BitUtils.IsBitSet(dispStat, 2); //vcount triggered status
         bool isMatching = _memory.Io.REG_VCOUNT == compareValue; //trigger if line trigger from DISPSTAT equals vcount reg
-        BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, isMatching); //set based on line trigger
+        _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, isMatching); //set based on line trigger
 
         if (!wasMatching &&
             isMatching &&
@@ -136,16 +136,6 @@ public sealed class Ppu
         {
             _interrupts.Request(InterruptType.VCounter);
         }
-    }
-
-    private byte ReadPalette8(int offset)
-    {
-        if (offset < 0 || offset + 1 >= _memory.PaletteRam.Length)
-        {
-            return 0;
-        }
-
-        return _memory.PaletteRam[offset];
     }
 
     private ushort ReadPalette16(int offset)
@@ -337,13 +327,27 @@ public sealed class Ppu
         var bg2pc = _memory.Io.REG_BG2PC;
         var bg2pd = _memory.Io.REG_BG2PD;
 
+        if (!BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 10))
+        {
+            return;
+        }
+
+        if (y == 76)
+        {
+            var x = 1;
+        }
+
         for (var x = 0; x < ScreenWidth; x++)
         {
             var startOffset = !useFrame1 ? 0 : 0xA000;
             var vramPixelOffset = (y * ScreenWidth) + x + startOffset;
             var paletteIndex = ReadVram8(vramPixelOffset);
-            var color = ReadBgPaletteColor(paletteIndex * 2);
-            
+            if (paletteIndex != 0)
+            {
+                var z = 0;
+            }
+            var color = ReadBgPaletteColor(paletteIndex);
+
             FrameBuffer.SetPixel(x, y, color);
         }
     }

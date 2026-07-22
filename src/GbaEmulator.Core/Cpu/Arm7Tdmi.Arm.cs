@@ -71,7 +71,7 @@ public sealed partial class Arm7Tdmi
             var x = 1;
         }
 
-        var operand1 = rn == 15 
+        var operand1 = rn == 15
             ? BitUtils.IsBitSet(instruction, 4) && !immediate
                 ? Registers.ProgramCounter + 8 // rn and/or rm = instAddr + 12 if shifted register operand
                 : Registers.ProgramCounter + 4 //otherwise instAddr + 8
