@@ -21,8 +21,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         Cpsr = new ProgramStatusRegister
         {
-            Mode = skipBios ? CpuMode.System : CpuMode.Supervisor,
-            IrqDisable = true,
+            Mode = CpuMode.System,
+            IrqDisable = false,
             ThumbState = false
         };
 
@@ -47,7 +47,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0x08000d28)
+            if (Registers.ProgramCounter == 0x08001e18)
             {
                 var x = 1;
             }
@@ -427,7 +427,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Console.WriteLine("ARM SWI: comment = " + comment.ToString("X8"));
 
         Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
-        Registers[14] = Registers.ProgramCounter;
 
         var newCpsr = Cpsr.ToUInt32();
         newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor;
@@ -435,6 +434,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         newCpsr = BitUtils.SetBit(newCpsr, 5, false);
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
+        Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
     }
 
