@@ -78,8 +78,8 @@ public sealed partial class Arm7Tdmi
             : Registers[rn];
 
         var operand2 = immediate
-            ? DecodeImmediateOperand(instruction, out var carryOut)
-            : ComputeShiftedRegisterOperand(instruction, out carryOut);
+            ? DecodeImmediateOperand(instruction, out var logicalCarryOut)
+            : ComputeShiftedRegisterOperand(instruction, out logicalCarryOut);
 
         var cy = Cpsr.Carry ? 1u : 0u;
         uint result;
@@ -92,7 +92,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -102,7 +102,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -175,18 +175,27 @@ public sealed partial class Arm7Tdmi
             case 0x08: //TST
                 result = operand1 & operand2;
                 UpdateNz(result);
-                SetCarry(carryOut);
+                SetCarry(logicalCarryOut);
 
                 break;
             case 0x09: //TEQ
                 result = operand1 ^ operand2;
                 UpdateNz(result);
-                SetCarry(carryOut);
+                SetCarry(logicalCarryOut);
 
                 break;
             case 0xA: //CMP
                 result = operand1 - operand2;
                 UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+                if (rd == 15 && setFlags)
+                {
+                    var oldMode = Cpsr.Mode;
+                    if (oldMode != CpuMode.User && oldMode != CpuMode.System)
+                    {
+                        Cpsr = Registers.GetSpsr(oldMode);
+                    }
+                    Registers.ProgramCounter += 4;
+                }
 
                 break;
             case 0xB: //CMN
@@ -200,7 +209,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -210,7 +219,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 if (rd == 15 && setFlags)
@@ -226,7 +235,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -236,7 +245,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;

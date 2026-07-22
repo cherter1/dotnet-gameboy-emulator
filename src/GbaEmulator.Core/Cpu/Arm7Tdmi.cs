@@ -47,7 +47,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0x08000930)
+            if (Registers.ProgramCounter == 0x08000d28)
             {
                 var x = 1;
             }
@@ -77,7 +77,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 decoded = $"COND FAILED {(Condition)(instruction >> 28)}";
                 if (instruction == 0x00000000)
                 {
-                    throw new Exception();
+                    //throw new Exception();
                 }
                 return 1;
             }
@@ -162,8 +162,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     return 3;
                 }
 
-                if ((instruction & 0x010F0FFF) == 0x010F0000)
+                if ((instruction & 0x0FBF0FFF) == 0x010F0000)
                 {
+                    // 0x 0 F B F 0 F F F
+                    // 0x 0 1 0 F 0 0 0 0
                     //MRS
                     decoded = "MRS";
                     ExecuteMrs(instruction);
@@ -718,7 +720,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             true when controlBits => source,
             true => (oldPsr & 0x0FFFFFFFu) | (source & 0xF0000000u),
-            _ => (oldPsr & 0xFFFFFF00u) | (source & 0xFFu)
+            false when controlBits => (oldPsr & 0xFFFFFF00u) | (source & 0xFFu),
+            _ => oldPsr
         };
 
         var status = ProgramStatusRegister.FromUInt32(newPsr);
@@ -908,7 +911,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
     private uint RotateRight(uint value, int amount, bool registerShift, out bool carryOut)
     {
-        if (amount == 0 && !registerShift)
+        if (amount == 0 && !registerShift) //ror#0 is interpreted as rrx#1, like ror#1 but result bit 31 is set to old C
         {
             carryOut = BitUtils.IsBitSet(value, 0);
             var rotated = BitUtils.RotateRight(value, 1);
@@ -917,7 +920,9 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
 
         var result = BitUtils.RotateRight(value, amount);
-        carryOut = BitUtils.IsBitSet(result, 31);
+        carryOut = amount == 0 ?
+            Cpsr.Carry : //when rs == 0 carry remains unchanged
+            BitUtils.IsBitSet(result, 31);
         return result;
     }
 }
