@@ -47,7 +47,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0x08001e18)
+            if (Registers.ProgramCounter == 0x08001378)
             {
                 var x = 1;
             }
@@ -110,7 +110,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
             if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
             {
-                //TODO: SWI
                 decoded = "SWI";
                 ExecuteSoftwareInterrupt(instruction);
                 return 4;
@@ -140,7 +139,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
                 if ((instruction & 0x0FC000F0) == 0x00000090)
                 {
-                    //TODO: Multiply
                     decoded = "MULTIPLY";
                     this.ExecuteArmMultiply(instruction);
                     return 1;
@@ -149,7 +147,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 if ((instruction & 0x0F8000F0) == 0x00800090)
                 {
                     decoded = "MULTIPLY LONG";
-                    //TODO: MultiplyLong
                     this.ExecuteArmMultiplyLong(instruction);
                     return 1;
                 }
@@ -164,8 +161,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
                 if ((instruction & 0x0FBF0FFF) == 0x010F0000)
                 {
-                    // 0x 0 F B F 0 F F F
-                    // 0x 0 1 0 F 0 0 0 0
                     //MRS
                     decoded = "MRS";
                     ExecuteMrs(instruction);
@@ -436,6 +431,22 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
+
+        var functionVector = comment >> 16;
+        if (functionVector == 0x6)
+        {
+            //TODO: temp must add functions in bios
+            //div
+            var numerator = (int)Registers[0];
+            var denominator = (int)Registers[1];
+            //TODO: not handling divide by zero
+            var result = numerator / denominator;
+            Registers[0] = (uint)result;
+            var remainder = numerator % denominator;
+            Registers[1] = (uint)remainder;
+            Registers[3] = (uint)result;
+            //var absoluteValue = (uint)result;
+        }
     }
 
     private int ExecuteBlockDataTransfer(uint instruction)
@@ -560,6 +571,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         var preIndex = BitUtils.IsBitSet(instruction, 24);
         var addOffset = BitUtils.IsBitSet(instruction, 23);
         var byteTransfer = BitUtils.IsBitSet(instruction, 22);
+        var writeback = BitUtils.IsBitSet(instruction, 21);
         var load = BitUtils.IsBitSet(instruction, 20);
         var baseRegister = (int)((instruction >> 16) & 0xF);
         var destinationRegister = (int)((instruction >> 12) & 0xF);
@@ -574,9 +586,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             ? addOffset ? address + offset : address - offset
             : address;
 
+        uint loadedWord = 0;
         if (load)
         {
-            Registers[destinationRegister] = byteTransfer
+            loadedWord = byteTransfer
                 ? bus.Read8(effectiveAddress)
                 : bus.Read32(effectiveAddress);
         }
@@ -598,6 +611,15 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         if (!preIndex)
         {
             Registers[baseRegister] = addOffset ? address + offset : address - offset;
+        }
+        else if (writeback)
+        {
+            Registers[baseRegister] = effectiveAddress;
+        }
+
+        if (load)
+        {
+            Registers[destinationRegister] = loadedWord;
         }
     }
 
