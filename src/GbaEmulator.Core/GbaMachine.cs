@@ -47,12 +47,13 @@ public sealed class GbaMachine
 
     public static GbaMachine Create(GbaMachineOptions options)
     {
-        var interrupts = new InterruptController();
-        var keypad = new KeypadState();
-        var timers = new TimerController(interrupts);
-        var dma = new DmaController(interrupts);
-        var ppu = new Ppu(interrupts, dma);
-        var bus = new GbaBus(interrupts, timers, dma, ppu, keypad);
+        var memory = new GbaMemory();
+        var interrupts = new InterruptController(memory);
+        var keypad = new KeypadState(memory);
+        var timers = new TimerController(interrupts, memory);
+        var dma = new DmaController(interrupts, memory);
+        var ppu = new Ppu(interrupts, dma, memory);
+        var bus = new GbaBus(memory);
         var cpu = new Arm7Tdmi(bus, interrupts);
 
         var cartridge = options.RomPath is { Length: > 0 } romPath && File.Exists(romPath)
@@ -62,21 +63,22 @@ public sealed class GbaMachine
         bus.LoadCartridge(cartridge);
         bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
 
-        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, true); // options.SkipBios);
+        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, false);
         machine.Reset();
         return machine;
     }
 
-    public void Reset() => Cpu.Reset(_skipBios);
+    private void Reset() => Cpu.Reset(_skipBios);
 
     public void RunFrame() => RunCycles(Ppu.CyclesPerFrame);
 
-    public void RunCycles(int cycles)
+    private void RunCycles(int cycles)
     {
         var consumed = 0;
         while (consumed < cycles)
         {
             var instructionCycles = Cpu.Step();
+            Dma.RunDmas(DmaTimingType.Immediately, Bus);
             Timers.Step(instructionCycles);
             Ppu.Step(instructionCycles, Bus);
             consumed += instructionCycles;

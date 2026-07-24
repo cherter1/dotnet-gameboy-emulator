@@ -46,8 +46,9 @@ public sealed partial class Arm7Tdmi
             case 0b10: //ASR
                 if (offset == 0)
                 {
-                    result = (uint)(sourceValue >> 31);
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 31));
+                    var carryOut = BitUtils.IsBitSet((uint)sourceValue, 31); 
+                    result = carryOut ? 0xFFFFFFFF : 0;
+                    SetCarry(carryOut);
                     break;
                 }
 
@@ -89,8 +90,8 @@ public sealed partial class Arm7Tdmi
             result = Registers[rs] + operand2;
         }
 
-        Registers[rd] = result;
         UpdateArithmeticFlags(Registers[rs], operand2, result, opCode);
+        Registers[rd] = result;
     }
 
     private void ExecuteThumbFormat3(ushort instruction)
@@ -165,49 +166,24 @@ public sealed partial class Arm7Tdmi
                 break;
             case 0b0010: //LSL
                 var shiftAmount = (int)(Registers[rs] & 0xFF);
-                result = Registers[rd] << shiftAmount;
+                result = this.ShiftLeft(Registers[rd], shiftAmount, out bool carryOut);
+                SetCarry(carryOut);
                 UpdateNz(result);
-                if (shiftAmount != 0)
-                {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], 32 - shiftAmount));
-                }
                 Registers[rd] = result;
 
                 break;
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                result = Registers[rd] >> shiftAmount;
-                if (shiftAmount != 0)
-                {
-                    if (shiftAmount > 31)
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
-                        result = 0;
-                    }
-                    else
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
-                    }
-                }
+                result = this.ShiftRightLogical(Registers[rd], shiftAmount, true, out carryOut);
+                SetCarry(carryOut);
                 UpdateNz(result);
                 Registers[rd] = result;
 
                 break;
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                result = (uint)((int)Registers[rd] >> shiftAmount);
-                if (shiftAmount != 0)
-                {
-                    if (shiftAmount > 31)
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], 31));
-                        result = (Registers[rd] & 0x80000000) == 0x80000000 ? 0xffffffff : 0;
-                    }
-                    else
-                    {
-                        SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
-                    }
-                }
+                result = this.ShiftRightArithmetic(Registers[rd], shiftAmount, true, out carryOut);
+                SetCarry(carryOut);
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -221,21 +197,20 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b0110: //SBC
-                var longResult = (ulong)Registers[rd] - Registers[rs] - ((~cy) & 1u);
+                var longResult = (ulong)Registers[rd] - Registers[rs] + cy - 1u;
                 result = (uint)longResult;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: true);
-                SetCarry((ulong)Registers[rd] >= Registers[rs] - ((~cy) & 1u));
+                SetCarry((long)longResult >= 0);
                 Registers[rd] = result;
 
                 break;
             case 0b0111: //ROR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
-                //TODO: change ^^ Maybe Mod offset
-                result = BitOperations.RotateRight(Registers[rd], shiftAmount);
+                result = this.RotateRight(Registers[rd], shiftAmount, true, out carryOut);
                 UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet(Registers[rd], shiftAmount - 1));
+                    SetCarry(carryOut);
                 }
                 Registers[rd] = result;
 
@@ -304,24 +279,29 @@ public sealed partial class Arm7Tdmi
         var rs = (instruction >> 3) & 0xF;
 
         var source = rs == 15 ? Registers[rs] + 2 : Registers[rs];
-        if (rd == 15 || rs == 15)
-        {
-            source &= ~3u;
-        }
+        var destOperand = rd == 15 ? Registers[rd] + 2 : Registers[rd];
 
         switch (opCode)
         {
             case 0b00: //ADD
-                Registers[rd] += source;
+                Registers[rd] = destOperand + source;
+                if (rd == 15)
+                {
+                    Registers[rd] &= ~1u;
+                }
 
                 break;
             case 0b01: //CMP
-                var result = Registers[rd] - source;
-                UpdateArithmeticFlags(Registers[rd], source, result, subtraction: true);
+                var result = destOperand - source;
+                UpdateArithmeticFlags(destOperand, source, result, subtraction: true);
 
                 break;
             case 0b10: //MOV
                 Registers[rd] = source;
+                if (rd == 15)
+                {
+                    Registers[rd] &= ~1u;
+                }
 
                 break;
             case 0b11: //BX
@@ -331,7 +311,7 @@ public sealed partial class Arm7Tdmi
                 Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
 
                 //32 bit align if entering arm else 16 bit aligned
-                target &= !setThumb ? ~3u : ~1u;
+                target &= setThumb ? ~1u : ~3u;
                 Registers.ProgramCounter = target;
                 return 3;
         }
@@ -411,12 +391,25 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b10: //LDRH
-                Registers[rd] = bus.Read16(effectiveAddress);
+                uint value = bus.Read16(effectiveAddress);
+                if ((effectiveAddress & 1) != 0)
+                {
+                    value = BitOperations.RotateRight(value, 8);
+                }
+
+                Registers[rd] = value;
 
                 break;
             case 0b11: //LDSH
                 var loadedHalfword = bus.Read16(effectiveAddress);
-                Registers[rd] = (uint)BitUtils.SignExtend(loadedHalfword, 16);
+                if ((effectiveAddress & 1) != 0)
+                {
+                    Registers[rd] = (uint)BitUtils.SignExtend((loadedHalfword >> 8) & 0xff, 8);
+                }
+                else
+                {
+                    Registers[rd] = (uint)BitUtils.SignExtend(loadedHalfword, 16);
+                }
 
                 break;
             default:
@@ -479,7 +472,13 @@ public sealed partial class Arm7Tdmi
 
         if (isLoad) //LDRH
         {
-            Registers[rd] = bus.Read16(effectiveAddress);
+            uint value = bus.Read16(effectiveAddress);
+            if ((effectiveAddress & 1) != 0)
+            {
+                value = BitOperations.RotateRight(value, 8);
+            }
+
+            Registers[rd] = value;
         }
         else //STRH
         {
@@ -583,7 +582,7 @@ public sealed partial class Arm7Tdmi
                     continue;
 
                 transferCount++;
-                var result = bus.Read32(Registers.StackPointer);
+                var result = bus.Read32(Registers.StackPointer & ~3u);
                 if (reg == 8)
                 {
                     Registers[15] = result & ~1u;
@@ -611,6 +610,20 @@ public sealed partial class Arm7Tdmi
         var rb = (instruction >> 8) & 0b111;
         var address = Registers[rb];
         var finalAddress = address + (uint)(transferCount * 4);
+
+        if (transferCount == 0)
+        {
+            Registers[rb] += 0x40;
+            if (isLoad)
+            {
+                Registers[15] = bus.Read32(address & ~3u);
+            }
+            else
+            {
+                bus.Write32(address, Registers[15] + 4);
+            }
+            return 2;
+        }
 
         for (int reg = 0; reg < 8; reg++)
         {

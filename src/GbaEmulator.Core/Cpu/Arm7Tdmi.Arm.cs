@@ -4,6 +4,98 @@ namespace GbaEmulator.Core.Cpu;
 
 public sealed partial class Arm7Tdmi
 {
+    private void ExecuteArmMultiply(uint instruction)
+    {
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_0_0_0_0_0|A|S|__Rd___|__Rn___|__Rs___|1_0_0_1|__Rm___| Mul
+         */
+
+        var rm = (int)instruction & 0xF;
+        var rs = (int)(instruction >> 8) & 0xf;
+        var rn = (int)(instruction >> 12) & 0xf;
+        var rd = (int)(instruction >> 16) & 0xf;
+        var setFlags = BitUtils.IsBitSet(instruction, 20);
+        var accumulate = BitUtils.IsBitSet(instruction, 21);
+
+        var result = Registers[rm] * Registers[rs];
+        if (accumulate)
+        {
+            result += Registers[rn];
+        }
+
+        if (setFlags)
+        {
+            SetNegative(BitUtils.IsBitSet(result, 31));
+            SetZero(result == 0);
+        }
+
+        Registers[rd] = result;
+    }
+
+    private void ExecuteArmMultiplyLong(uint instruction)
+    {
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_0_0_0_1|U|A|S|__RdHi_|__RdLo_|__Rs___|1_0_0_1|__Rm___| Mul
+         */
+
+        var rm = (int)(instruction & 0xF);
+        var rs = (int)((instruction >> 8) & 0xf);
+        var rdLo = (int)((instruction >> 12) & 0xf);
+        var rdHi = (int)((instruction >> 16) & 0xf);
+        var setFlags = BitUtils.IsBitSet(instruction, 20);
+        var accumulate = BitUtils.IsBitSet(instruction, 21);
+        var signed = BitUtils.IsBitSet(instruction, 22);
+
+        if (signed)
+        {
+            //signed mul
+            long res = (long)(int)Registers[rm] * (int)Registers[rs];
+            if (accumulate)
+            {
+                long acc = (long)(((ulong)Registers[rdHi] << 32) | Registers[rdLo]);
+                res += acc;
+            }
+
+            Registers[rdLo] = (uint)(res & 0xFFFFFFFF);
+            Registers[rdHi] = (uint)(res >> 32);
+
+            if (!setFlags)
+            {
+                return;
+            }
+
+            var setNegative = ((res >> 32) & 0x80000000) != 0;
+            SetNegative(setNegative);
+            SetZero(res == 0);
+        }
+        else
+        {
+            //unsigned mul
+            var res = (ulong)Registers[rm] * Registers[rs];
+            if (accumulate)
+            {
+                ulong acc = ((ulong)Registers[rdHi] << 32) | Registers[rdLo];
+                res += acc;
+            }
+
+            Registers[rdLo] = (uint)(res & 0xFFFFFFFF);
+            Registers[rdHi] = (uint)(res >> 32);
+
+            if (!setFlags)
+            {
+                return;
+            }
+
+            var setNegative = ((res >> 32) & 0x80000000) != 0;
+            SetNegative(setNegative);
+            SetZero(res == 0);
+        }
+    }
+
     private void ExecuteArmDataProcessing(uint instruction)
     {
         /*
@@ -24,17 +116,19 @@ public sealed partial class Arm7Tdmi
             var x = 1;
         }
 
-        var operand1 = rn == 15 ? Registers[rn] + 4 : Registers[rn];
-        if (!immediate && !BitUtils.IsBitSet(instruction, 4))
-        {
-            //operand1 += 4; //plus 12 if shift is specified in instruction normally +8 because of prefetching
-        }
+        var operand1 = rn == 15
+            ? BitUtils.IsBitSet(instruction, 4) && !immediate
+                ? Registers.ProgramCounter + 8 // rn and/or rm = instAddr + 12 if shifted register operand
+                : Registers.ProgramCounter + 4 //otherwise instAddr + 8
+            : Registers[rn];
+
         var operand2 = immediate
-            ? DecodeImmediateOperand(instruction, out var carryOut)
-            : ComputeShiftedRegisterOperand(instruction, out carryOut);
+            ? DecodeImmediateOperand(instruction, out var logicalCarryOut)
+            : ComputeShiftedRegisterOperand(instruction, out logicalCarryOut);
 
         var cy = Cpsr.Carry ? 1u : 0u;
         uint result;
+        ulong wide;
         switch (opcode)
         {
             case 0x0: //AND
@@ -43,7 +137,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -53,7 +147,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -90,7 +184,7 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0x5: //ADC
-                ulong wide = operand1 + operand2 + cy;
+                wide = (ulong)operand1 + operand2 + cy;
                 result = (uint)wide;
                 Registers[rd] = result;
                 if (setFlags)
@@ -102,42 +196,51 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0x6: //SBC
-                result = operand1 - operand2 + cy - 1u;
-                Registers[rd] = result;
+                wide = (ulong)operand1 - operand2 + cy - 1u;
+                Registers[rd] = (uint)wide;
                 if (setFlags)
                 {
-                    UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+                    UpdateArithmeticFlags(operand1, operand2, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
-                    SetCarry((ulong)operand1 >= operand2 + cy - 1u);
+                    SetCarry((long)wide >= 0);
                 }
 
                 break;
             case 0x7: //RSC
-                result = operand2 - operand1 + cy - 1u;
-                Registers[rd] = result;
+                wide = (ulong)operand2 - operand1 + cy - 1u;
+                Registers[rd] = (uint)wide;
                 if (setFlags)
                 {
-                    UpdateArithmeticFlags(operand2, operand1, result, subtraction: true);
+                    UpdateArithmeticFlags(operand2, operand1, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
-                    SetCarry((ulong)operand2 >= operand1 + cy - 1u);
+                    SetCarry((long)wide >= 0);
                 }
 
                 break;
             case 0x08: //TST
                 result = operand1 & operand2;
                 UpdateNz(result);
-                SetCarry(carryOut);
+                SetCarry(logicalCarryOut);
 
                 break;
             case 0x09: //TEQ
                 result = operand1 ^ operand2;
                 UpdateNz(result);
-                SetCarry(carryOut);
+                SetCarry(logicalCarryOut);
 
                 break;
             case 0xA: //CMP
                 result = operand1 - operand2;
                 UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
+                if (rd == 15 && setFlags)
+                {
+                    var oldMode = Cpsr.Mode;
+                    if (oldMode != CpuMode.User && oldMode != CpuMode.System)
+                    {
+                        Cpsr = Registers.GetSpsr(oldMode);
+                    }
+                    //Registers.ProgramCounter += 4;
+                }
 
                 break;
             case 0xB: //CMN
@@ -151,7 +254,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -161,7 +264,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 if (rd == 15 && setFlags)
@@ -177,7 +280,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;
@@ -187,7 +290,7 @@ public sealed partial class Arm7Tdmi
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(carryOut);
+                    SetCarry(logicalCarryOut);
                 }
 
                 break;

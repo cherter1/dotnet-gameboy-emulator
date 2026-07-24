@@ -9,7 +9,7 @@ namespace GbaEmulator.Core.Cpu;
 //Armv4TM arm version
 public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 {
-    private readonly CpuTrace?[] _traces = new CpuTrace?[4096];
+    private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
     private int _traceIndex;
     public RegisterBank Registers { get; private set; } = null!;
     public ProgramStatusRegister Cpsr { get; private set; } = new() { Mode = CpuMode.System, IrqDisable = true };
@@ -17,13 +17,12 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     public void Reset(bool skipBios)
     {
         Registers = new RegisterBank(() => Cpsr.Mode);
-        bus.Registers = Registers;
         Registers.InitializeForGba();
 
         Cpsr = new ProgramStatusRegister
         {
-            Mode = skipBios ? CpuMode.System : CpuMode.Supervisor,
-            IrqDisable = true,
+            Mode = CpuMode.System,
+            IrqDisable = false,
             ThumbState = false
         };
 
@@ -38,7 +37,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         try
         {
             if (interrupts.ShouldServiceIrq(Cpsr.IrqDisable))
-            //if(false)
             {
                 EnterIrqException();
                 return 4;
@@ -49,25 +47,9 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0x0 && Cpsr.Mode == CpuMode.System)
+            if (Registers.ProgramCounter == 0x08001378)
             {
-                Console.WriteLine("Bios in system mode");
-                var y = 1;
-            }
-
-            if (Registers.ProgramCounter == 0x08025254) //snprintf
-            {
-                var z = 1;
-            }
-
-            if (Registers.ProgramCounter == 0x080252c4) //snprintf return 
-            {
-                var z = 1;
-            }
-            
-            if (Registers.ProgramCounter == 0x08025264) //snprintf first inner function call return 
-            {
-                var z = 1;
+                var x = 1;
             }
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
@@ -95,7 +77,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 decoded = $"COND FAILED {(Condition)(instruction >> 28)}";
                 if (instruction == 0x00000000)
                 {
-                    throw new Exception();
+                    //throw new Exception();
                 }
                 return 1;
             }
@@ -128,7 +110,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
             if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
             {
-                //TODO: SWI
                 decoded = "SWI";
                 ExecuteSoftwareInterrupt(instruction);
                 return 4;
@@ -158,15 +139,15 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
                 if ((instruction & 0x0FC000F0) == 0x00000090)
                 {
-                    //TODO: Multiply
                     decoded = "MULTIPLY";
+                    this.ExecuteArmMultiply(instruction);
                     return 1;
                 }
 
                 if ((instruction & 0x0F8000F0) == 0x00800090)
                 {
                     decoded = "MULTIPLY LONG";
-                    //TODO: MultiplyLong
+                    this.ExecuteArmMultiplyLong(instruction);
                     return 1;
                 }
 
@@ -178,7 +159,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     return 3;
                 }
 
-                if ((instruction & 0x010F0FFF) == 0x010F0000)
+                if ((instruction & 0x0FBF0FFF) == 0x010F0000)
                 {
                     //MRS
                     decoded = "MRS";
@@ -199,15 +180,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 return 1;
             }
 
-            if ((instruction & 0x0C000000) == 0x04000000)
-            {
-                decoded = "NO IDEA WHAT THIS MASK IS";
-                return 3;
-            }
-
             decoded = "NOT SUPPORTED";
             throw new NotSupportedException($"Unhandled ARM instruction 0x{instruction:X8}");
-
         }
         finally
         {
@@ -221,29 +195,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
     private int StepThumb()
     {
-        /*
-           |..........1 ..................0|
-           |5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-        1  |0_0_0|OP_|_Offset5_|_Rs__|_Rd__| LSL, LSR, ASR (lo reg 5 bit shifter imm value)
-        3  |0_0_1|OP_|_Rd__|__Offset8______| MOV, CMP, ADD, SUB (8b imm)
-        4  |0_1_0_0_0_0|__OP___|_Rs__|_Rd__| ALU OPS (Lo reg pair) - AND, EOR, LSL, LSR, ASR, ADC, SBC, ROR, TST, NEG, CMP, CMN, ORR, MUL, BIC, MVN
-        5  |0_1_0_0_0_1|OP_|H|H|Rs/Hs|Rd/Hd| (h1-7, h2-6) - ADD, CMP, MOV (lo and hi reg or hi reg pair), BX
-        6  |0_1_0_0_1|_Rd__|____Word8______| PC-Relative load (LDR with PC)
-        7  |0_1_0_1|L|B|0|_Ro__|_Rb__|_Rd__| Load/Store with reg offset
-        8  |0_1_0_1|H|S|1|_Ro__|_Rb__|_Rd__| Load/Store sign-extended byte/halfword
-        9  |0_1_1|B|L|_Offset5_|_Rb__|_Rd__| Load/Store with immediate offset
-       10  |1_0_0_0|L|_Offset5_|_Rb__|_Rd__| Load/Store halfword
-       11  |1_0_0_1|L|_Rd__|____Word8______| SP-relative Load/Store
-       12  |1_0_1_0|S|_Rd__|____Word8______| (S = pc or sp) - Load address
-       13  |1_0_1_1_0_0_0_0|S|__SWord8_____| (S = sign flag) - add offset to stack pointer
-       14  |1_0_1_1|L|1_0|R|____RList______| push/pop registers
-       15  |1_1_0_0|L|_Rb__|____RList______| multiple load/store
-       16  |1_1_0_1|_Cond__|____SOffset8___| conditional branch
-       17  |1_1_0_1_1_1_1_1|____Value8_____| software interrupt
-       18  |1_1_1_0_0|_____Offset11________| unconditional branch
-       19  |1_1_1_1|H|_____Offset11________| long branch with link
-           no BLX for this cpu only since its armv4T
-         */
         var instructionAddress = Registers.ProgramCounter;
         var instruction = bus.Read16(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 2;
@@ -407,7 +358,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
 
             decoded = "NOTHING";
-            throw new NotSupportedException("THUMB instruction could not be decoded");
+            throw new NotSupportedException($"THUMB instruction could not be decoded instruction: {instruction:x4}");
         }
         finally
         {
@@ -425,10 +376,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
            |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
            |_Cond__|1_0_1|L|___________________Offset______________________| B,BL,BLX
          */
-        if (instruction == 0xea000059)
-        {
-            var x = 1;
-        }
 
         var link = BitUtils.IsBitSet(instruction, 24);
         var offset = BitUtils.SignExtend((int)(instruction & 0x00FFFFFF) << 2, 26);
@@ -451,10 +398,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
            no BLX for this cpu only since its armv4T
          */
 
-        if (instruction == 0xe12fff11)
-        {
-            var x = 0;
-        }
         var rn = (int)instruction & 0xF;
         var target = Registers[rn];
 
@@ -479,7 +422,6 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Console.WriteLine("ARM SWI: comment = " + comment.ToString("X8"));
 
         Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
-        Registers[14] = Registers.ProgramCounter;
 
         var newCpsr = Cpsr.ToUInt32();
         newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor;
@@ -487,7 +429,24 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         newCpsr = BitUtils.SetBit(newCpsr, 5, false);
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
+        Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
+
+        var functionVector = comment >> 16;
+        if (functionVector == 0x6)
+        {
+            //TODO: temp must add functions in bios
+            //div
+            var numerator = (int)Registers[0];
+            var denominator = (int)Registers[1];
+            //TODO: not handling divide by zero
+            var result = numerator / denominator;
+            Registers[0] = (uint)result;
+            var remainder = numerator % denominator;
+            Registers[1] = (uint)remainder;
+            Registers[3] = (uint)result;
+            //var absoluteValue = (uint)result;
+        }
     }
 
     private int ExecuteBlockDataTransfer(uint instruction)
@@ -607,15 +566,12 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
           |_Cond__|0_1_0|P|U|B|W|L|__Rn___|__Rd___|_________Offset________| TransImm9
           |_Cond__|0_1_1|P|U|B|W|L|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| TransReg9
          */
-        if (instruction == 0xe510f004)
-        {
-            var x = 1;
-        }
 
         var isOffsetImmediate = (instruction & 0x02000000) == 0;
         var preIndex = BitUtils.IsBitSet(instruction, 24);
         var addOffset = BitUtils.IsBitSet(instruction, 23);
         var byteTransfer = BitUtils.IsBitSet(instruction, 22);
+        var writeback = BitUtils.IsBitSet(instruction, 21);
         var load = BitUtils.IsBitSet(instruction, 20);
         var baseRegister = (int)((instruction >> 16) & 0xF);
         var destinationRegister = (int)((instruction >> 12) & 0xF);
@@ -630,9 +586,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             ? addOffset ? address + offset : address - offset
             : address;
 
+        uint loadedWord = 0;
         if (load)
         {
-            Registers[destinationRegister] = byteTransfer
+            loadedWord = byteTransfer
                 ? bus.Read8(effectiveAddress)
                 : bus.Read32(effectiveAddress);
         }
@@ -654,6 +611,15 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         if (!preIndex)
         {
             Registers[baseRegister] = addOffset ? address + offset : address - offset;
+        }
+        else if (writeback)
+        {
+            Registers[baseRegister] = effectiveAddress;
+        }
+
+        if (load)
+        {
+            Registers[destinationRegister] = loadedWord;
         }
     }
 
@@ -683,7 +649,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         var immOffset = ((instruction >> 4) & 0xF0) | (instruction & 0x0F);
         var rm = (int)instruction & 0x0F;
         var offset = immediate ? immOffset : Registers[rm];
-        
+
         var updatedAddress = isUp
             ? baseAddress + offset
             : baseAddress - offset;
@@ -776,7 +742,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             true when controlBits => source,
             true => (oldPsr & 0x0FFFFFFFu) | (source & 0xF0000000u),
-            _ => (oldPsr & 0xFFFFFF00u) | (source & 0xFFu)
+            false when controlBits => (oldPsr & 0xFFFFFF00u) | (source & 0xFFu),
+            _ => oldPsr
         };
 
         var status = ProgramStatusRegister.FromUInt32(newPsr);
@@ -802,24 +769,25 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     private uint ComputeShiftedRegisterOperand(uint instruction, out bool carryOut)
     {
         var rm = (int)(instruction & 0xF);
-        var shiftAmount = (int)((instruction >> 7) & 0x1F);
+        var rs = (int)(instruction >> 8) & 0xF;
+        var registerShift = BitUtils.IsBitSet(instruction, 4);
+        var shiftAmount = registerShift
+            ? (int)(Registers[rs] & 0xFF)
+            : (int)((instruction >> 7) & 0x1F);
+
         var shiftType = (instruction >> 5) & 0x3;
         var value = rm == 15
-            ? Registers.ProgramCounter + 4
+            ? registerShift
+                ? Registers.ProgramCounter + 8 // rn and/or rm = instAddr + 12 if shifted register operand
+                : Registers.ProgramCounter + 4 //otherwise instAddr + 8
             : Registers[rm];
-
-        if (shiftAmount == 0)
-        {
-            carryOut = Cpsr.Carry;
-            return value;
-        }
 
         return shiftType switch
         {
             0 => ShiftLeft(value, shiftAmount, out carryOut),
-            1 => ShiftRightLogical(value, shiftAmount, out carryOut),
-            2 => ShiftRightArithmetic(value, shiftAmount, out carryOut),
-            3 => RotateRight(value, shiftAmount, out carryOut),
+            1 => ShiftRightLogical(value, shiftAmount, registerShift, out carryOut),
+            2 => ShiftRightArithmetic(value, shiftAmount, registerShift, out carryOut),
+            3 => RotateRight(value, shiftAmount, registerShift, out carryOut),
             _ => throw new UnreachableException()
         };
     }
@@ -910,28 +878,73 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
     }
 
-    private static uint ShiftLeft(uint value, int amount, out bool carryOut)
+    private uint ShiftLeft(uint value, int amount, out bool carryOut)
     {
-        carryOut = ((value >> (32 - amount)) & 1U) != 0;
-        return value << amount;
+        switch (amount)
+        {
+            case 0:
+                carryOut = Cpsr.Carry;
+                return value;
+            case >= 32:
+                //last bit shifted out if == 32 otherwise always no carry out
+                carryOut = amount == 32 && BitUtils.IsBitSet(value, 0);
+                return 0;
+            default:
+                carryOut = ((value >> (32 - amount)) & 1U) != 0;
+                return value << amount;
+        }
     }
 
-    private static uint ShiftRightLogical(uint value, int amount, out bool carryOut)
+    private uint ShiftRightLogical(uint value, int amount, bool registerShift, out bool carryOut)
     {
-        carryOut = ((value >> (amount - 1)) & 1U) != 0;
-        return value >> amount;
+        switch (amount)
+        {
+            case 0 when registerShift:
+                carryOut = Cpsr.Carry;
+                return value;
+            case 0:
+                carryOut = BitUtils.IsBitSet(value, 31);
+                return 0;
+            case >= 32:
+                carryOut = amount == 32 && BitUtils.IsBitSet(value, 31);
+                return 0;
+            default:
+                carryOut = ((value >> (amount - 1)) & 1U) != 0;
+                return value >> amount;
+        }
     }
 
-    private static uint ShiftRightArithmetic(uint value, int amount, out bool carryOut)
+    private uint ShiftRightArithmetic(uint value, int amount, bool registerShift, out bool carryOut)
     {
-        carryOut = ((value >> (amount - 1)) & 1U) != 0;
-        return (uint)((int)value >> amount);
+        switch (amount)
+        {
+            case 0 when !registerShift:
+            case >= 32:
+                carryOut = BitUtils.IsBitSet(value, 31);
+                return carryOut ? 0xFFFFFFFF : 0;
+            case 0:
+                carryOut = Cpsr.Carry;
+                return value;
+            default:
+                carryOut = ((value >> (amount - 1)) & 1U) != 0;
+                return (uint)((int)value >> amount);
+        }
     }
 
-    private static uint RotateRight(uint value, int amount, out bool carryOut)
+    private uint RotateRight(uint value, int amount, bool registerShift, out bool carryOut)
     {
+        if (amount == 0 && !registerShift) //ror#0 is interpreted as rrx#1, like ror#1 but result bit 31 is set to old C
+        {
+            carryOut = BitUtils.IsBitSet(value, 0);
+            var rotated = BitUtils.RotateRight(value, 1);
+            rotated = BitUtils.SetBit(rotated, 31, Cpsr.Carry);
+            return rotated;
+        }
+
         var result = BitUtils.RotateRight(value, amount);
-        carryOut = BitUtils.IsBitSet(result, 31);
+        carryOut = amount == 0 ?
+            Cpsr.Carry : //when rs == 0 carry remains unchanged
+            BitUtils.IsBitSet(result, 31);
         return result;
     }
 }

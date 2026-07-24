@@ -444,4 +444,32 @@ public sealed class Format2AddSub
         Assert.False(cpu.Cpsr.Negative);
         Assert.False(cpu.Cpsr.Overflow);
     }
+
+    [Fact]
+    public void SUB_RdSameAsRs_FlagsAndResultSetCorrectly()
+    {
+        //Arrange
+        (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
+
+        // 0x02000000: sub r4, r4, r2
+        bus.Write16(0x02000000, 0x1aa4);
+
+        cpu.Reset(true);
+        cpu.Registers.ProgramCounter = 0x02000000;
+        cpu.Registers[4] = 0x8c;
+        cpu.Registers[2] = 0x50;
+        cpu.SetThumbState(true);
+        cpu.SetNegative(true);
+
+        //Act
+        cpu.Step();
+
+        //Assert
+        Assert.Equal(0x3cu, cpu.Registers[4]);
+        Assert.True(cpu.Cpsr.Carry);
+
+        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Cpsr.Overflow);
+    }
 }

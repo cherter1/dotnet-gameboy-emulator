@@ -141,7 +141,7 @@ public sealed class Format10LoadStoreHalfword
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 0x02000100;
         cpu.SetThumbState(true);
-        bus.Write32(0x0200013e, 0x12345678);
+        bus.Write16(0x0200013e, 0x5678);
 
         //Act
         cpu.Step();

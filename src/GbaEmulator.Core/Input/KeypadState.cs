@@ -1,14 +1,19 @@
+using GbaEmulator.Core.Memory;
+
 namespace GbaEmulator.Core.Input;
 
 public sealed class KeypadState
 {
-    private ushort _state = 0x03FF;
+    private readonly GbaMemory _memory;
 
-    public ushort ReadKeyInput() => _state;
+    public KeypadState(GbaMemory memory)
+    {
+        _memory = memory;
+    }
 
     public void SetPressed(GbaButton button, bool pressed)
     {
         var mask = (ushort)(1 << (int)button);
-        _state = pressed ? (ushort)(_state & ~mask) : (ushort)(_state | mask);
+        _memory.Io.REG_KEYINPUT = pressed ? (ushort)(_memory.Io.REG_KEYINPUT & ~mask) : (ushort)(_memory.Io.REG_KEYINPUT | mask);
     }
 }

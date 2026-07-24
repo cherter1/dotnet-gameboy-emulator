@@ -253,7 +253,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
         cpu.SetThumbState(true);
-        bus.Write32(0x02000105, 0xffffffab);
+        bus.Write8(0x02000105, 0xab);
 
         //Act
         cpu.Step();
@@ -276,7 +276,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
         cpu.SetThumbState(true);
-        bus.Write32(0x0200011f, 0xffffffab);
+        bus.Write8(0x0200011f, 0xab);
 
         //Act
         cpu.Step();

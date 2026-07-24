@@ -11,238 +11,160 @@ public sealed class Ppu
     private const int ScreenHeight = 160;
     private const int CyclesPerScanline = 1232;
     private const int ScanLinesPerFrame = 228;
+    private const int HBlankStartCycle = 1006;
     public const int CyclesPerFrame = CyclesPerScanline * ScanLinesPerFrame;
 
     private readonly InterruptController _interrupts;
     private readonly DmaController _dma;
-    private byte[] _vram = [];
-    private byte[] _paletteRam = [];
-    private int _cycleAccumulator;
+    private readonly GbaMemory _memory;
 
-    public Ppu(InterruptController interrupts, DmaController dma)
+    public Ppu(InterruptController interrupts, DmaController dma, GbaMemory memory)
     {
         _interrupts = interrupts;
+        _memory = memory;
         _dma = dma;
         FrameBuffer = new FrameBuffer(ScreenWidth, ScreenHeight);
     }
 
     public FrameBuffer FrameBuffer { get; }
 
-    /// <summary>
-    /// REG_DISPCNT: 0x04000000
-    /// </summary>
-    private ushort DisplayControl { get; set; }
-    /// <summary>
-    /// REG_DISPSTAT: 0x04000004
-    /// </summary>
-    private ushort DisplayStatus { get; set; }
-    /// <summary>
-    /// LCY/REG_VCOUNT: 0x04000006
-    /// </summary>
-    private ushort VerticalCount { get; set; }
-    /// <summary>
-    /// REG_BG0CNT: 0x04000008
-    /// </summary>
-    private ushort Bg0Control { get; set; }
-    /// <summary>
-    /// REG_BG0HOFS: 0x04000010
-    /// </summary>
-    private ushort Bg0HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG0VOFS: 0x04000012
-    /// </summary>
-    private ushort Bg0VerticalOffset { get; set; }
-    /// <summary>
-    /// REG_BG1CNT: 0x0400000A
-    /// </summary>
-    private ushort Bg1Control { get; set; }
-    /// <summary>
-    /// REG_BG1HOFS: 0x04000014
-    /// </summary>
-    private ushort Bg1HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG1VOFS: 0x04000016
-    /// </summary>
-    private ushort Bg1VerticalOffset { get; set; }
-    /// <summary>
-    /// REG_BG2CNT: 0x0400000C
-    /// </summary>
-    private ushort Bg2Control { get; set; }
-    /// <summary>
-    /// REG_BG2HOFS: 0x04000018
-    /// </summary>
-    private ushort Bg2HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG2VOFS: 0x0400001A
-    /// </summary>
-    private ushort Bg2VerticalOffset { get; set; }
-    /// <summary>
-    /// REG_BG3CNT: 0x0400000E
-    /// </summary>
-    private ushort Bg3Control { get; set; }
-    /// <summary>
-    /// REG_BG3HOFS: 0x0400001C
-    /// </summary>
-    private ushort Bg3HorizontalOffset { get; set; }
-    /// <summary>
-    /// REG_BG3VOFS: 0x0400001E
-    /// </summary>
-    private ushort Bg3VerticalOffset { get; set; }
-
-    public void ConnectMemory(byte[] vRam, byte[] paletteRam)
-    {
-        _vram = vRam;
-        _paletteRam = paletteRam;
-    }
+    private int _scanlineCycle;
+    private bool IsInHBlank => _scanlineCycle >= HBlankStartCycle;
 
     public void Step(int cycles, GbaBus bus)
     {
-        _cycleAccumulator += cycles;
-        while (_cycleAccumulator >= CyclesPerScanline)
+        while (cycles > 0)
         {
-            _cycleAccumulator -= CyclesPerScanline;
-            VerticalCount++;
+            int nextBoundary = IsInHBlank ? CyclesPerScanline : HBlankStartCycle;
+            int cyclesUntilBoundary = nextBoundary - _scanlineCycle;
+            int consumed = Math.Min(cycles, cyclesUntilBoundary);
 
-            if (VerticalCount == 160)
+            _scanlineCycle += consumed;
+            cycles -= consumed;
+
+            if (_scanlineCycle != nextBoundary)
             {
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 0, true);
-                _dma.RunDmas(DmaTimingType.VBlank, bus);
-                var vBlankIrqEnabled = BitUtils.IsBitSet(DisplayStatus, 3);
-                if (vBlankIrqEnabled)
-                {
-                    _interrupts.Request(InterruptType.VBlank);
-                }
-                RenderFrame();
+                continue; //continue til hblank start,
             }
 
-            if (VerticalCount == ((DisplayStatus >> 8) & 0xFF))
+            if (nextBoundary == HBlankStartCycle)
             {
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, true);
-                var vCountIrqEnabled = BitUtils.IsBitSet(DisplayStatus, 5);
-                if (vCountIrqEnabled)
-                {
-                    _interrupts.Request(InterruptType.VCounter);
-                }
+                EnterHBlank(bus); // enter hblank, trigger dma, interrupt, and renderScanLine
             }
             else
             {
-                DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 2, false);
+                EndScanline(bus); // leave hblank, update vcount, enter vblank when appropriate
             }
-
-            if (VerticalCount < ScanLinesPerFrame)
-            {
-                continue;
-            }
-
-            VerticalCount = 0;
-            //leaving vBlank
-            DisplayStatus = (ushort)BitUtils.SetBit(DisplayStatus, 0, false);
         }
     }
 
-    public ushort Read16(uint address) =>
-        address switch
-        {
-            0x04000000 => DisplayControl,
-            0x04000004 => DisplayStatus,
-            0x04000006 => VerticalCount,
-            0x04000008 => Bg0Control,
-            0x0400000A => Bg1Control,
-            0x0400000C => Bg2Control,
-            0x0400000E => Bg3Control,
-            0x04000010 => Bg0HorizontalOffset,
-            0x04000012 => Bg0VerticalOffset,
-            0x04000014 => Bg1HorizontalOffset,
-            0x04000016 => Bg1VerticalOffset,
-            0x04000018 => Bg2HorizontalOffset,
-            0x0400001A => Bg2VerticalOffset,
-            0x0400001C => Bg3HorizontalOffset,
-            0x0400001E => Bg3VerticalOffset,
-            _ => 0
-        };
-
-    public void Write16(uint address, ushort value)
+    private void EnterHBlank(GbaBus bus)
     {
-        switch (address)
+        _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, true); //set hblank
+
+        if (_memory.Io.REG_VCOUNT < ScreenHeight)
         {
-            case 0x04000000:
-                DisplayControl = value;
+            _dma.RunDmas(DmaTimingType.Hblank, bus);
+        }
+
+        if (BitUtils.IsBitSet(_memory.Io.REG_VCOUNT, 4)) // hlbank irq enabled
+        {
+            _interrupts.Request(InterruptType.HBlank);
+        }
+
+        if (_memory.Io.REG_VCOUNT < ScreenHeight) //Only Render Visible scan lines
+        {
+            RenderScanLine(_memory.Io.REG_VCOUNT);
+        }
+    }
+
+    private void EndScanline(GbaBus bus)
+    {
+        _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, false); // leave hblank unset bit
+
+        _scanlineCycle = 0;
+
+        int nextLine = _memory.Io.REG_VCOUNT + 1;
+
+        if (nextLine == ScanLinesPerFrame)
+        {
+            nextLine = 0;
+        }
+
+        _memory.Io.REG_VCOUNT = (ushort)nextLine;
+
+        UpdateVBlankState(bus); // on scanline 160 enter blank, and do dma and interrupt, on zero leave blank
+        UpdateVCountMatch(); // check if vcount triggered and do interrupt
+    }
+
+    private void UpdateVBlankState(GbaBus bus)
+    {
+        ushort vcount = _memory.Io.REG_VCOUNT;
+
+        switch (vcount)
+        {
+            case ScreenHeight:
+                {
+                    _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, true);
+
+                    _dma.RunDmas(DmaTimingType.VBlank, bus);
+
+                    if (BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 3)) //vblank irq enabled
+                    {
+                        _interrupts.Request(InterruptType.VBlank);
+                    }
+
+                    break;
+                }
+            case 0:
+                _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 0, false); // leave vblank
                 break;
-            case 0x04000004:
-                DisplayStatus = (ushort)((DisplayStatus & 0x0007) | (value & 0xfff8));
-                break;
-            case 0x04000008:
-                Bg0Control = value;
-                break;
-            case 0x0400000A:
-                Bg1Control = value;
-                Console.WriteLine("write to bg1cnt");
-                break;
-            case 0x0400000C:
-                Bg2Control = value;
-                break;
-            case 0x0400000E:
-                Bg3Control = value;
-                break;
-            case 0x04000010:
-                Bg0HorizontalOffset = value;
-                break;
-            case 0x04000012:
-                Bg0VerticalOffset = value;
-                break;
-            case 0x04000014:
-                Bg1HorizontalOffset = (ushort)(value & 0x1FF);
-                Console.WriteLine("write to bg1hofs");
-                break;
-            case 0x04000016:
-                Bg1VerticalOffset = (ushort)(value & 0x1FF);
-                Console.WriteLine("write to bg1vofs");
-                break;
-            case 0x04000018:
-                Bg2HorizontalOffset = value;
-                break;
-            case 0x0400001A:
-                Bg2VerticalOffset = value;
-                break;
-            case 0x0400001C:
-                Bg3HorizontalOffset = value;
-                break;
-            case 0x0400001E:
-                Bg3VerticalOffset = value;
-                break;
-            default:
-                Console.WriteLine($"Writing to unmapped ppu IO register {address:x8}");
-                break;
+        }
+    }
+
+    private void UpdateVCountMatch()
+    {
+        ushort dispStat = _memory.Io.REG_DISPSTAT;
+        int compareValue = (dispStat >> 8) & 0xFF;
+        bool wasMatching = BitUtils.IsBitSet(dispStat, 2); //vcount triggered status
+        bool isMatching = _memory.Io.REG_VCOUNT == compareValue; //trigger if line trigger from DISPSTAT equals vcount reg
+        _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 2, isMatching); //set based on line trigger
+
+        if (!wasMatching &&
+            isMatching &&
+            BitUtils.IsBitSet(_memory.Io.REG_DISPSTAT, 5)) //trigger interrupt if vcount enabled and if vcount == trigger vlaue and wasnt already set
+        {
+            _interrupts.Request(InterruptType.VCounter);
         }
     }
 
     private ushort ReadPalette16(int offset)
     {
-        if (offset < 0 || offset + 1 >= _paletteRam.Length)
+        if (offset < 0 || offset + 1 >= _memory.PaletteRam.Length)
         {
             return 0;
         }
 
-        return (ushort)(_paletteRam[offset] | (_paletteRam[offset + 1] << 8));
+        return (ushort)(_memory.PaletteRam[offset] | (_memory.PaletteRam[offset + 1] << 8));
     }
 
     private byte ReadVram8(int offset)
     {
-        if (offset < 0 || offset + 1 >= _vram.Length)
+        if (offset < 0 || offset + 1 >= _memory.Vram.Length)
         {
             return 0;
         }
 
-        return _vram[offset];
+        return _memory.Vram[offset];
     }
 
     private ushort ReadVram16(int offset)
     {
-        if (offset < 0 || offset + 1 >= _vram.Length)
+        if (offset < 0 || offset + 1 >= _memory.Vram.Length)
         {
             return 0;
         }
-        return (ushort)(_vram[offset] | (_vram[offset + 1] << 8));
+        return (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
     }
 
     private uint ReadBgPaletteColor(int paletteIndex)
@@ -250,16 +172,15 @@ public sealed class Ppu
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset);
         return ConvertBgr555ToArgb(bgr555);
-        //return bgr555;
     }
 
-    private void RenderFrame()
+    private void RenderScanLine(int scanLine)
     {
-        var modeBits = DisplayControl & 0x7; //bits 0-2
+        var modeBits = _memory.Io.REG_DISPCNT & 0x7; //bits 0-2
         switch (modeBits)
         {
             case 0:
-                RenderMode0();
+                RenderMode0(scanLine);
                 break;
             case 1:
                 //render mode 1
@@ -269,22 +190,23 @@ public sealed class Ppu
                 break;
             case 3:
                 //render mode 3
-                RenderMode3();
+                RenderMode3(scanLine);
                 break;
             case 4:
                 //render mode 4
+                RenderMode4(scanLine);
                 break;
             case 5:
                 //render mode 5
                 break;
             default:
                 //not valid mode just render jibber jabber
-                RenderFallbackPattern();
+                RenderFallbackPattern(scanLine);
                 break;
         }
     }
 
-    private void RenderMode0()
+    private void RenderMode0(int y)
     {
         //tiles are arrrays of indices into palette memory
         // bg are arrays of indices into tilemaps
@@ -292,122 +214,152 @@ public sealed class Ppu
         //screenblocks tilemap
         HashSet<int> graphicsOffsets = [];
         int countofG = 0;
-        var bg0Enabled = BitUtils.IsBitSet(DisplayControl, 8);
-        var bg1Enabled = BitUtils.IsBitSet(DisplayControl, 9);
-        var bg2Enabled = BitUtils.IsBitSet(DisplayControl, 10);
-        var bg3Enabled = BitUtils.IsBitSet(DisplayControl, 11);
+        var bg0Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 8);
+        var bg1Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 9);
+        var bg2Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 10);
+        var bg3Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 11);
         if (bg0Enabled || bg1Enabled || bg2Enabled || bg3Enabled)
         {
             var x = 1;
             //var z = _vram.Count(q => q != 0);
         }
-        var charBaseBlock = (Bg1Control >> 2) & 0b11;
+        var charBaseBlock = (_memory.Io.REG_BG1CNT >> 2) & 0b11;
         var startOffsetOfCharTileData = charBaseBlock * 0x4000; // + 0x0600000 for address
-        var screenBaseBlock = (Bg1Control >> 8) & 0x1F;
+        var screenBaseBlock = (_memory.Io.REG_BG1CNT >> 8) & 0x1F;
         var startOffsetOfCharTileMap = screenBaseBlock * 0x800; // + 0x0600000 for address
         // 00 = 256x256 (32x32 tiles)
         // 01 = 512x256 (64x32 tiles)
         // 10 = 256x512 (32x64 tiles)
         // 11 = 512x512 (64x64 tiles)
-        var tileMapSizeText = (Bg1Control >> 14) & 0b11;
+        var tileMapSizeText = (_memory.Io.REG_BG1CNT >> 14) & 0b11;
         if (tileMapSizeText != 0)
         {
             var z = 1;
         }
-        var is8bpp = BitUtils.IsBitSet(Bg1Control, 7);
+        var is8bpp = BitUtils.IsBitSet(_memory.Io.REG_BG1CNT, 7);
 
-        for (var y = 0; y < ScreenHeight; y++)
+        var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
+        var tileMapY = backgroundY >> 3;
+        var pixelYInsideTile = backgroundY & 7;
+
+        for (var x = 0; x < ScreenWidth; x++)
         {
-            var backgroundY = (y + Bg1VerticalOffset) & 0xFF;
-            var tileMapY = backgroundY >> 3;
-            var pixelYInsideTile = backgroundY & 7;
+            var backgroundX = (x + _memory.Io.REG_BG1HOFS) & 0xFF;
+            var tileMapX = backgroundX / 8;
+            var pixelXInsideTile = backgroundX % 8;
 
-            for (var x = 0; x < ScreenWidth; x++)
+            var tileMapIndex = tileMapY * 32 + tileMapX;
+            var tileMapEntryOffset = startOffsetOfCharTileMap + tileMapIndex * 2;
+
+            var tileMapEntry = ReadVram16(tileMapEntryOffset);
+            var hFlip = (tileMapEntry & 0x0400) != 0;
+            var vFlip = (tileMapEntry & 0x0800) != 0;
+            if (vFlip || hFlip)
             {
-                var backgroundX = (x + Bg1HorizontalOffset) & 0xFF;
-                var tileMapX = backgroundX / 8;
-                var pixelXInsideTile = backgroundX % 8;
-
-                var tileMapIndex = tileMapY * 32 + tileMapX;
-                var tileMapEntryOffset = startOffsetOfCharTileMap + tileMapIndex * 2;
-
-                var tileMapEntry = ReadVram16(tileMapEntryOffset);
-                var hFlip = (tileMapEntry & 0x0400) != 0;
-                var vFlip = (tileMapEntry & 0x0800) != 0;
-                if (vFlip || hFlip)
-                {
-                    var f = 1;
-                }
-                var tileIndex = tileMapEntry & 0x03FF;
-                var paletteBank = (tileMapEntry >> 12) & 0xF;
-
-                var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
-
-                var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
-                var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
-
-                graphicsOffsets.Add(tileGraphicsOffset);
-                if (tileGraphicsOffset == 0x44e0)
-                {
-                    var l = 1;
-                    countofG++;
-                }
-                var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
-
-                var colorIndex = (pixelXInsideTile % 2) == 0
-                    ? twoPackedPixelIndexes & 0x0F
-                    : twoPackedPixelIndexes >> 4;
-
-                if (colorIndex == 0)
-                {
-                    //var backDrop = ReadBgPaletteColor(0);
-                    //FrameBuffer.SetPixel(x, y, backDrop);
-                    //continue;
-                }
-
-                var paletteIndex = paletteBank * 16 + colorIndex;
-                var color = ReadBgPaletteColor(paletteIndex);
-
-                FrameBuffer.SetPixel(x, y, color);
+                var f = 1;
             }
+            var tileIndex = tileMapEntry & 0x03FF;
+            var paletteBank = (tileMapEntry >> 12) & 0xF;
+
+            var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
+
+            var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
+            var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
+
+            graphicsOffsets.Add(tileGraphicsOffset);
+            if (tileGraphicsOffset == 0x44e0)
+            {
+                var l = 1;
+                countofG++;
+            }
+            var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
+
+            var colorIndex = (pixelXInsideTile % 2) == 0
+                ? twoPackedPixelIndexes & 0x0F
+                : twoPackedPixelIndexes >> 4;
+
+            if (colorIndex == 0)
+            {
+                //var backDrop = ReadBgPaletteColor(0);
+                //FrameBuffer.SetPixel(x, y, backDrop);
+                //continue;
+            }
+
+            var paletteIndex = paletteBank * 16 + colorIndex;
+            var color = ReadBgPaletteColor(paletteIndex);
+
+            FrameBuffer.SetPixel(x, y, color);
         }
     }
 
-    public void RenderMode1()
+    public void RenderMode1(int y)
     {
         
     }
 
-    private void RenderMode3()
+    private void RenderMode3(int y)
     {
-        for (var y = 0; y < ScreenHeight; y++)
+        for (var x = 0; x < ScreenWidth; x++)
         {
-            for (var x = 0; x < ScreenWidth; x++)
+            var offset = ((y * ScreenWidth) + x) * 2;
+            if (offset + 1 >= _memory.Vram.Length)
             {
-                var offset = ((y * ScreenWidth) + x) * 2;
-                if (offset + 1 >= _vram.Length)
-                {
-                    FrameBuffer.SetPixel(x, y, 0xFF000000);
-                    continue;
-                }
-
-                var bgr555 = (ushort)(_vram[offset] | (_vram[offset + 1] << 8));
-                FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
+                FrameBuffer.SetPixel(x, y, 0xFF000000);
+                continue;
             }
+
+            var bgr555 = (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
+            FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
         }
     }
 
-    private void RenderFallbackPattern()
+    private void RenderMode4(int y)
     {
-        for (var y = 0; y < ScreenHeight; y++)
+        var useFrame1 = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 4);
+        var dispCnt = _memory.Io.REG_DISPCNT;
+        var bg2 = _memory.Io.REG_BG2CNT;
+        var bg2hofs = _memory.Io.REG_BG2HOFS;
+        var bg2vofs = _memory.Io.REG_BG2VOFS;
+        var bg2x = _memory.Io.REG_BG2X;
+        var bg2y = _memory.Io.REG_BG2Y;
+        var bg2pa = _memory.Io.REG_BG2PA;
+        var bg2pb = _memory.Io.REG_BG2PB;
+        var bg2pc = _memory.Io.REG_BG2PC;
+        var bg2pd = _memory.Io.REG_BG2PD;
+
+        if (!BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 10))
         {
-            for (var x = 0; x < ScreenWidth; x++)
+            return;
+        }
+
+        if (y == 76)
+        {
+            var x = 1;
+        }
+
+        for (var x = 0; x < ScreenWidth; x++)
+        {
+            var startOffset = !useFrame1 ? 0 : 0xA000;
+            var vramPixelOffset = (y * ScreenWidth) + x + startOffset;
+            var paletteIndex = ReadVram8(vramPixelOffset);
+            if (paletteIndex != 0)
             {
-                var red = (byte)(x * 255 / ScreenWidth);
-                var green = (byte)(y * 255 / ScreenHeight);
-                var blue = (byte)(((x / 8) ^ (y / 8)) * 18);
-                FrameBuffer.SetPixel(x, y, 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue);
+                var z = 0;
             }
+            var color = ReadBgPaletteColor(paletteIndex);
+
+            FrameBuffer.SetPixel(x, y, color);
+        }
+    }
+
+    private void RenderFallbackPattern(int y)
+    {
+        for (var x = 0; x < ScreenWidth; x++)
+        {
+            var red = (byte)(x * 255 / ScreenWidth);
+            var green = (byte)(y * 255 / ScreenHeight);
+            var blue = (byte)(((x / 8) ^ (y / 8)) * 18);
+            FrameBuffer.SetPixel(x, y, 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue);
         }
     }
 
