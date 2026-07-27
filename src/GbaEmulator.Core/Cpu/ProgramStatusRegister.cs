@@ -4,7 +4,7 @@ namespace GbaEmulator.Core.Cpu;
 
 public readonly struct ProgramStatusRegister
 {
-    // MSB of result 
+    // MSB of result
     public bool Negative { get; init; }
 
     // result of op is 0
@@ -27,6 +27,9 @@ public readonly struct ProgramStatusRegister
     public bool ThumbState { get; init; }
 
     public CpuMode Mode { get; init; }
+
+    public ProgramStatusRegister ChangeMode(CpuMode mode) =>
+        this with { Mode = mode };
 
     public uint ToUInt32()
     {

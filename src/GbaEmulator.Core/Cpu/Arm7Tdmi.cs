@@ -47,7 +47,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
-            if (Registers.ProgramCounter == 0x0800153c)
+            if (Registers.ProgramCounter == 0x08001c8c)
             {
                 var x = 1;
             }
@@ -459,20 +459,16 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         var isPreIndex = BitUtils.IsBitSet(instruction, 24);
         var isUp = BitUtils.IsBitSet(instruction, 23);
-        //TODO: Later add modes
-        //var forcePsrOrUser = BitUtils.IsBitSet(instruction, 22);
+        var forcePsrOrUser = BitUtils.IsBitSet(instruction, 22);
         var isWriteback = BitUtils.IsBitSet(instruction, 21);
         var isLoad = BitUtils.IsBitSet(instruction, 20);
         var rn = (int)(instruction >> 16) & 0x0F;
 
         var registerList = (ushort)(instruction & 0xFFFF);
-        if (registerList == 0)
-        {
-            throw new NotSupportedException("Empty LDM/STM Register list");
-        }
 
         int count = BitOperations.PopCount(registerList);
         uint bytes = (uint)(count * 4);
+        bytes = bytes == 0 ? 0x40 : bytes; //if zero transfer count act like full transfer 0x40
 
         uint baseAddress = rn == 15 ? Registers.ProgramCounter + 4 : Registers[rn];
 
@@ -490,6 +486,27 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 : baseAddress - bytes + 4;
         }
 
+        if (count == 0)
+        {
+            Registers[rn] = isUp ? Registers[rn] + 0x40 : Registers[rn] - 0x40;
+
+            if (isLoad)
+            {
+                Registers[15] = bus.Read32(startAddress & ~3u);
+            }
+            else
+            {
+                bus.Write32(startAddress, Registers[15] + 8);
+            }
+            return 2;
+        }
+
+        var currentMode = Cpsr.Mode;
+        if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15)) // system banked registers if r15 not in list and S=1
+        {
+            Cpsr = Cpsr.ChangeMode(CpuMode.System);
+        }
+
         uint address = startAddress;
 
         for (int tReg = 0; tReg < 16; tReg++)
@@ -500,7 +517,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
             if (isLoad)
             {
-                uint value = bus.Read32(address);
+                uint value = bus.Read32(address & ~3u);
                 if (tReg == 15)
                 {
                     //word align program counter
@@ -513,16 +530,28 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
             else
             {
-                uint value = tReg == 15
-                    ? Registers.ProgramCounter + 4
-                    : Registers[tReg];
-                bus.Write32(address, value);
+                if (tReg == rn && tReg != BitOperations.TrailingZeroCount(instruction))
+                {
+                    bus.Write32(address, finalAddress);
+                }
+                else
+                {
+                    uint value = tReg == 15
+                        ? Registers.ProgramCounter + 8
+                        : Registers[tReg];
+                    bus.Write32(address, value);
+                }
             }
 
             address += 4;
         }
 
-        if (isWriteback)
+        if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15))
+        {
+            Cpsr = Cpsr.ChangeMode(currentMode);
+        }
+
+        if (isWriteback && (!isLoad || !BitUtils.IsBitSet(instruction, rn))) // no writeback for ldm if rn is in Rlist
         {
             Registers[rn] = finalAddress;
         }
@@ -657,6 +686,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             ? updatedAddress
             : baseAddress;
 
+        uint loadedValue = 0;
         if (isLoad)
         {
             switch (opCode)
@@ -664,14 +694,21 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 case 0b00: //reserved for swp
                     throw new NotSupportedException("opcode 0b00 should be reserved for a SWP instruction");
                 case 0b01: //unsigned halfword
-                    Registers[rd] = bus.Read16(effectiveAddress);
+                    loadedValue = bus.Read16(effectiveAddress);
+                    loadedValue = BitOperations.RotateRight(loadedValue, (int)((effectiveAddress & 1u) * 8));
                     break;
                 case 0b10: //signed byte
-                    Registers[rd] = (uint)(sbyte)bus.Read8(effectiveAddress);
+                    loadedValue = (uint)(sbyte)bus.Read8(effectiveAddress);
                     break;
                 case 0b11: //signed halfword
                     var rawHalfword = bus.Read16(effectiveAddress);
-                    Registers[rd] = (uint)BitUtils.SignExtend(rawHalfword, 16);
+                    if ((effectiveAddress & 1) != 0)
+                    {
+                        loadedValue = (uint)BitUtils.SignExtend((rawHalfword >> 8) & 0xff, 8);
+                        break;
+                    }
+                    loadedValue = (uint)BitUtils.SignExtend(rawHalfword, 16);
+
                     break;
                 default:
                     throw new NotSupportedException("not a possible opcode for this singed/halfword data transfer");
@@ -698,6 +735,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         if (isPreIndex && isWriteback || !isPreIndex)
         {
             Registers[rn] = updatedAddress;
+        }
+
+        if (isLoad)
+        {
+            Registers[rd] = loadedValue;
         }
     }
     private void ExecuteMrs(uint instruction)

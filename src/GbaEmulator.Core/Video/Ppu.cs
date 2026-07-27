@@ -332,20 +332,12 @@ public sealed class Ppu
             return;
         }
 
-        if (y == 76)
-        {
-            var x = 1;
-        }
-
         for (var x = 0; x < ScreenWidth; x++)
         {
             var startOffset = !useFrame1 ? 0 : 0xA000;
             var vramPixelOffset = (y * ScreenWidth) + x + startOffset;
             var paletteIndex = ReadVram8(vramPixelOffset);
-            if (paletteIndex != 0)
-            {
-                var z = 0;
-            }
+
             var color = ReadBgPaletteColor(paletteIndex);
 
             FrameBuffer.SetPixel(x, y, color);
