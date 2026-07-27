@@ -24,6 +24,7 @@ public sealed class GbaBus(GbaMemory memory)
         uint raw = region switch
         {
             MemoryRegion.Io => memory.Io.ReadIo32Aligned(aligned),
+            MemoryRegion.Unused => 0,
             _ => (uint)((buffer[offset + 3] << 24) | (buffer[offset + 2] << 16) | (buffer[offset + 1] << 8) |
                         buffer[offset])
         };
