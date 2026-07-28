@@ -127,16 +127,16 @@ public sealed class IoRegisters
                 REG_BG2PD = value;
                 break;
             case 0x04000028:
-                REG_BG2X = 0; //shiftlater
+                REG_BG2X = (REG_BG2X & 0xFF00) | value; //set low bytes
                 break;
             case 0x0400002A:
-                REG_BG2X = 0; //shiftlater
+                REG_BG2X = ((REG_BG2X & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
                 break;
             case 0x0400002C:
-                REG_BG2Y = 0; //shiftlater
+                REG_BG2Y = (REG_BG2Y & 0xFF00) | value; //set low bytes
                 break;
             case 0x0400002E:
-                REG_BG2Y = 0; //shiftlater
+                REG_BG2Y = ((REG_BG2Y & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
                 break;
             case 0x04000030:
                 REG_BG3PA = value;
@@ -151,16 +151,16 @@ public sealed class IoRegisters
                 REG_BG3PD = value;
                 break;
             case 0x04000038:
-                REG_BG3X = 0; //shiftlater
+                REG_BG3X = (REG_BG3X & 0xFF00) | value; //set low bytes
                 break;
             case 0x0400003A:
-                REG_BG3X = 0; //shiftlater
+                REG_BG3X = ((REG_BG3X & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
                 break;
             case 0x0400003C:
-                REG_BG3Y = 0; //shiftlater
+                REG_BG3Y = (REG_BG3Y & 0xFF00) | value; //set low bytes
                 break;
             case 0x0400003E:
-                REG_BG3Y = 0; //shiftlater
+                REG_BG3Y = ((REG_BG3Y & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
                 break;
             case 0x04000040:
                 REG_WIN0H = value;
@@ -191,6 +191,11 @@ public sealed class IoRegisters
                 break;
             case 0x04000054:
                 REG_BLDY = 1;
+                break;
+            #endregion
+            #region Sound
+            case 0x04000088:
+                REG_SOUNDBIAS = value;
                 break;
             #endregion
             #region Dma
@@ -371,18 +376,18 @@ public sealed class IoRegisters
             0x04000022 => REG_BG2PB,
             0x04000024 => REG_BG2PC,
             0x04000026 => REG_BG2PD,
-            0x04000028 => (ushort)REG_BG2X, //shiftlater
-            0x0400002A => (ushort)REG_BG2X, //shiftlater
-            0x0400002C => (ushort)REG_BG2Y, //shiftlater
-            0x0400002E => (ushort)REG_BG2Y, //shiftlater
+            0x04000028 => (ushort)REG_BG2X,
+            0x0400002A => (ushort)(REG_BG2X >> 16),
+            0x0400002C => (ushort)REG_BG2Y,
+            0x0400002E => (ushort)(REG_BG2Y >> 16),
             0x04000030 => REG_BG3PA,
             0x04000032 => REG_BG3PB,
             0x04000034 => REG_BG3PC,
             0x04000036 => REG_BG3PD,
-            0x04000038 => (ushort)REG_BG3X, //shiftlater
-            0x0400003A => (ushort)REG_BG3X, //shiftlater
-            0x0400003C => (ushort)REG_BG3Y, //shiftlater
-            0x0400003E => (ushort)REG_BG3Y, //shiftlater
+            0x04000038 => (ushort)REG_BG3X,
+            0x0400003A => (ushort)(REG_BG3X >> 16),
+            0x0400003C => (ushort)REG_BG3Y,
+            0x0400003E => (ushort)(REG_BG3Y >> 16),
             0x04000040 => REG_WIN0H,
             0x04000042 => REG_WIN1H,
             0x04000044 => REG_WIN0V,
@@ -394,7 +399,9 @@ public sealed class IoRegisters
             0x04000052 => REG_BLDALPHA,
             0x04000054 => REG_BLDY,
             #endregion
-            //Sound
+            #region Sound
+            0x04000088 => REG_SOUNDBIAS,
+            #endregion
             #region Dma
             0x040000B0 => (ushort)REG_DMA0SAD, //shiftlater
             0x040000B4 => (ushort)REG_DMA0DAD, //shiftlater
@@ -503,7 +510,7 @@ public sealed class IoRegisters
     /// <summary>
     /// 0x04000020
     /// </summary>
-    public ushort REG_BG2PA { get; set; }
+    public ushort REG_BG2PA { get; set; } = 0x0100;
     /// <summary>
     /// 0x04000022
     /// </summary>
@@ -515,7 +522,7 @@ public sealed class IoRegisters
     /// <summary>
     /// 0x04000026
     /// </summary>
-    public ushort REG_BG2PD { get; set; }
+    public ushort REG_BG2PD { get; set; } = 0x0100;
     /// <summary>
     /// 0x04000028
     /// </summary>
@@ -527,7 +534,7 @@ public sealed class IoRegisters
     /// <summary>
     /// 0x04000030
     /// </summary>
-    public ushort REG_BG3PA { get; set; }
+    public ushort REG_BG3PA { get; set; } = 0x0100;
     /// <summary>
     /// 0x04000032
     /// </summary>
@@ -539,7 +546,7 @@ public sealed class IoRegisters
     /// <summary>
     /// 0x04000036
     /// </summary>
-    public ushort REG_BG3PD { get; set; }
+    public ushort REG_BG3PD { get; set; } = 0x0100;
     /// <summary>
     /// 0x04000038
     /// </summary>
@@ -786,7 +793,7 @@ public sealed class IoRegisters
     #endregion
 
     #region Interrupts
-    
+
     /// <summary>
     /// 0x04000200
     /// </summary>
@@ -800,9 +807,9 @@ public sealed class IoRegisters
     /// </summary>
     public bool REG_IME { get; set; }
     #endregion
-    
+
     #region Cartridge and System Control
-    
+
     /// <summary>
     /// 0x04000204
     /// </summary>

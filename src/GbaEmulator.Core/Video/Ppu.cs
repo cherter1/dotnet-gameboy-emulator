@@ -177,6 +177,10 @@ public sealed class Ppu
     private void RenderScanLine(int scanLine)
     {
         var modeBits = _memory.Io.REG_DISPCNT & 0x7; //bits 0-2
+        if ((_memory.Io.REG_DISPCNT & 0x80) == 0x80) //if bit 7 is set force blank
+        {
+            modeBits = 0xff;
+        }
         switch (modeBits)
         {
             case 0:
@@ -184,9 +188,11 @@ public sealed class Ppu
                 break;
             case 1:
                 //render mode 1
+                RenderMode1(scanLine);
                 break;
             case 2:
                 //render mode 2
+                RenderMode2(scanLine);
                 break;
             case 3:
                 //render mode 3
@@ -297,18 +303,72 @@ public sealed class Ppu
         
     }
 
+    private void RenderMode2(int y)
+    {
+        var displayControl = _memory.Io.REG_DISPCNT;
+
+        var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
+        var bg3Enabled = BitUtils.IsBitSet(displayControl, 11);
+        if (!bg2Enabled && !bg3Enabled)
+        {
+            return;
+        }
+        //temp
+        if (!bg3Enabled)
+        {
+            return;
+        }
+
+        var bg2Control = _memory.Io.REG_BG2CNT;
+        var bg3Control = _memory.Io.REG_BG3CNT;
+
+        var bg3x = _memory.Io.REG_BG3X;
+        var bg3y = _memory.Io.REG_BG3Y;
+
+        if (y == 34)
+        {
+            var z = 1;
+        }
+        //8bpp mode only for r/s bg
+        for (int x = 0; x < ScreenWidth; x++)
+        {
+            //bg3
+            var wrapAround = BitUtils.IsBitSet(bg3Control, 13);
+            // r/s backgrounds
+            // 00 = 128x128 (16x16 tiles)
+            // 01 = 256x256 (32x32 tiles)
+            // 10 = 512x512 (64x64 tiles)
+            // 11 = 1024x1024 (128x128 tiles)
+            var tileMapSizeMode = (bg3Control >> 14) & 0b11; //maybe prvt getsize method?
+
+            var charBaseBlock = (bg3Control >> 2) & 0b11; //bgXcnt bits 2-3
+            var charDataStartOffset = charBaseBlock * 0x4000;
+            var screenBaseBlock = (bg3Control >> 8) & 0x1F; //bgXcnt bits 8-12
+            var tileMapStartOffset = screenBaseBlock * 0x800;
+
+            var tileMapIndex = ((y / 8) * 32) // change 32 to the number of tiles in a row
+                             + (x / 8);
+            var mapAddress = tileMapStartOffset + tileMapIndex;
+            var tileNumber = ReadVram8(mapAddress);
+            var currentTileStartOffset = charDataStartOffset + tileNumber * 64; //size of tile in bytes
+            var yTileOffset = y % 8;
+            var xTileOffset = x % 8;
+            var tilePixelOffset = (yTileOffset * 8) + xTileOffset;
+            var q = currentTileStartOffset + tilePixelOffset;
+            var paletteIndex = ReadVram8(q);
+            var color = ReadBgPaletteColor(paletteIndex);
+
+            FrameBuffer.SetPixel(x, y, color);
+        }
+    }
+
     private void RenderMode3(int y)
     {
         for (var x = 0; x < ScreenWidth; x++)
         {
             var offset = ((y * ScreenWidth) + x) * 2;
-            if (offset + 1 >= _memory.Vram.Length)
-            {
-                FrameBuffer.SetPixel(x, y, 0xFF000000);
-                continue;
-            }
 
-            var bgr555 = (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
+            var bgr555 = ReadVram16(offset);
             FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
         }
     }
