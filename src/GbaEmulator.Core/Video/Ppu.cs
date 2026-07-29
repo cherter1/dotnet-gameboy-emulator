@@ -177,10 +177,11 @@ public sealed class Ppu
     private void RenderScanLine(int scanLine)
     {
         var modeBits = _memory.Io.REG_DISPCNT & 0x7; //bits 0-2
-        if ((_memory.Io.REG_DISPCNT & 0x80) == 0x80) //if bit 7 is set force blank
+        if (BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 7)) //if bit 7 is set force blank
         {
             modeBits = 0xff;
         }
+
         switch (modeBits)
         {
             case 0: //tile/map based text mode
@@ -305,12 +306,8 @@ public sealed class Ppu
 
         var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
         var bg3Enabled = BitUtils.IsBitSet(displayControl, 11);
-        if (!bg2Enabled && !bg3Enabled)
-        {
-            return;
-        }
-        //temp
-        if (!bg3Enabled)
+        var objEnable = BitUtils.IsBitSet(displayControl, 12);
+        if (!bg2Enabled && !bg3Enabled && !objEnable)
         {
             return;
         }
@@ -321,10 +318,6 @@ public sealed class Ppu
         var bg3x = _memory.Io.REG_BG3X;
         var bg3y = _memory.Io.REG_BG3Y;
 
-        if (y == 34)
-        {
-            var z = 1;
-        }
         //8bpp mode only for r/s bg
         for (int x = 0; x < ScreenWidth; x++)
         {
@@ -350,16 +343,155 @@ public sealed class Ppu
             var yTileOffset = y % 8;
             var xTileOffset = x % 8;
             var tilePixelOffset = (yTileOffset * 8) + xTileOffset;
-            var q = currentTileStartOffset + tilePixelOffset;
-            var paletteIndex = ReadVram8(q);
+            var currentPixelDataOffset = currentTileStartOffset + tilePixelOffset;
+            var paletteIndex = ReadVram8(currentPixelDataOffset);
             var color = ReadBgPaletteColor(paletteIndex);
 
-            FrameBuffer.SetPixel(x, y, color);
+            if (bg3Enabled) //temp
+            {
+                FrameBuffer.SetPixel(x, y, color);
+            }
 
             //sprites
             //sprite map data starts at 0x06010000
             //sprite palette starts at 0x05000200
+            //0
+            //20 26  |  ad c2  |  40 0a  |  00 01
+            //6
+            //20 26 |  22  ce  |  00 08  |  00 00
+            //7
+            //66 64  |  37 c0  |  40 5b  |  04 00
+            //6
+            //66 64  |  77 c0  |  50 5b  |  04 00
+            if (y == 112 && x == 65)
+            {
+                var z = 1;
+            }
+            for (int s = 0; s < 128; s++)
+            {
+                var startOffset = s * 8;
+
+                var attr0Value = ReadOam16(startOffset);
+                var attr0 = new ObjAttribute0(attr0Value);
+                if (!attr0.IsRotationScaling && attr0.IsDisabled)
+                {
+                    continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
+                }
+
+                var attr1Value = ReadOam16(startOffset + 2);
+                var attr1 = new ObjAttribute1(attr1Value);
+                var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
+                int xTiles = 0;
+                int yTiles = 0;
+                switch (shapeSize)
+                {
+                    case 0b00_00:
+                        //8x8 pixels
+                        xTiles = 1;
+                        yTiles = 1;
+                        break;
+                    case 0b00_01:
+                        //16x16 pixels
+                        xTiles = 2;
+                        yTiles = 2;
+                        break;
+                    case 0b00_10:
+                        //32x32 pixels
+                        xTiles = 4;
+                        yTiles = 4;
+                        break;
+                    case 0b00_11:
+                        //64x64 pixels
+                        xTiles = 8;
+                        yTiles = 8;
+                        break;
+                    case 0b01_00:
+                        //16x8 pixels
+                        xTiles = 2;
+                        yTiles = 1;
+                        break;
+                    case 0b01_01:
+                        //32x8 pixels
+                        xTiles = 32;
+                        yTiles = 8;
+                        break;
+                    case 0b01_10:
+                        //32x16 pixels
+                        xTiles = 4;
+                        yTiles = 2;
+                        break;
+                    case 0b01_11:
+                        //64x32 pixels
+                        xTiles = 8;
+                        yTiles = 4;
+                        break;
+                    case 0b10_00:
+                        //8x16 pixels
+                        xTiles = 1;
+                        yTiles = 2;
+                        break;
+                    case 0b10_01:
+                        //8x32 pixels
+                        xTiles = 1;
+                        yTiles = 4;
+                        break;
+                    case 0b10_10:
+                        //16x32 pixels
+                        xTiles = 2;
+                        yTiles = 4;
+                        break;
+                    case 0b10_11:
+                        //32x64 pixels
+                        xTiles = 4;
+                        yTiles = 8;
+                        break;
+                }
+
+                var attr2Value = ReadOam16(startOffset + 4);
+                var attr2 = new ObjAttribute2(attr2Value);
+                var spriteStartTileOffset = attr2.TileNumber * 32; // + 0x06010000 may need to divide by 2 and mult by 64 based on palette mode if not divisible correctly
+                //only for non r/s sprites
+                bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
+                bool objXRange = (x >= attr1.XCoord) && (x < attr1.XCoord + (xTiles * 8));
+                if (objYRange && objXRange)
+                {
+                    //check priority
+                    var currentXTileNumber = (x - attr1.XCoord) / 8;
+                    var currentXPixelNumber = (x - attr1.XCoord) % 8;
+                    var currentYTileNumber = (y - attr0.YCoord) / 8;
+                    var currentYPixelNumber = (y - attr0.YCoord) % 8;
+                    var currentTile = (currentYTileNumber * xTiles) + currentXTileNumber;
+                    var currentTileOffset = spriteStartTileOffset + ((currentTile * 2) * 0x40); //0x40 is tile size and 2 because only every other tile can be used in 8bppMode, when its 4bpp mode it may be 0x20 and not multby 2 also may not be applicable to Mode2
+                    //only for single palette mode else * 4 bc 4bpp
+                    var currentPixOffset = currentTileOffset + (currentYPixelNumber * 8) + currentXPixelNumber;
+                    var objPaletteIndex = ReadVram8(currentPixOffset + 0x10000);
+                    if (objPaletteIndex == 0)
+                    {
+                        continue; // dont draw if zero index, pixel should be transparent
+                    }
+                    var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
+                    FrameBuffer.SetPixel(x, y, objPixelColor);
+                }
+
+                ushort attr3 = ReadOam16(startOffset + 6);
+            }
         }
+    }
+
+    private uint ReadObjPaletteColor(int paletteIndex)
+    {
+        var offset = paletteIndex * 2;
+        var bgr555 = ReadPalette16(offset + 0x200);
+        return ConvertBgr555ToArgb(bgr555);
+    }
+
+    private ushort ReadOam16(int offset)
+    {
+        if (offset < 0 || offset + 1 >= _memory.Oam.Length)
+        {
+            return 0;
+        }
+        return (ushort)(_memory.Oam[offset] | (_memory.Oam[offset + 1] << 8));
     }
 
     private void RenderMode3(int y)
@@ -408,6 +540,8 @@ public sealed class Ppu
     {
         for (var x = 0; x < ScreenWidth; x++)
         {
+            FrameBuffer.SetPixel(x, y, 0xFFffff1d);
+            continue;
             var red = (byte)(x * 255 / ScreenWidth);
             var green = (byte)(y * 255 / ScreenHeight);
             var blue = (byte)(((x / 8) ^ (y / 8)) * 18);
