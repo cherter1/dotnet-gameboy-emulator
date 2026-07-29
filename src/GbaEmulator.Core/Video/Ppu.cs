@@ -183,26 +183,22 @@ public sealed class Ppu
         }
         switch (modeBits)
         {
-            case 0:
+            case 0: //tile/map based text mode
                 RenderMode0(scanLine);
                 break;
-            case 1:
-                //render mode 1
+            case 1: //tile/map based text mode
                 RenderMode1(scanLine);
                 break;
-            case 2:
-                //render mode 2
+            case 2: //tile/map based rotation/scaling mode
                 RenderMode2(scanLine);
                 break;
-            case 3:
-                //render mode 3
+            case 3: //bitmap based mode for still images
                 RenderMode3(scanLine);
                 break;
-            case 4:
-                //render mode 4
+            case 4: //bitmap based mode
                 RenderMode4(scanLine);
                 break;
-            case 5:
+            case 5: //bitmap based mode
                 //render mode 5
                 break;
             default:
@@ -347,7 +343,7 @@ public sealed class Ppu
             var tileMapStartOffset = screenBaseBlock * 0x800;
 
             var tileMapIndex = ((y / 8) * 32) // change 32 to the number of tiles in a row
-                             + (x / 8);
+                               + (x / 8);
             var mapAddress = tileMapStartOffset + tileMapIndex;
             var tileNumber = ReadVram8(mapAddress);
             var currentTileStartOffset = charDataStartOffset + tileNumber * 64; //size of tile in bytes
@@ -359,6 +355,10 @@ public sealed class Ppu
             var color = ReadBgPaletteColor(paletteIndex);
 
             FrameBuffer.SetPixel(x, y, color);
+
+            //sprites
+            //sprite map data starts at 0x06010000
+            //sprite palette starts at 0x05000200
         }
     }
 
