@@ -203,8 +203,8 @@ public sealed class Ppu
                 //render mode 5
                 break;
             default:
-                //not valid mode just render jibber jabber
-                RenderFallbackPattern(scanLine);
+                //should only be used when forceBlank bit is set in DisplayControl register
+                FrameBuffer.FillScanline(scanLine, 0xffffff1d); //tmep yellow color for testing
                 break;
         }
     }
@@ -533,19 +533,6 @@ public sealed class Ppu
             var color = ReadBgPaletteColor(paletteIndex);
 
             FrameBuffer.SetPixel(x, y, color);
-        }
-    }
-
-    private void RenderFallbackPattern(int y)
-    {
-        for (var x = 0; x < ScreenWidth; x++)
-        {
-            FrameBuffer.SetPixel(x, y, 0xFFffff1d);
-            continue;
-            var red = (byte)(x * 255 / ScreenWidth);
-            var green = (byte)(y * 255 / ScreenHeight);
-            var blue = (byte)(((x / 8) ^ (y / 8)) * 18);
-            FrameBuffer.SetPixel(x, y, 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue);
         }
     }
 

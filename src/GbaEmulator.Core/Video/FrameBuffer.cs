@@ -1,3 +1,6 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 namespace GbaEmulator.Core.Video;
 
 public sealed class FrameBuffer
@@ -22,6 +25,12 @@ public sealed class FrameBuffer
         }
 
         _pixels[y * Width + x] = argb;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void FillScanline(int scanline, uint value)
+    {
+        _pixels.AsSpan().Slice(scanline * Width, Width).Fill(value);
     }
 
     public void CopyToBgra32(Span<byte> destination)
