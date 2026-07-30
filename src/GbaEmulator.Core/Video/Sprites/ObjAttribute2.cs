@@ -1,6 +1,6 @@
-namespace GbaEmulator.Core.Video;
+namespace GbaEmulator.Core.Video.Sprites;
 
-public ref struct ObjAttribute2
+public readonly struct ObjAttribute2
 {
     public int TileNumber { get; init; }
 

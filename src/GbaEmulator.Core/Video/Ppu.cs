@@ -1,7 +1,9 @@
+using System.Runtime.CompilerServices;
 using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
+using GbaEmulator.Core.Video.Sprites;
 
 namespace GbaEmulator.Core.Video;
 
@@ -363,7 +365,7 @@ public sealed class Ppu
             //66 64  |  37 c0  |  40 5b  |  04 00
             //6
             //66 64  |  77 c0  |  50 5b  |  04 00
-            if (y == 112 && x == 65)
+            if (y == 112 && x == 73)
             {
                 var z = 1;
             }
@@ -381,75 +383,11 @@ public sealed class Ppu
                 var attr1Value = ReadOam16(startOffset + 2);
                 var attr1 = new ObjAttribute1(attr1Value);
                 var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
-                int xTiles = 0;
-                int yTiles = 0;
-                switch (shapeSize)
-                {
-                    case 0b00_00:
-                        //8x8 pixels
-                        xTiles = 1;
-                        yTiles = 1;
-                        break;
-                    case 0b00_01:
-                        //16x16 pixels
-                        xTiles = 2;
-                        yTiles = 2;
-                        break;
-                    case 0b00_10:
-                        //32x32 pixels
-                        xTiles = 4;
-                        yTiles = 4;
-                        break;
-                    case 0b00_11:
-                        //64x64 pixels
-                        xTiles = 8;
-                        yTiles = 8;
-                        break;
-                    case 0b01_00:
-                        //16x8 pixels
-                        xTiles = 2;
-                        yTiles = 1;
-                        break;
-                    case 0b01_01:
-                        //32x8 pixels
-                        xTiles = 32;
-                        yTiles = 8;
-                        break;
-                    case 0b01_10:
-                        //32x16 pixels
-                        xTiles = 4;
-                        yTiles = 2;
-                        break;
-                    case 0b01_11:
-                        //64x32 pixels
-                        xTiles = 8;
-                        yTiles = 4;
-                        break;
-                    case 0b10_00:
-                        //8x16 pixels
-                        xTiles = 1;
-                        yTiles = 2;
-                        break;
-                    case 0b10_01:
-                        //8x32 pixels
-                        xTiles = 1;
-                        yTiles = 4;
-                        break;
-                    case 0b10_10:
-                        //16x32 pixels
-                        xTiles = 2;
-                        yTiles = 4;
-                        break;
-                    case 0b10_11:
-                        //32x64 pixels
-                        xTiles = 4;
-                        yTiles = 8;
-                        break;
-                }
+                SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
 
                 var attr2Value = ReadOam16(startOffset + 4);
                 var attr2 = new ObjAttribute2(attr2Value);
-                var spriteStartTileOffset = attr2.TileNumber * 32; // + 0x06010000 may need to divide by 2 and mult by 64 based on palette mode if not divisible correctly
+                //var spriteStartTileOffset = attr2.TileNumber * 32; // + 0x06010000 may need to divide by 2 based on palette mode if not divisible correctly
                 //only for non r/s sprites
                 bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
                 bool objXRange = (x >= attr1.XCoord) && (x < attr1.XCoord + (xTiles * 8));
@@ -460,14 +398,16 @@ public sealed class Ppu
                     var currentXPixelNumber = (x - attr1.XCoord) % 8;
                     var currentYTileNumber = (y - attr0.YCoord) / 8;
                     var currentYPixelNumber = (y - attr0.YCoord) % 8;
-                    var currentTile = (currentYTileNumber * xTiles) + currentXTileNumber;
-                    var currentTileOffset = spriteStartTileOffset + ((currentTile * 2) * 0x40); //0x40 is tile size and 2 because only every other tile can be used in 8bppMode, when its 4bpp mode it may be 0x20 and not multby 2 also may not be applicable to Mode2
+                    // DISPCNT bit 6 cleared (2d character mapping) && 8bpp 16x32 tiles
+                    //div 2 on tilenumber only in 8bpp
+                    var currentMapTileNumber = (attr2.TileNumber/2) + (currentYTileNumber * 16) + currentXTileNumber;
+                    var currentTileOffset = (currentMapTileNumber * 0x40) + 0x10000; //0x40 is tile size in 8bppMode
                     //only for single palette mode else * 4 bc 4bpp
                     var currentPixOffset = currentTileOffset + (currentYPixelNumber * 8) + currentXPixelNumber;
-                    var objPaletteIndex = ReadVram8(currentPixOffset + 0x10000);
+                    var objPaletteIndex = ReadVram8(currentPixOffset);
                     if (objPaletteIndex == 0)
                     {
-                        continue; // dont draw if zero index, pixel should be transparent
+                        //continue; // dont draw if zero index, pixel should be transparent
                     }
                     var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
                     FrameBuffer.SetPixel(x, y, objPixelColor);
@@ -478,11 +418,38 @@ public sealed class Ppu
         }
     }
 
-    private uint ReadObjPaletteColor(int paletteIndex)
+    private void SpriteStuff_Temp(int y)
     {
-        var offset = paletteIndex * 2;
-        var bgr555 = ReadPalette16(offset + 0x200);
-        return ConvertBgr555ToArgb(bgr555);
+        var oam = _memory.Oam.AsSpan();
+        for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset +=8 ) //loop runs for sprites 0-127
+        {
+            var attr0Value = ReadOam16(oam, oamAttrOffset);
+            var attr0 = new ObjAttribute0(attr0Value);
+            var isSinglePalette = attr0.IsSinglePalette;//just here for later so i remember
+            if (attr0 is { IsRotationScaling: false, IsDisabled: true })
+            {
+                continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
+            }
+
+            var attr1Value = ReadOam16(oam, oamAttrOffset + 2);
+            var attr1 = new ObjAttribute1(attr1Value);
+            var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
+            SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
+
+            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
+
+            var attr2Value = ReadOam16(oam, oamAttrOffset + 4);
+            var attr2 = new ObjAttribute2(attr2Value);
+
+
+            ushort attr3 = ReadOam16(oam, oamAttrOffset + 6);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ushort ReadOam16(ReadOnlySpan<byte> oam, int offset)
+    {
+        return (ushort)((oam[offset + 1] << 8) | oam[offset]);
     }
 
     private ushort ReadOam16(int offset)
@@ -534,6 +501,13 @@ public sealed class Ppu
 
             FrameBuffer.SetPixel(x, y, color);
         }
+    }
+
+    private uint ReadObjPaletteColor(int paletteIndex)
+    {
+        var offset = paletteIndex * 2;
+        var bgr555 = ReadPalette16(offset + 0x200);
+        return ConvertBgr555ToArgb(bgr555);
     }
 
     private static uint ConvertBgr555ToArgb(ushort value)

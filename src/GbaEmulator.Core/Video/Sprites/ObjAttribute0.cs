@@ -1,8 +1,8 @@
 using GbaEmulator.Core.Common;
 
-namespace GbaEmulator.Core.Video;
+namespace GbaEmulator.Core.Video.Sprites;
 
-public ref struct ObjAttribute0
+public readonly struct ObjAttribute0
 {
     public int YCoord { get; init; }
 
