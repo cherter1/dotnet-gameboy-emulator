@@ -321,6 +321,9 @@ public sealed class Ppu
         var bg3y = _memory.Io.REG_BG3Y;
 
         //8bpp mode only for r/s bg
+        Span<ScanlineSpriteInfo> sprites = stackalloc ScanlineSpriteInfo[128];
+        var spriteCount = SpriteStuff_TempName(y, sprites);
+
         for (int x = 0; x < ScreenWidth; x++)
         {
             //bg3
@@ -369,59 +372,41 @@ public sealed class Ppu
             {
                 var z = 1;
             }
-            for (int s = 0; s < 128; s++)
+
+            for (int objIndex = 0; objIndex < spriteCount; objIndex++)
             {
-                var startOffset = s * 8;
+                ref readonly var sprite = ref sprites[objIndex];
 
-                var attr0Value = ReadOam16(startOffset);
-                var attr0 = new ObjAttribute0(attr0Value);
-                if (!attr0.IsRotationScaling && attr0.IsDisabled)
+                bool objXRange = (x >= sprite.XCoord) && (x < sprite.XCoord + (sprite.NumXTiles * (sprite.IsSinglePalette ? 8 : 4)));
+                if (!objXRange)
                 {
-                    continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
+                    continue;
                 }
 
-                var attr1Value = ReadOam16(startOffset + 2);
-                var attr1 = new ObjAttribute1(attr1Value);
-                var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
-                SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
-
-                var attr2Value = ReadOam16(startOffset + 4);
-                var attr2 = new ObjAttribute2(attr2Value);
-                //var spriteStartTileOffset = attr2.TileNumber * 32; // + 0x06010000 may need to divide by 2 based on palette mode if not divisible correctly
-                //only for non r/s sprites
-                bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
-                bool objXRange = (x >= attr1.XCoord) && (x < attr1.XCoord + (xTiles * 8));
-                if (objYRange && objXRange)
+                var currentXTileNumber = (x - sprite.XCoord) / 8;
+                var currentXPixelNumber = (x - sprite.XCoord) % 8;
+                var currentMapTileNumber = sprite.ScanlineStartMapTileNumber + currentXTileNumber;
+                var currentTileOffset = 0x10000 + (currentMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
+                var currentPixOffset = currentTileOffset + sprite.YPixelOffset + currentXPixelNumber;
+                var objPaletteIndex = ReadVram8(currentPixOffset);
+                if (objPaletteIndex == 0)
                 {
-                    //check priority
-                    var currentXTileNumber = (x - attr1.XCoord) / 8;
-                    var currentXPixelNumber = (x - attr1.XCoord) % 8;
-                    var currentYTileNumber = (y - attr0.YCoord) / 8;
-                    var currentYPixelNumber = (y - attr0.YCoord) % 8;
-                    // DISPCNT bit 6 cleared (2d character mapping) && 8bpp 16x32 tiles
-                    //div 2 on tilenumber only in 8bpp
-                    var currentMapTileNumber = (attr2.TileNumber / 2) + (currentYTileNumber * 16) + currentXTileNumber;
-                    var currentTileOffset = (currentMapTileNumber * 0x40) + 0x10000; //0x40 is tile size in 8bppMode
-                    //only for single palette mode else * 4 bc 4bpp
-                    var currentPixOffset = currentTileOffset + (currentYPixelNumber * 8) + currentXPixelNumber;
-                    var objPaletteIndex = ReadVram8(currentPixOffset);
-                    if (objPaletteIndex == 0)
-                    {
-                        //continue; // dont draw if zero index, pixel should be transparent
-                    }
-                    var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
-                    FrameBuffer.SetPixel(x, y, objPixelColor);
+                    continue; // dont draw if zero index, pixel should be transparent
                 }
-
-                ushort attr3 = ReadOam16(startOffset + 6);
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
+                FrameBuffer.SetPixel(x, y, objPixelColor);
             }
         }
     }
 
-    private void SpriteStuff_Temp(int y)
+    private int SpriteStuff_TempName(int y, Span<ScanlineSpriteInfo> sprites)
     {
+        int count = 0;
         var oam = _memory.Oam.AsSpan();
-        int priorityLine = 0xff;
+
+        //int maxCyclesPerLine = 1210; //1210 only for dispcnt bit5 == 0, if bit5 set max cycles becomes 954
+        //int objRenderingCyclesUsed = 0;
+        //int priorityLine = 0xff;
         for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset += 8) //loop runs for sprites 0-127
         {
             var attr0Value = ReadOam16(oam, oamAttrOffset);
@@ -434,7 +419,7 @@ public sealed class Ppu
 
             if (attr0.IsRotationScaling)
             {
-                continue; //temp
+                //continue; //temp
                 //do affine
             }
 
@@ -445,21 +430,102 @@ public sealed class Ppu
             SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
 
             //only * 8 for 8bpp mode in 4bpp mode its * 4 since each byte represents 2 pix of a tile
-            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
+            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * (isSinglePalette ? 8 : 4)));
+
+            if (!objYRange)
+            {
+                continue;
+            }
+
             var attr2Value = ReadOam16(oam, oamAttrOffset + 4);
             var attr2 = new ObjAttribute2(attr2Value);
 
-            if (objYRange && attr2.Priority <= priorityLine)
+            var yAbsolute = y - attr0.YCoord;
+
+            var yPixelOffset = (yAbsolute % 8) * 4;
+            var startTileNumber = attr2.TileNumber;
+            var twoDMatrixSize = 32;
+
+            if (isSinglePalette)
             {
-                priorityLine = attr2.Priority;
-                //add to list for display reg sprites
+                startTileNumber /= 2;
+                yPixelOffset *= 2;
+                twoDMatrixSize = 16;
             }
 
+            var currentYTileNumber = yAbsolute / 8;
+            int scanlineStartMapTileNumber;
+            if ((_memory.Io.REG_DISPCNT & 0x40) == 0x40) //bit 6 set then 1d char mapping
+            {
+
+                scanlineStartMapTileNumber = startTileNumber + (currentYTileNumber * xTiles);
+            }
+            else //bit 6 clear 2d character mapping
+            {
+                scanlineStartMapTileNumber = startTileNumber + (currentYTileNumber * twoDMatrixSize);
+            }
+
+            var regSpriteInfo = new ScanlineSpriteInfo(scanlineStartMapTileNumber, isSinglePalette, attr2.PaletteNumber, yPixelOffset,
+                attr2.Priority, xTiles, attr1.XCoord);
+            //add to list for display reg sprites
+            sprites[count++] = regSpriteInfo;
+
             //affine only affine
-            ushort attr3 = ReadOam16(oam, oamAttrOffset + 6);
+            //ushort attr3 = ReadOam16(oam, oamAttrOffset + 6);
         }
+
+        return count;
     }
 
+    private void oldtemp(int y, int x)
+    {
+        for (int s = 0; s < 128; s++)
+        {
+            var startOffset = s * 8;
+
+            var attr0Value = ReadOam16(startOffset);
+            var attr0 = new ObjAttribute0(attr0Value);
+            if (!attr0.IsRotationScaling && attr0.IsDisabled)
+            {
+                continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
+            }
+
+            var attr1Value = ReadOam16(startOffset + 2);
+            var attr1 = new ObjAttribute1(attr1Value);
+            var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
+            SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
+
+            var attr2Value = ReadOam16(startOffset + 4);
+            var attr2 = new ObjAttribute2(attr2Value);
+            //var spriteStartTileOffset = attr2.TileNumber * 32; // + 0x06010000 may need to divide by 2 based on palette mode if not divisible correctly
+            //only for non r/s sprites
+            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
+            bool objXRange = (x >= attr1.XCoord) && (x < attr1.XCoord + (xTiles * 8));
+            if (objYRange && objXRange)
+            {
+                //check priority
+                var currentXTileNumber = (x - attr1.XCoord) / 8;
+                var currentXPixelNumber = (x - attr1.XCoord) % 8;
+                var currentYTileNumber = (y - attr0.YCoord) / 8;
+                var currentYPixelNumber = (y - attr0.YCoord) % 8;
+                // DISPCNT bit 6 cleared (2d character mapping) && 8bpp 16x32 tiles
+                //div 2 on tilenumber only in 8bpp
+                var currentMapTileNumber = (attr2.TileNumber / 2) + (currentYTileNumber * 16) + currentXTileNumber;
+                var currentTileOffset = (currentMapTileNumber * 0x40) + 0x10000; //0x40 is tile size in 8bppMode
+                //only for single palette mode else * 4 bc 4bpp
+                var currentPixOffset = currentTileOffset + (currentYPixelNumber * 8) + currentXPixelNumber;
+                var objPaletteIndex = ReadVram8(currentPixOffset);
+                if (objPaletteIndex == 0)
+                {
+                    //continue; // dont draw if zero index, pixel should be transparent
+                }
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
+                FrameBuffer.SetPixel(x, y, objPixelColor);
+            }
+
+            ushort attr3 = ReadOam16(startOffset + 6);
+        }
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ushort ReadOam16(ReadOnlySpan<byte> oam, int offset)
     {

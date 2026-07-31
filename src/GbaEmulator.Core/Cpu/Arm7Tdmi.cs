@@ -44,7 +44,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
             if (Registers.ProgramCounter % 2 == 1)
             {
-                DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+                //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             }
 
             if (Registers.ProgramCounter == 0x1bc4)
@@ -56,7 +56,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         catch (Exception)
         {
-            DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+            //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             throw;
         }
     }
@@ -185,10 +185,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
-                Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
-            DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+           // var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
+             //   pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
 
     }

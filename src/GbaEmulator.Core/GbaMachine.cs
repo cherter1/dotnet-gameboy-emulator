@@ -74,6 +74,7 @@ public sealed class GbaMachine
 
     private void RunCycles(int cycles)
     {
+        var iterations = 0;
         var consumed = 0;
         while (consumed < cycles)
         {
@@ -82,6 +83,8 @@ public sealed class GbaMachine
             Timers.Step(instructionCycles);
             Ppu.Step(instructionCycles, Bus);
             consumed += instructionCycles;
+            iterations += 1;
         }
+        //Console.WriteLine($"{iterations} iterations completed");
     }
 }
