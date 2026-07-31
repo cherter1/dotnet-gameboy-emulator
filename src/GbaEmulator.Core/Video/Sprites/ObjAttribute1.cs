@@ -23,6 +23,6 @@ public readonly struct ObjAttribute1
         RsParams = (attribute >> 9) & 0x1f;
         HorizontalMirrored = BitUtils.IsBitSet(attribute, 12);
         VerticalMirrored = BitUtils.IsBitSet(attribute, 13);
-        ObjSize = (uint)(attribute >> 14) & 0b11;
+        ObjSize = (uint)attribute >> 14;
     }
 }

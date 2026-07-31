@@ -400,7 +400,7 @@ public sealed class Ppu
                     var currentYPixelNumber = (y - attr0.YCoord) % 8;
                     // DISPCNT bit 6 cleared (2d character mapping) && 8bpp 16x32 tiles
                     //div 2 on tilenumber only in 8bpp
-                    var currentMapTileNumber = (attr2.TileNumber/2) + (currentYTileNumber * 16) + currentXTileNumber;
+                    var currentMapTileNumber = (attr2.TileNumber / 2) + (currentYTileNumber * 16) + currentXTileNumber;
                     var currentTileOffset = (currentMapTileNumber * 0x40) + 0x10000; //0x40 is tile size in 8bppMode
                     //only for single palette mode else * 4 bc 4bpp
                     var currentPixOffset = currentTileOffset + (currentYPixelNumber * 8) + currentXPixelNumber;
@@ -421,27 +421,41 @@ public sealed class Ppu
     private void SpriteStuff_Temp(int y)
     {
         var oam = _memory.Oam.AsSpan();
-        for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset +=8 ) //loop runs for sprites 0-127
+        int priorityLine = 0xff;
+        for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset += 8) //loop runs for sprites 0-127
         {
             var attr0Value = ReadOam16(oam, oamAttrOffset);
             var attr0 = new ObjAttribute0(attr0Value);
-            var isSinglePalette = attr0.IsSinglePalette;//just here for later so i remember
+            var isSinglePalette = attr0.IsSinglePalette; //just here for later so i remember
             if (attr0 is { IsRotationScaling: false, IsDisabled: true })
             {
                 continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
             }
 
+            if (attr0.IsRotationScaling)
+            {
+                continue; //temp
+                //do affine
+            }
+
             var attr1Value = ReadOam16(oam, oamAttrOffset + 2);
             var attr1 = new ObjAttribute1(attr1Value);
-            var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
+
+            var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize; //low two bits attr1 size
             SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
 
+            //only * 8 for 8bpp mode in 4bpp mode its * 4 since each byte represents 2 pix of a tile
             bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
-
             var attr2Value = ReadOam16(oam, oamAttrOffset + 4);
             var attr2 = new ObjAttribute2(attr2Value);
 
+            if (objYRange && attr2.Priority <= priorityLine)
+            {
+                priorityLine = attr2.Priority;
+                //add to list for display reg sprites
+            }
 
+            //affine only affine
             ushort attr3 = ReadOam16(oam, oamAttrOffset + 6);
         }
     }
