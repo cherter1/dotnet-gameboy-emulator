@@ -31,13 +31,14 @@ public sealed class Ppu
     public FrameBuffer FrameBuffer { get; }
 
     private int _scanlineCycle;
-    private bool IsInHBlank => _scanlineCycle >= HBlankStartCycle;
+    //private bool IsInHBlank => _scanlineCycle >= HBlankStartCycle;
 
     public void Step(int cycles, GbaBus bus)
     {
         while (cycles > 0)
         {
-            int nextBoundary = IsInHBlank ? CyclesPerScanline : HBlankStartCycle;
+            //if is in HBlank then cycle boundary is start of next scanline otherwise its in the start of HBlank
+            int nextBoundary = _scanlineCycle >= HBlankStartCycle ? CyclesPerScanline : HBlankStartCycle;
             int cyclesUntilBoundary = nextBoundary - _scanlineCycle;
             int consumed = Math.Min(cycles, cyclesUntilBoundary);
 
@@ -477,68 +478,10 @@ public sealed class Ppu
         return count;
     }
 
-    private void oldtemp(int y, int x)
-    {
-        for (int s = 0; s < 128; s++)
-        {
-            var startOffset = s * 8;
-
-            var attr0Value = ReadOam16(startOffset);
-            var attr0 = new ObjAttribute0(attr0Value);
-            if (!attr0.IsRotationScaling && attr0.IsDisabled)
-            {
-                continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
-            }
-
-            var attr1Value = ReadOam16(startOffset + 2);
-            var attr1 = new ObjAttribute1(attr1Value);
-            var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize;
-            SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
-
-            var attr2Value = ReadOam16(startOffset + 4);
-            var attr2 = new ObjAttribute2(attr2Value);
-            //var spriteStartTileOffset = attr2.TileNumber * 32; // + 0x06010000 may need to divide by 2 based on palette mode if not divisible correctly
-            //only for non r/s sprites
-            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
-            bool objXRange = (x >= attr1.XCoord) && (x < attr1.XCoord + (xTiles * 8));
-            if (objYRange && objXRange)
-            {
-                //check priority
-                var currentXTileNumber = (x - attr1.XCoord) / 8;
-                var currentXPixelNumber = (x - attr1.XCoord) % 8;
-                var currentYTileNumber = (y - attr0.YCoord) / 8;
-                var currentYPixelNumber = (y - attr0.YCoord) % 8;
-                // DISPCNT bit 6 cleared (2d character mapping) && 8bpp 16x32 tiles
-                //div 2 on tilenumber only in 8bpp
-                var currentMapTileNumber = (attr2.TileNumber / 2) + (currentYTileNumber * 16) + currentXTileNumber;
-                var currentTileOffset = (currentMapTileNumber * 0x40) + 0x10000; //0x40 is tile size in 8bppMode
-                //only for single palette mode else * 4 bc 4bpp
-                var currentPixOffset = currentTileOffset + (currentYPixelNumber * 8) + currentXPixelNumber;
-                var objPaletteIndex = ReadVram8(currentPixOffset);
-                if (objPaletteIndex == 0)
-                {
-                    //continue; // dont draw if zero index, pixel should be transparent
-                }
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
-                FrameBuffer.SetPixel(x, y, objPixelColor);
-            }
-
-            ushort attr3 = ReadOam16(startOffset + 6);
-        }
-    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ushort ReadOam16(ReadOnlySpan<byte> oam, int offset)
     {
         return (ushort)((oam[offset + 1] << 8) | oam[offset]);
-    }
-
-    private ushort ReadOam16(int offset)
-    {
-        if (offset < 0 || offset + 1 >= _memory.Oam.Length)
-        {
-            return 0;
-        }
-        return (ushort)(_memory.Oam[offset] | (_memory.Oam[offset + 1] << 8));
     }
 
     private void RenderMode3(int y)
