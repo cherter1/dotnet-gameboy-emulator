@@ -187,7 +187,7 @@ public sealed class IoRegisters
                 REG_BLDCNT = value;
                 break;
             case 0x04000052:
-                REG_BLDALPHA = 1;
+                REG_BLDALPHA = value;
                 break;
             case 0x04000054:
                 REG_BLDY = 1;

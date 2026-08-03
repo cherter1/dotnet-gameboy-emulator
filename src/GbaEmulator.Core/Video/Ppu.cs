@@ -207,7 +207,7 @@ public sealed class Ppu
                 break;
             default:
                 //should only be used when forceBlank bit is set in DisplayControl register
-                FrameBuffer.FillScanline(scanLine, 0xffffff1d); //tmep yellow color for testing
+                FrameBuffer.FillScanline(scanLine, 0xffffff00); //tmep yellow color for testing
                 break;
         }
     }
@@ -305,6 +305,9 @@ public sealed class Ppu
 
     private void RenderMode2(int y)
     {
+        var blendControl = _memory.Io.REG_BLDCNT;
+        var blendAlpha = _memory.Io.REG_BLDALPHA;
+
         var displayControl = _memory.Io.REG_DISPCNT;
 
         var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
@@ -395,7 +398,32 @@ public sealed class Ppu
                     continue; // dont draw if zero index, pixel should be transparent
                 }
                 var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
-                FrameBuffer.SetPixel(x, y, objPixelColor);
+                if (sprite.Mode == 1) //semi-transparent
+                {
+                    if ((blendControl & 0xc0) == 0x40) //additive
+                    {
+                        //temp - get last pixel non-transparent
+                        ushort pixel = 0b0000000_11111_11111;
+                        var redB = pixel & 0x1f;
+                        var greenB = (pixel >> 5) & 0x1f;
+                        var blueB = (pixel >> 10) & 0x1f;
+
+                        float coefA = (float)(blendAlpha & 0x1f) / 16;
+                        float coefB = (float)((blendAlpha >> 8) & 0x1f) / 16;
+
+                        //blend
+                        var redA = objPixelColor & 0x1f;
+                        var greenA = (objPixelColor >> 5) & 0x1f;
+                        var blueA = (objPixelColor >> 10) & 0x1f;
+
+                        var red = Math.Min(31, (redA * coefA) + (redB * coefB));
+                        var green = Math.Min(31, (greenA * coefA) + (greenB * coefB));
+                        var blue = Math.Min(31, (blueA * coefA) + (blueB * coefB));
+                        objPixelColor = (ushort)((uint)red | ((uint)green << 5) | ((uint)blue << 10));
+                    }
+                }
+                var finalSpritePixelColor = ConvertBgr555ToArgb(objPixelColor);
+                FrameBuffer.SetPixel(x, y, finalSpritePixelColor);
             }
         }
     }
@@ -418,13 +446,15 @@ public sealed class Ppu
                 continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
             }
 
+            var attr1Value = ReadOam16(oam, oamAttrOffset + 2);
             if (attr0.IsRotationScaling)
             {
+                var rotateParamGroup = (attr1Value >> 9) & 0x1f;
+                var doubleSized = attr0.IsDisabled;
                 //continue; //temp
                 //do affine
             }
 
-            var attr1Value = ReadOam16(oam, oamAttrOffset + 2);
             var attr1 = new ObjAttribute1(attr1Value);
 
             var shapeSize = (attr0.ObjShape << 2) | attr1.ObjSize; //low two bits attr1 size
@@ -467,7 +497,7 @@ public sealed class Ppu
             }
 
             var regSpriteInfo = new ScanlineSpriteInfo(scanlineStartMapTileNumber, isSinglePalette, attr2.PaletteNumber, yPixelOffset,
-                attr2.Priority, xTiles, attr1.XCoord);
+                attr2.Priority, xTiles, attr1.XCoord, attr0.ObjMode);
             //add to list for display reg sprites
             sprites[count++] = regSpriteInfo;
 
@@ -526,11 +556,12 @@ public sealed class Ppu
         }
     }
 
-    private uint ReadObjPaletteColor(int paletteIndex)
+    private ushort ReadObjPaletteColor(int paletteIndex)
     {
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset + 0x200);
-        return ConvertBgr555ToArgb(bgr555);
+        return bgr555;
+        //return ConvertBgr555ToArgb(bgr555);
     }
 
     private static uint ConvertBgr555ToArgb(ushort value)
