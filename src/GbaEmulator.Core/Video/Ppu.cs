@@ -3,6 +3,7 @@ using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
+using GbaEmulator.Core.Video.Backgrounds;
 using GbaEmulator.Core.Video.Sprites;
 
 namespace GbaEmulator.Core.Video;
@@ -214,47 +215,46 @@ public sealed class Ppu
 
     private void RenderMode0(int y)
     {
+        Span<byte> vram = _memory.Vram.AsSpan();
         var displayControl = _memory.Io.REG_DISPCNT;
 
-        var bg0Enabled = BitUtils.IsBitSet(displayControl, 8);
-        var bg1Enabled = BitUtils.IsBitSet(displayControl, 9);
-        var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
-        var bg3Enabled = BitUtils.IsBitSet(displayControl, 11);
-        var objEnabled = BitUtils.IsBitSet(displayControl, 12);
-        if (!bg0Enabled && !bg1Enabled && !bg2Enabled && !bg3Enabled && !objEnabled)
-        {
-            return; //blank TEMP
-        }
-
-        ReadOnlySpan<uint> bgControls =
+        ReadOnlySpan<ushort> bgControls =
         [
             _memory.Io.REG_BG0CNT, _memory.Io.REG_BG1CNT, _memory.Io.REG_BG2CNT, _memory.Io.REG_BG3CNT
         ];
-        ReadOnlySpan<uint> hofsTable =
+        ReadOnlySpan<ushort> hofsTable =
         [
             _memory.Io.REG_BG0HOFS, _memory.Io.REG_BG1HOFS,
             _memory.Io.REG_BG2HOFS, _memory.Io.REG_BG3HOFS
         ];
-        ReadOnlySpan<uint> vofsTable =
+        ReadOnlySpan<ushort> vofsTable =
         [
             _memory.Io.REG_BG0VOFS, _memory.Io.REG_BG1VOFS,
             _memory.Io.REG_BG2VOFS, _memory.Io.REG_BG3VOFS
         ];
-        Span<uint> bgOutputBuffer = stackalloc uint[4];
+        Span<int> bgOutputBuffer = stackalloc int[4];
         int enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer);
-        Span<uint> activeBgs = bgOutputBuffer[..enabledBgCount];
+        Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
 
-        var charBaseBlock = (_memory.Io.REG_BG1CNT >> 2) & 0b11;
-        var startOffsetOfCharTileData = charBaseBlock * 0x4000; // + 0x0600000 for address
-        var screenBaseBlock = (_memory.Io.REG_BG1CNT >> 8) & 0x1F;
-        var startOffsetOfCharTileMap = screenBaseBlock * 0x800; // + 0x0600000 for address
-        // 00 = 256x256 (32x32 tiles)
-        // 01 = 512x256 (64x32 tiles)
-        // 10 = 256x512 (32x64 tiles)
-        // 11 = 512x512 (64x64 tiles)
-        var tileMapSizeText = (_memory.Io.REG_BG1CNT >> 14) & 0b11;
+        Span<int> bgScanlineInfo = stackalloc int[7 * activeBgs.Length];
+        foreach (var bgIdx in activeBgs)
+        {
+            var tileDataStartOffset = ((bgControls[bgIdx] >> 2) & 0b11) * 0x4000; // + 0x0600000 for address
+            var tileMapStartOffset = ((bgControls[bgIdx] >> 8) & 0x1f) * 0x800; // + 0x0600000 for address
+            var tileMapSize = (bgControls[bgIdx] >> 14) & 0b11;
+            BackgroundHelpers.GetTextBackgroundSizeTiles(tileMapSize, out var xTiles, out var yTiles);
+            var bgYStartOffset = y + (vofsTable[bgIdx] & 0xff);
+            var tileY = bgYStartOffset >> 3; // div 8 to count tiles from offset
+            var pixelYInTile = bgYStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
-        var is8bpp = BitUtils.IsBitSet(_memory.Io.REG_BG1CNT, 7);
+            bgScanlineInfo[bgIdx] = tileDataStartOffset;
+            bgScanlineInfo[(bgIdx * 7) + 1] = tileMapStartOffset;
+            bgScanlineInfo[(bgIdx * 7) + 2] = xTiles;
+            bgScanlineInfo[(bgIdx * 7) + 3] = yTiles;
+            bgScanlineInfo[(bgIdx * 7) + 4] = tileY;
+            bgScanlineInfo[(bgIdx * 7) + 5] = pixelYInTile;
+            bgScanlineInfo[(bgIdx * 7) + 6] = (bgControls[bgIdx] >> 7) & 0b1; // set is 8bpp mode else 4bpp
+        }
 
         var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
         var tileMapY = backgroundY >> 3;
@@ -262,45 +262,49 @@ public sealed class Ppu
 
         for (var x = 0; x < ScreenWidth; x++)
         {
-            var backgroundX = (x + _memory.Io.REG_BG1HOFS) & 0xFF;
-            var tileMapX = backgroundX / 8;
-            var pixelXInsideTile = backgroundX % 8;
-
-            var tileMapIndex = tileMapY * 32 + tileMapX;
-            var tileMapEntryOffset = startOffsetOfCharTileMap + tileMapIndex * 2;
-
-            var tileMapEntry = ReadVram16(tileMapEntryOffset);
-            var hFlip = (tileMapEntry & 0x0400) != 0;
-            var vFlip = (tileMapEntry & 0x0800) != 0;
-            if (vFlip || hFlip)
+            foreach (var bgIdx in activeBgs)
             {
-                var f = 1;
+                var bgXStartOffset = x + (hofsTable[bgIdx] & 0xff);
+                var tileX = bgXStartOffset >> 3; // div 8 to count tiles from offset
+                var pixelXInTile = bgXStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
+
+                var tileMapIndex = (bgScanlineInfo[(bgIdx * 7) + 4] * bgScanlineInfo[(bgIdx * 7) + 3]) + tileX; //tileY * numXTiles + tileX
+                var tileMapEntryOffset = bgScanlineInfo[(bgIdx * 7) + 1] + tileMapIndex * 2; //tileMapStartOffset + mapIndex * mapEntrySize
+                var tileMapEntry = ReadVram16(vram, tileMapEntryOffset);
+
+                //TODO: flipping
+
+                var tileIndex = tileMapEntry & 0x03ff;
             }
-            var tileIndex = tileMapEntry & 0x03FF;
-            var paletteBank = (tileMapEntry >> 12) & 0xF;
 
-            var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
+            //var hFlip = (tileMapEntry & 0x0400) != 0;
+            //var vFlip = (tileMapEntry & 0x0800) != 0;
 
-            var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
-            var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
+            //var tileIndex = tileMapEntry & 0x03FF;
+            //var paletteBank = (tileMapEntry >> 12) & 0xF;
 
-            var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
+            //var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
 
-            var colorIndex = (pixelXInsideTile % 2) == 0
-                ? twoPackedPixelIndexes & 0x0F
-                : twoPackedPixelIndexes >> 4;
+            //var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
+            //var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
 
-            if (colorIndex == 0)
+            //var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
+
+            //var colorIndex = (pixelXInsideTile % 2) == 0
+                //? twoPackedPixelIndexes & 0x0F
+                //: twoPackedPixelIndexes >> 4;
+
+            //if (colorIndex == 0)
             {
                 //var backDrop = ReadBgPaletteColor(0);
                 //FrameBuffer.SetPixel(x, y, backDrop);
                 //continue;
             }
 
-            var paletteIndex = paletteBank * 16 + colorIndex;
-            var color = ReadBgPaletteColor(paletteIndex);
+            //var paletteIndex = paletteBank * 16 + colorIndex;
+            //var color = ReadBgPaletteColor(paletteIndex);
 
-            FrameBuffer.SetPixel(x, y, color);
+            //FrameBuffer.SetPixel(x, y, color);
         }
     }
 
@@ -520,6 +524,12 @@ public sealed class Ppu
         return (ushort)((oam[offset + 1] << 8) | oam[offset]);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ushort ReadVram16(ReadOnlySpan<byte> vram, int offset)
+    {
+        return (ushort)((vram[offset + 1] << 8) | vram[offset]);
+    }
+
     private void RenderMode3(int y)
     {
         for (var x = 0; x < ScreenWidth; x++)
@@ -579,17 +589,17 @@ public sealed class Ppu
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int FastSortBackgroundsByPriority(uint displayControl, ReadOnlySpan<uint> bgControlRegs,
-        Span<uint> bgIndexOutput)
+    private static int FastSortBackgroundsByPriority(uint displayControl, ReadOnlySpan<ushort> bgControlRegs,
+        Span<int> bgIndexOutput)
     {
         int count = 0;
-        uint p0 = 0xff, p1 = 0xff, p2 = 0xff, p3 = 0xff;
+        int p0 = 0xff, p1 = 0xff, p2 = 0xff, p3 = 0xff;
 
         uint enabledMask = (displayControl >> 8) & 0xf;
         if ((enabledMask & 1) != 0) p0 = ((bgControlRegs[0] & 0b11) << 2);
-        if ((enabledMask & 2) != 0) p1 = ((bgControlRegs[1] & 0b11) << 2) | 1u;
-        if ((enabledMask & 4) != 0) p2 = ((bgControlRegs[2] & 0b11) << 2) | 2u;
-        if ((enabledMask & 8) != 0) p3 = ((bgControlRegs[3] & 0b11) << 2) | 3u;
+        if ((enabledMask & 2) != 0) p1 = ((bgControlRegs[1] & 0b11) << 2) | 1;
+        if ((enabledMask & 4) != 0) p2 = ((bgControlRegs[2] & 0b11) << 2) | 2;
+        if ((enabledMask & 8) != 0) p3 = ((bgControlRegs[3] & 0b11) << 2) | 3;
 
         if (p0 > p1) { (p0, p1) = (p1, p0); }
         if (p2 > p3) { (p2, p3) = (p3, p2); }
