@@ -214,21 +214,36 @@ public sealed class Ppu
 
     private void RenderMode0(int y)
     {
-        //tiles are arrrays of indices into palette memory
-        // bg are arrays of indices into tilemaps
-        //charblocks tileset
-        //screenblocks tilemap
-        HashSet<int> graphicsOffsets = [];
-        int countofG = 0;
-        var bg0Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 8);
-        var bg1Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 9);
-        var bg2Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 10);
-        var bg3Enabled = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 11);
-        if (bg0Enabled || bg1Enabled || bg2Enabled || bg3Enabled)
+        var displayControl = _memory.Io.REG_DISPCNT;
+
+        var bg0Enabled = BitUtils.IsBitSet(displayControl, 8);
+        var bg1Enabled = BitUtils.IsBitSet(displayControl, 9);
+        var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
+        var bg3Enabled = BitUtils.IsBitSet(displayControl, 11);
+        var objEnabled = BitUtils.IsBitSet(displayControl, 12);
+        if (!bg0Enabled && !bg1Enabled && !bg2Enabled && !bg3Enabled && !objEnabled)
         {
-            var x = 1;
-            //var z = _vram.Count(q => q != 0);
+            return; //blank TEMP
         }
+
+        ReadOnlySpan<uint> bgControls =
+        [
+            _memory.Io.REG_BG0CNT, _memory.Io.REG_BG1CNT, _memory.Io.REG_BG2CNT, _memory.Io.REG_BG3CNT
+        ];
+        ReadOnlySpan<uint> hofsTable =
+        [
+            _memory.Io.REG_BG0HOFS, _memory.Io.REG_BG1HOFS,
+            _memory.Io.REG_BG2HOFS, _memory.Io.REG_BG3HOFS
+        ];
+        ReadOnlySpan<uint> vofsTable =
+        [
+            _memory.Io.REG_BG0VOFS, _memory.Io.REG_BG1VOFS,
+            _memory.Io.REG_BG2VOFS, _memory.Io.REG_BG3VOFS
+        ];
+        Span<uint> bgOutputBuffer = stackalloc uint[4];
+        int enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer);
+        Span<uint> activeBgs = bgOutputBuffer[..enabledBgCount];
+
         var charBaseBlock = (_memory.Io.REG_BG1CNT >> 2) & 0b11;
         var startOffsetOfCharTileData = charBaseBlock * 0x4000; // + 0x0600000 for address
         var screenBaseBlock = (_memory.Io.REG_BG1CNT >> 8) & 0x1F;
@@ -238,10 +253,7 @@ public sealed class Ppu
         // 10 = 256x512 (32x64 tiles)
         // 11 = 512x512 (64x64 tiles)
         var tileMapSizeText = (_memory.Io.REG_BG1CNT >> 14) & 0b11;
-        if (tileMapSizeText != 0)
-        {
-            var z = 1;
-        }
+
         var is8bpp = BitUtils.IsBitSet(_memory.Io.REG_BG1CNT, 7);
 
         var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
@@ -272,12 +284,6 @@ public sealed class Ppu
             var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
             var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
 
-            graphicsOffsets.Add(tileGraphicsOffset);
-            if (tileGraphicsOffset == 0x44e0)
-            {
-                var l = 1;
-                countofG++;
-            }
             var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
 
             var colorIndex = (pixelXInsideTile % 2) == 0
@@ -570,5 +576,38 @@ public sealed class Ppu
         var green = (byte)(((value >> 5) & 0x1F) * 255 / 31);
         var blue = (byte)(((value >> 10) & 0x1F) * 255 / 31);
         return 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int FastSortBackgroundsByPriority(uint displayControl, ReadOnlySpan<uint> bgControlRegs,
+        Span<uint> bgIndexOutput)
+    {
+        int count = 0;
+        uint p0 = 0xff, p1 = 0xff, p2 = 0xff, p3 = 0xff;
+
+        uint enabledMask = (displayControl >> 8) & 0xf;
+        if ((enabledMask & 1) != 0) p0 = ((bgControlRegs[0] & 0b11) << 2);
+        if ((enabledMask & 2) != 0) p1 = ((bgControlRegs[1] & 0b11) << 2) | 1u;
+        if ((enabledMask & 4) != 0) p2 = ((bgControlRegs[2] & 0b11) << 2) | 2u;
+        if ((enabledMask & 8) != 0) p3 = ((bgControlRegs[3] & 0b11) << 2) | 3u;
+
+        if (p0 > p1) { (p0, p1) = (p1, p0); }
+        if (p2 > p3) { (p2, p3) = (p3, p2); }
+        if (p0 > p2) { (p0, p2) = (p2, p0); }
+        if (p1 > p3) { (p1, p3) = (p3, p1); }
+        if (p1 > p2) { (p1, p2) = (p2, p1); }
+
+        int idx = 0;
+        if (p0 != 0xff) { bgIndexOutput[idx++] = p0 & 0b11; count++; }
+        if (p1 != 0xff) { bgIndexOutput[idx++] = p1 & 0b11; count++; }
+        if (p2 != 0xff) { bgIndexOutput[idx++] = p2 & 0b11; count++; }
+
+        if (p3 == 0xff)
+        {
+            return count;
+        }
+
+        bgIndexOutput[idx] = p3 & 0b11; count++;
+        return count;
     }
 }
