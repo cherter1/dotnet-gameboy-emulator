@@ -236,7 +236,7 @@ public sealed class Ppu
         int enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer);
         Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
 
-        Span<int> bgScanlineInfo = stackalloc int[7 * activeBgs.Length];
+        Span<int> bgScanlineInfo = stackalloc int[(7 * activeBgs.Length) + 7];
         foreach (var bgIdx in activeBgs)
         {
             var tileDataStartOffset = ((bgControls[bgIdx] >> 2) & 0b11) * 0x4000; // + 0x0600000 for address
@@ -247,7 +247,7 @@ public sealed class Ppu
             var tileY = bgYStartOffset >> 3; // div 8 to count tiles from offset
             var pixelYInTile = bgYStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
-            bgScanlineInfo[bgIdx] = tileDataStartOffset;
+            bgScanlineInfo[(bgIdx * 7)] = tileDataStartOffset;
             bgScanlineInfo[(bgIdx * 7) + 1] = tileMapStartOffset;
             bgScanlineInfo[(bgIdx * 7) + 2] = xTiles;
             bgScanlineInfo[(bgIdx * 7) + 3] = yTiles;
@@ -256,12 +256,12 @@ public sealed class Ppu
             bgScanlineInfo[(bgIdx * 7) + 6] = (bgControls[bgIdx] >> 7) & 0b1; // set is 8bpp mode else 4bpp
         }
 
-        var backgroundY = (y + _memory.Io.REG_BG1VOFS) & 0xFF;
-        var tileMapY = backgroundY >> 3;
-        var pixelYInsideTile = backgroundY & 7;
-
         for (var x = 0; x < ScreenWidth; x++)
         {
+            if (y == 3 && x == 18)
+            {
+                var q = 1;
+            }
             foreach (var bgIdx in activeBgs)
             {
                 var bgXStartOffset = x + (hofsTable[bgIdx] & 0xff);
@@ -274,25 +274,31 @@ public sealed class Ppu
 
                 //TODO: flipping
 
-                var tileIndex = tileMapEntry & 0x03ff;
+                uint color;
+                if (bgScanlineInfo[(bgIdx * 7) + 6] == 1) //8bpp mode
+                {
+                    var tileIndex = tileMapEntry & 0x03ff;
+                    var currentTileOffset = bgScanlineInfo[(bgIdx * 7)] + tileIndex * 0x40; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
+                    var currentPixelOffset = currentTileOffset + (bgScanlineInfo[(bgIdx * 7) + 5] * 8) + pixelXInTile;
+                    var paletteIndex = vram[currentPixelOffset];
+                    color = ReadBgPaletteColor(paletteIndex);
+                }
+                else //4bpp mode
+                {
+                    var tileIndex = tileMapEntry & 0x03ff;
+                    var currentTileOffset = bgScanlineInfo[(bgIdx * 7)] + tileIndex * 0x20; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
+                    var currentPixelOffset = currentTileOffset + (bgScanlineInfo[(bgIdx * 7) + 5] * 4) + (pixelXInTile >> 1); //YPixel * 4 bc 2 pixels per byte in 8pixel row XPixel /2 for same reason
+                    var paletteIndex = (pixelXInTile & 1) == 0 // mod by 2 if even Index take bits 0-3 else take bits 4-7
+                        ? vram[currentPixelOffset] & 0xf
+                        : vram[currentPixelOffset] >> 4;
+                    paletteIndex += tileMapEntry >> 12;
+                    color = ReadBgPaletteColor(paletteIndex);
+                }
+                FrameBuffer.SetPixel(x, y, color);
             }
 
             //var hFlip = (tileMapEntry & 0x0400) != 0;
             //var vFlip = (tileMapEntry & 0x0800) != 0;
-
-            //var tileIndex = tileMapEntry & 0x03FF;
-            //var paletteBank = (tileMapEntry >> 12) & 0xF;
-
-            //var tileGraphicsOffset = startOffsetOfCharTileData + tileIndex * 32;
-
-            //var tileRowOffset = tileGraphicsOffset + pixelYInsideTile * 4;
-            //var tilePixelPairOffset = tileRowOffset + pixelXInsideTile / 2;
-
-            //var twoPackedPixelIndexes = ReadVram8(tilePixelPairOffset);
-
-            //var colorIndex = (pixelXInsideTile % 2) == 0
-                //? twoPackedPixelIndexes & 0x0F
-                //: twoPackedPixelIndexes >> 4;
 
             //if (colorIndex == 0)
             {
@@ -300,11 +306,6 @@ public sealed class Ppu
                 //FrameBuffer.SetPixel(x, y, backDrop);
                 //continue;
             }
-
-            //var paletteIndex = paletteBank * 16 + colorIndex;
-            //var color = ReadBgPaletteColor(paletteIndex);
-
-            //FrameBuffer.SetPixel(x, y, color);
         }
     }
 
