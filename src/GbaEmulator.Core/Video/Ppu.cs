@@ -243,7 +243,7 @@ public sealed class Ppu
             var tileMapStartOffset = ((bgControls[bgIdx] >> 8) & 0x1f) * 0x800; // + 0x0600000 for address
             var tileMapSize = (bgControls[bgIdx] >> 14) & 0b11;
             BackgroundHelpers.GetTextBackgroundSizeTiles(tileMapSize, out var xTiles, out var yTiles);
-            var bgYStartOffset = y + (vofsTable[bgIdx] & 0xff);
+            var bgYStartOffset = (y + vofsTable[bgIdx]) & 0xff;
             var tileY = bgYStartOffset >> 3; // div 8 to count tiles from offset
             var pixelYInTile = bgYStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
@@ -258,13 +258,9 @@ public sealed class Ppu
 
         for (var x = 0; x < ScreenWidth; x++)
         {
-            if (y == 3 && x == 18)
-            {
-                var q = 1;
-            }
             foreach (var bgIdx in activeBgs)
             {
-                var bgXStartOffset = x + (hofsTable[bgIdx] & 0xff);
+                var bgXStartOffset = (x + hofsTable[bgIdx]) & 0xff;
                 var tileX = bgXStartOffset >> 3; // div 8 to count tiles from offset
                 var pixelXInTile = bgXStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
@@ -273,38 +269,39 @@ public sealed class Ppu
                 var tileMapEntry = ReadVram16(vram, tileMapEntryOffset);
 
                 //TODO: flipping
+                //var hFlip = (tileMapEntry & 0x0400) != 0;
+                //var vFlip = (tileMapEntry & 0x0800) != 0;
 
-                uint color;
+                int paletteIndex;
                 if (bgScanlineInfo[(bgIdx * 7) + 6] == 1) //8bpp mode
                 {
                     var tileIndex = tileMapEntry & 0x03ff;
                     var currentTileOffset = bgScanlineInfo[(bgIdx * 7)] + tileIndex * 0x40; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
                     var currentPixelOffset = currentTileOffset + (bgScanlineInfo[(bgIdx * 7) + 5] * 8) + pixelXInTile;
-                    var paletteIndex = vram[currentPixelOffset];
-                    color = ReadBgPaletteColor(paletteIndex);
+                    paletteIndex = vram[currentPixelOffset];
                 }
                 else //4bpp mode
                 {
                     var tileIndex = tileMapEntry & 0x03ff;
                     var currentTileOffset = bgScanlineInfo[(bgIdx * 7)] + tileIndex * 0x20; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
                     var currentPixelOffset = currentTileOffset + (bgScanlineInfo[(bgIdx * 7) + 5] * 4) + (pixelXInTile >> 1); //YPixel * 4 bc 2 pixels per byte in 8pixel row XPixel /2 for same reason
-                    var paletteIndex = (pixelXInTile & 1) == 0 // mod by 2 if even Index take bits 0-3 else take bits 4-7
+                    paletteIndex = (pixelXInTile & 1) == 0 // mod by 2 if even Index take bits 0-3 else take bits 4-7
                         ? vram[currentPixelOffset] & 0xf
                         : vram[currentPixelOffset] >> 4;
-                    paletteIndex += tileMapEntry >> 12;
-                    color = ReadBgPaletteColor(paletteIndex);
+                    paletteIndex += (tileMapEntry >> 12) * 16; // add palette bank start offset
                 }
+
+                if ((paletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
+                {
+                    //transparent
+                    continue;
+                }
+
+                //do blending
+
+                var color = ReadBgPaletteColor(paletteIndex);
                 FrameBuffer.SetPixel(x, y, color);
-            }
-
-            //var hFlip = (tileMapEntry & 0x0400) != 0;
-            //var vFlip = (tileMapEntry & 0x0800) != 0;
-
-            //if (colorIndex == 0)
-            {
-                //var backDrop = ReadBgPaletteColor(0);
-                //FrameBuffer.SetPixel(x, y, backDrop);
-                //continue;
+                break;
             }
         }
     }
