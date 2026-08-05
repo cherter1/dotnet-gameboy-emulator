@@ -217,6 +217,7 @@ public sealed class Ppu
     {
         Span<byte> vram = _memory.Vram.AsSpan();
         var displayControl = _memory.Io.REG_DISPCNT;
+        var blendControl = _memory.Io.REG_BLDCNT;
 
         ReadOnlySpan<ushort> bgControls =
         [
@@ -256,6 +257,14 @@ public sealed class Ppu
             bgScanlineInfo[(bgIdx * 7) + 6] = (bgControls[bgIdx] >> 7) & 0b1; // set is 8bpp mode else 4bpp
         }
 
+        Span<ScanlineSpriteInfo> sprites = stackalloc ScanlineSpriteInfo[128];
+        var spriteCount = 0;
+        if ((displayControl & 0x800) == 0x800) //bit 12 set means sprites enabled
+        {
+            spriteCount = SpriteStuff_TempName(y, sprites);
+        }
+        var enabledSprites = sprites[..spriteCount];
+
         for (var x = 0; x < ScreenWidth; x++)
         {
             foreach (var bgIdx in activeBgs)
@@ -294,14 +303,67 @@ public sealed class Ppu
                 if ((paletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                 {
                     //transparent
+                    FrameBuffer.SetPixel(x, y, 0xffffffff);
                     continue;
                 }
 
-                //do blending
+                if ((blendControl & 0xc0) != 0) //if Special effect is not None
+                {
+                    //do blending
+                }
 
-                var color = ReadBgPaletteColor(paletteIndex);
-                FrameBuffer.SetPixel(x, y, color);
+                var argbColor = ReadBgPaletteColor(paletteIndex);
+                FrameBuffer.SetPixel(x, y, argbColor);
                 break;
+            }
+
+            foreach (var sprite in enabledSprites)
+            {
+                bool objXRange = (x >= sprite.XCoord) && (x < sprite.XCoord + (sprite.NumXTiles * (sprite.IsSinglePalette ? 8 : 4)));
+                if (!objXRange)
+                {
+                    continue;
+                }
+
+                var currentXTileNumber = (x - sprite.XCoord) / 8;
+                var currentXPixelNumber = (x - sprite.XCoord) % 8;
+                var currentMapTileNumber = sprite.ScanlineStartMapTileNumber + currentXTileNumber;
+                var currentTileOffset = 0x10000 + (currentMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
+                var currentPixOffset = currentTileOffset + sprite.YPixelOffset + currentXPixelNumber;
+                var objPaletteIndex = vram[currentPixOffset];
+                if (objPaletteIndex == 0)
+                {
+                    continue; // dont draw if zero index, pixel should be transparent
+                }
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex);
+                if (sprite.Mode == 1) //semi-transparent
+                {
+                    if ((blendControl & 0xc0) == 0x40) //additive
+                    {
+                        //temp - get last pixel non-transparent
+                        /*
+                        ushort pixel = 0b0000000_11111_11111;
+                        var redB = pixel & 0x1f;
+                        var greenB = (pixel >> 5) & 0x1f;
+                        var blueB = (pixel >> 10) & 0x1f;
+
+                        float coefA = (float)(blendAlpha & 0x1f) / 16;
+                        float coefB = (float)((blendAlpha >> 8) & 0x1f) / 16;
+
+                        //blend
+                        var redA = objPixelColor & 0x1f;
+                        var greenA = (objPixelColor >> 5) & 0x1f;
+                        var blueA = (objPixelColor >> 10) & 0x1f;
+
+                        var red = Math.Min(31, (redA * coefA) + (redB * coefB));
+                        var green = Math.Min(31, (greenA * coefA) + (greenB * coefB));
+                        var blue = Math.Min(31, (blueA * coefA) + (blueB * coefB));
+                        objPixelColor = (ushort)((uint)red | ((uint)green << 5) | ((uint)blue << 10));
+                    */
+                    }
+                }
+                var finalSpritePixelColor = ConvertBgr555ToArgb(objPixelColor);
+                FrameBuffer.SetPixel(x, y, finalSpritePixelColor);
             }
         }
     }
@@ -481,14 +543,14 @@ public sealed class Ppu
 
             var yAbsolute = y - attr0.YCoord;
 
-            var yPixelOffset = (yAbsolute % 8) * 4;
+            var yPixelOffset = (yAbsolute & 7) * 4; //mod 8 and mul 4(4bppMode) for pixel inside tile offset
             var startTileNumber = attr2.TileNumber;
             var twoDMatrixSize = 32;
 
             if (isSinglePalette)
             {
                 startTileNumber /= 2;
-                yPixelOffset *= 2;
+                yPixelOffset *= 2; //mul 2 (8 total bc already mul 4 above) in 8bpp mode because each byte is a pixel
                 twoDMatrixSize = 16;
             }
 
