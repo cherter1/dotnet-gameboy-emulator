@@ -244,7 +244,14 @@ public sealed class Ppu
             var tileMapStartOffset = ((bgControls[bgIdx] >> 8) & 0x1f) * 0x800; // + 0x0600000 for address
             var tileMapSize = (bgControls[bgIdx] >> 14) & 0b11;
             BackgroundHelpers.GetTextBackgroundSizeTiles(tileMapSize, out var xTiles, out var yTiles);
-            var bgYStartOffset = (y + vofsTable[bgIdx]) & 0xff;
+
+            var bgYStartOffset = y + vofsTable[bgIdx];
+            if (yTiles > 32 && ((bgYStartOffset >> 8) & 1) != 0)// startOffset greater than pixels per map or SE length across AND yTiles > 32, if its 32 mirror the single Y SE
+            {
+                tileMapStartOffset += xTiles > 32 ? 0x1000 : 0x800; //move startOffset to next SE(map) start offset, if xTiles long then add 2 maps if not then only add 1 map length
+            }
+            bgYStartOffset &= 0xff;
+
             var tileY = bgYStartOffset >> 3; // div 8 to count tiles from offset
             var pixelYInTile = bgYStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
@@ -259,7 +266,7 @@ public sealed class Ppu
 
         Span<ScanlineSpriteInfo> sprites = stackalloc ScanlineSpriteInfo[128];
         var spriteCount = 0;
-        if ((displayControl & 0x800) == 0x800) //bit 12 set means sprites enabled
+        if ((displayControl & 0x1000) == 0x1000) //bit 12 set means sprites enabled
         {
             spriteCount = SpriteStuff_TempName(y, sprites);
         }
@@ -269,31 +276,40 @@ public sealed class Ppu
         {
             foreach (var bgIdx in activeBgs)
             {
-                var bgXStartOffset = (x + hofsTable[bgIdx]) & 0xff;
+                var tileMapStartOffset = bgScanlineInfo[(bgIdx * 7) + 1];
+                var bgXStartOffset = x + hofsTable[bgIdx];
+                if (bgScanlineInfo[(bgIdx * 7) + 2] > 32 && ((bgXStartOffset >> 8) & 1) != 0)// startOffset greater than pixels per map or SE length across AND xTiles > 32, if its 32 mirror the single X SE
+                {
+                    tileMapStartOffset += 0x800; //move startOffset to next SE(map) start offset
+                }
+                bgXStartOffset &= 0xff;
+
                 var tileX = bgXStartOffset >> 3; // div 8 to count tiles from offset
                 var pixelXInTile = bgXStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
-                var tileMapIndex = (bgScanlineInfo[(bgIdx * 7) + 4] * bgScanlineInfo[(bgIdx * 7) + 3]) + tileX; //tileY * numXTiles + tileX
-                var tileMapEntryOffset = bgScanlineInfo[(bgIdx * 7) + 1] + tileMapIndex * 2; //tileMapStartOffset + mapIndex * mapEntrySize
+                var tileMapIndex = (bgScanlineInfo[(bgIdx * 7) + 4] * 32) + tileX; //tileY * 32 + tileX
+                var tileMapEntryOffset = tileMapStartOffset + tileMapIndex * 2; //tileMapStartOffset + mapIndex * mapEntrySize
                 var tileMapEntry = ReadVram16(vram, tileMapEntryOffset);
 
-                //TODO: flipping
-                //var hFlip = (tileMapEntry & 0x0400) != 0;
-                //var vFlip = (tileMapEntry & 0x0800) != 0;
+                var pixelYInTile = bgScanlineInfo[(bgIdx * 7) + 5];
+                var hFlip = (tileMapEntry & 0x0400) != 0;
+                var vFlip = (tileMapEntry & 0x0800) != 0;
+                if (hFlip) pixelXInTile = 7 - pixelXInTile;
+                if (vFlip) pixelYInTile = 7 - pixelYInTile;
 
                 int paletteIndex;
                 if (bgScanlineInfo[(bgIdx * 7) + 6] == 1) //8bpp mode
                 {
                     var tileIndex = tileMapEntry & 0x03ff;
                     var currentTileOffset = bgScanlineInfo[(bgIdx * 7)] + tileIndex * 0x40; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
-                    var currentPixelOffset = currentTileOffset + (bgScanlineInfo[(bgIdx * 7) + 5] * 8) + pixelXInTile;
+                    var currentPixelOffset = currentTileOffset + (pixelYInTile * 8) + pixelXInTile;
                     paletteIndex = vram[currentPixelOffset];
                 }
                 else //4bpp mode
                 {
                     var tileIndex = tileMapEntry & 0x03ff;
                     var currentTileOffset = bgScanlineInfo[(bgIdx * 7)] + tileIndex * 0x20; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
-                    var currentPixelOffset = currentTileOffset + (bgScanlineInfo[(bgIdx * 7) + 5] * 4) + (pixelXInTile >> 1); //YPixel * 4 bc 2 pixels per byte in 8pixel row XPixel /2 for same reason
+                    var currentPixelOffset = currentTileOffset + (pixelYInTile * 4) + (pixelXInTile >> 1); //YPixel * 4 bc 2 pixels per byte in 8pixel row XPixel /2 for same reason
                     paletteIndex = (pixelXInTile & 1) == 0 // mod by 2 if even Index take bits 0-3 else take bits 4-7
                         ? vram[currentPixelOffset] & 0xf
                         : vram[currentPixelOffset] >> 4;
@@ -303,7 +319,8 @@ public sealed class Ppu
                 if ((paletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                 {
                     //transparent
-                    FrameBuffer.SetPixel(x, y, 0xffffffff);
+                    var backDropColor = ReadBgPaletteColor(0);
+                    FrameBuffer.SetPixel(x, y, backDropColor);
                     continue;
                 }
 
@@ -319,7 +336,7 @@ public sealed class Ppu
 
             foreach (var sprite in enabledSprites)
             {
-                bool objXRange = (x >= sprite.XCoord) && (x < sprite.XCoord + (sprite.NumXTiles * (sprite.IsSinglePalette ? 8 : 4)));
+                bool objXRange = (x >= sprite.XCoord) && (x < sprite.XCoord + (sprite.NumXTiles * 8));
                 if (!objXRange)
                 {
                     continue;
@@ -329,8 +346,12 @@ public sealed class Ppu
                 var currentXPixelNumber = (x - sprite.XCoord) % 8;
                 var currentMapTileNumber = sprite.ScanlineStartMapTileNumber + currentXTileNumber;
                 var currentTileOffset = 0x10000 + (currentMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
-                var currentPixOffset = currentTileOffset + sprite.YPixelOffset + currentXPixelNumber;
-                var objPaletteIndex = vram[currentPixOffset];
+                var currentPixOffset = currentTileOffset + sprite.YPixelOffset + (currentXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
+                var objPaletteIndex = sprite.IsSinglePalette
+                    ? vram[currentPixOffset]
+                    : (currentXPixelNumber & 1) == 0
+                        ? vram[currentPixOffset] & 0xf
+                        : vram[currentXPixelNumber] >> 4;
                 if (objPaletteIndex == 0)
                 {
                     continue; // dont draw if zero index, pixel should be transparent
@@ -531,7 +552,7 @@ public sealed class Ppu
             SpriteHelpers.GetSpriteSizeTiles(shapeSize, out int xTiles, out int yTiles);
 
             //only * 8 for 8bpp mode in 4bpp mode its * 4 since each byte represents 2 pix of a tile
-            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * (isSinglePalette ? 8 : 4)));
+            bool objYRange = (y >= attr0.YCoord) && (y < attr0.YCoord + (yTiles * 8));
 
             if (!objYRange)
             {
@@ -575,7 +596,7 @@ public sealed class Ppu
             //ushort attr3 = ReadOam16(oam, oamAttrOffset + 6);
         }
 
-        return count;
+        return count + 1;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
