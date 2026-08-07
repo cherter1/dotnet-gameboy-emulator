@@ -8,11 +8,12 @@ public readonly struct ScanlineSpriteInfo
     public readonly int Priority; //attr 2
     public readonly int NumXTiles; // calced
     public readonly int XCoord; //{ get; init; } //attr1
-    public readonly bool IsSinglePalette;
     public readonly int Mode;
+    public readonly bool IsSinglePalette;
+    public readonly bool HFlip;
 
     public ScanlineSpriteInfo(int scanlineStartMapTileNumber, bool isSinglePalette, int paletteNumber, int yPixelOffset,
-        int priority, int numXTiles, int xCoord, int mode)
+        int priority, int numXTiles, int xCoord, int mode, bool hFlip)
     {
         ScanlineStartMapTileNumber = scanlineStartMapTileNumber;
         IsSinglePalette = isSinglePalette;
@@ -22,5 +23,6 @@ public readonly struct ScanlineSpriteInfo
         NumXTiles = numXTiles;
         XCoord = xCoord;
         Mode = mode;
+        HFlip = hFlip;
     }
 }
