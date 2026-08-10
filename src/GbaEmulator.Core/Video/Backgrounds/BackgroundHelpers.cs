@@ -33,4 +33,17 @@ public static class BackgroundHelpers
             numYTiles = 0;
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int GetRotationalBackgroundSize(int size)
+    {
+        return size switch
+        {
+            0 => 16,
+            0b01 => 32,
+            0b10 => 64,
+            0b11 => 128,
+            _ => 0
+        };
+    }
 }
