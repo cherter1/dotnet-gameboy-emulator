@@ -501,10 +501,10 @@ public sealed class Ppu
     {
         if (y == 0)
         {
-            _internalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 27);
-            _internalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 27);
-            _internalBg3X = BitUtils.SignExtend((int)_memory.Io.REG_BG3X, 27);
-            _internalBg3Y = BitUtils.SignExtend((int)_memory.Io.REG_BG3Y, 27);
+            _internalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
+            _internalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 28);
+            _internalBg3X = BitUtils.SignExtend((int)_memory.Io.REG_BG3X, 28);
+            _internalBg3Y = BitUtils.SignExtend((int)_memory.Io.REG_BG3Y, 28);
         }
 
         var vram = _memory.Vram.AsSpan();
@@ -528,13 +528,11 @@ public sealed class Ppu
         Span<int> fixedSourceXTable = [_internalBg2X, _internalBg3X];
         Span<int> fixedSourceYTable = [_internalBg2Y, _internalBg3Y];
         ReadOnlySpan<ushort> bgPaTable = [_memory.Io.REG_BG2PA, _memory.Io.REG_BG3PA];
-        ReadOnlySpan<ushort> bgPbTable = [_memory.Io.REG_BG2PB, _memory.Io.REG_BG3PB];
         ReadOnlySpan<ushort> bgPcTable = [_memory.Io.REG_BG2PC, _memory.Io.REG_BG3PC];
-        ReadOnlySpan<ushort> bgPdTable = [_memory.Io.REG_BG2PD, _memory.Io.REG_BG3PD];
         ReadOnlySpan<int> bgSizeTable =
         [
-            BackgroundHelpers.GetRotationalBackgroundSize((bg2Control >> 14) & 0b11),
-            BackgroundHelpers.GetRotationalBackgroundSize((bg3Control >> 14) & 0b11)
+            BackgroundHelpers.GetRotationalBackgroundSizePixels((bg2Control >> 14) & 0b11),
+            BackgroundHelpers.GetRotationalBackgroundSizePixels((bg3Control >> 14) & 0b11)
         ];
 
         Span<int> usedBackgrounds = stackalloc int[2];
@@ -780,6 +778,21 @@ public sealed class Ppu
             var backdropColor = ReadBgPaletteColor(0);
             FrameBuffer.SetPixel(x, y, backdropColor);
         }
+
+        if (bg2Enabled)
+        {
+            _internalBg2X += (short)_memory.Io.REG_BG2PB;
+            _internalBg2Y += (short)_memory.Io.REG_BG2PD;
+        }
+
+        if (!bg3Enabled)
+        {
+            return;
+        }
+
+        _internalBg3X += (short)_memory.Io.REG_BG3PB;
+        _internalBg3Y += (short)_memory.Io.REG_BG3PD;
+
     }
 
     private int SpriteStuff_TempName(int y, Span<ScanlineSpriteInfo> sprites)

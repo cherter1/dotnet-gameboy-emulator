@@ -127,16 +127,16 @@ public sealed class IoRegisters
                 REG_BG2PD = value;
                 break;
             case 0x04000028:
-                REG_BG2X = (REG_BG2X & 0xFF00) | value; //set low bytes
+                REG_BG2X = (REG_BG2X & 0x0FFF0000u) | value; //set low bytes
                 break;
             case 0x0400002A:
-                REG_BG2X = ((REG_BG2X & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
+                REG_BG2X = ((REG_BG2X & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
                 break;
             case 0x0400002C:
-                REG_BG2Y = (REG_BG2Y & 0xFF00) | value; //set low bytes
+                REG_BG2Y = (REG_BG2Y & 0x0FFF0000) | value; //set low bytes
                 break;
             case 0x0400002E:
-                REG_BG2Y = ((REG_BG2Y & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
+                REG_BG2Y = ((REG_BG2Y & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
                 break;
             case 0x04000030:
                 REG_BG3PA = value;
@@ -151,16 +151,16 @@ public sealed class IoRegisters
                 REG_BG3PD = value;
                 break;
             case 0x04000038:
-                REG_BG3X = (REG_BG3X & 0xFF00) | value; //set low bytes
+                REG_BG3X = (REG_BG3X & 0x0FFF0000u) | value; //set low bytes
                 break;
             case 0x0400003A:
-                REG_BG3X = ((REG_BG3X & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
+                REG_BG3X = ((REG_BG3X & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
                 break;
             case 0x0400003C:
-                REG_BG3Y = (REG_BG3Y & 0xFF00) | value; //set low bytes
+                REG_BG3Y = (REG_BG3Y & 0x0FFF0000) | value; //set low bytes
                 break;
             case 0x0400003E:
-                REG_BG3Y = ((REG_BG3Y & 0xff) | (uint)(value << 16)) & 0x0fffffff; //set high bytes and ignore bit 28-31
+                REG_BG3Y = ((REG_BG3Y & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
                 break;
             case 0x04000040:
                 REG_WIN0H = value;
