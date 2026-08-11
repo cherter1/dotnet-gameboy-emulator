@@ -44,10 +44,42 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
             if (Registers.ProgramCounter % 2 == 1)
             {
-                //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+                DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+                Console.WriteLine(nameof(ArmBranch) + $": {ArmBranch:N0}");
+                Console.WriteLine(nameof(ArmBlockDataTransfer) + $": {ArmBlockDataTransfer:N0}");
+                Console.WriteLine(nameof(ArmSingleDataTransfer) + $": {ArmSingleDataTransfer:N0}");
+                Console.WriteLine(nameof(ArmSwi) + $": {ArmSwi:N0}");
+                Console.WriteLine(nameof(ArmBranchExchange) + $": {ArmBranchExchange:N0}");
+                Console.WriteLine(nameof(ArmSingleDataSwap) + $": {ArmSingleDataSwap:N0}");
+                Console.WriteLine(nameof(ArmMultiply) + $": {ArmMultiply:N0}");
+                Console.WriteLine(nameof(ArmMultiplyLong) + $": {ArmMultiplyLong:N0}");
+                Console.WriteLine(nameof(ArmHalfwordSignedDataTransfer) + $": {ArmHalfwordSignedDataTransfer:N0}");
+                Console.WriteLine(nameof(ArmMrs) + $": {ArmMrs:N0}");
+                Console.WriteLine(nameof(ArmMsr) + $": {ArmMsr:N0}");
+                Console.WriteLine(nameof(ArmDataProc) + $": {ArmDataProc:N0}");
+                Console.WriteLine("THUMB");
+                Console.WriteLine(nameof(ThumbFormat1) + $": {ThumbFormat1:N0}");
+                Console.WriteLine(nameof(ThumbFormat2) + $": {ThumbFormat2:N0}");
+                Console.WriteLine(nameof(ThumbFormat3) + $": {ThumbFormat3:N0}");
+                Console.WriteLine(nameof(ThumbFormat4) + $": {ThumbFormat4:N0}");
+                Console.WriteLine(nameof(ThumbFormat5) + $": {ThumbFormat5:N0}");
+                Console.WriteLine(nameof(ThumbFormat6) + $": {ThumbFormat6:N0}");
+                Console.WriteLine(nameof(ThumbFormat7) + $": {ThumbFormat7:N0}");
+                Console.WriteLine(nameof(ThumbFormat8) + $": {ThumbFormat8:N0}");
+                Console.WriteLine(nameof(ThumbFormat9) + $": {ThumbFormat9:N0}");
+                Console.WriteLine(nameof(ThumbFormat10) + $": {ThumbFormat10:N0}");
+                Console.WriteLine(nameof(ThumbFormat11) + $": {ThumbFormat11:N0}");
+                Console.WriteLine(nameof(ThumbFormat12) + $": {ThumbFormat12:N0}");
+                Console.WriteLine(nameof(ThumbFormat13) + $": {ThumbFormat13:N0}");
+                Console.WriteLine(nameof(ThumbFormat14) + $": {ThumbFormat14:N0}");
+                Console.WriteLine(nameof(ThumbFormat15) + $": {ThumbFormat15:N0}");
+                Console.WriteLine(nameof(ThumbFormat16) + $": {ThumbFormat16:N0}");
+                Console.WriteLine(nameof(ThumbFormat17) + $": {ThumbFormat17:N0}");
+                Console.WriteLine(nameof(ThumbFormat18) + $": {ThumbFormat18:N0}");
+                Console.WriteLine(nameof(ThumbFormat19) + $": {ThumbFormat19:N0}");
             }
 
-            if (Registers.ProgramCounter == 0x1bc4)
+            if (Registers.ProgramCounter == 0x400)
             {
                 var x = 1;
             }
@@ -56,11 +88,23 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         catch (Exception)
         {
-            //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+            DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             throw;
         }
     }
 
+    private int ArmBranch = 0;
+    private int ArmBlockDataTransfer = 0;
+    private int ArmSingleDataTransfer = 0;
+    private int ArmSwi = 0;
+    private int ArmBranchExchange = 0;
+    private int ArmSingleDataSwap = 0;
+    private int ArmMultiply = 0;
+    private int ArmMultiplyLong = 0;
+    private int ArmHalfwordSignedDataTransfer = 0;
+    private int ArmMrs = 0;
+    private int ArmMsr = 0;
+    private int ArmDataProc = 0;
     private int StepArm()
     {
         //TODO: figure out cycles to return
@@ -89,6 +133,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 // B, BL
                 decoded = BitUtils.IsBitSet(instruction, 24) ? "BL" : "B";
                 ExecuteArmBranch(instruction);
+                ArmBranch++;
                 return 3;
             }
 
@@ -96,6 +141,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             {
                 // LDM, STM
                 decoded = "LDM/STM";
+                ArmBlockDataTransfer++;
                 return ExecuteBlockDataTransfer(instruction);
             }
 
@@ -104,6 +150,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             {
                 // LDR, STR
                 decoded = "LDR/STR";
+                ArmSingleDataTransfer++;
                 ExecuteArmSingleDataTransfer(instruction);
                 return 3;
             }
@@ -111,6 +158,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
             {
                 decoded = "SWI";
+                ArmSwi++;
                 ExecuteSoftwareInterrupt(instruction);
                 return 4;
             }
@@ -122,6 +170,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     // BX
                     decoded = "BX";
                     ExecuteArmBranchExchange(instruction);
+                    ArmBranchExchange++;
                     return 3;
                 }
 
@@ -134,6 +183,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     // SWP, SWPB
                     decoded = "SWP/SWPB";
                     ExecuteArmSingleDataSwap(instruction);
+                    ArmSingleDataSwap++;
                     return 3;
                 }
 
@@ -141,6 +191,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 {
                     decoded = "MULTIPLY";
                     this.ExecuteArmMultiply(instruction);
+                    ArmMultiply++;
                     return 1;
                 }
 
@@ -148,6 +199,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 {
                     decoded = "MULTIPLY LONG";
                     this.ExecuteArmMultiplyLong(instruction);
+                    ArmMultiplyLong++;
                     return 1;
                 }
 
@@ -156,6 +208,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     // LDRH, STRH, LDRSB, LDRSH
                     decoded = "LDRH, STRH, LDRSB, LDRSH";
                     ExecuteHalfwordSignedDataTransfer(instruction);
+                    ArmHalfwordSignedDataTransfer++;
                     return 3;
                 }
 
@@ -164,6 +217,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     //MRS
                     decoded = "MRS";
                     ExecuteMrs(instruction);
+                    ArmMrs++;
                     return 1;
                 }
 
@@ -172,11 +226,13 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 {
                     decoded = "MSR";
                     ExecuteMsr(instruction);
+                    ArmMsr++;
                     return 1;
                 }
 
                 decoded = "DATA PROC";
                 ExecuteArmDataProcessing(instruction);
+                ArmDataProc++;
                 return 1;
             }
 
@@ -185,14 +241,33 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         finally
         {
-           // var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
-            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-             //   pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
-            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+             var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+                Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
+               pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+            DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
 
     }
 
+    private int ThumbFormat1 = 0;
+    private int ThumbFormat2 = 0;
+    private int ThumbFormat3 = 0;
+    private int ThumbFormat4 = 0;
+    private int ThumbFormat5 = 0;
+    private int ThumbFormat6 = 0;
+    private int ThumbFormat7 = 0;
+    private int ThumbFormat8 = 0;
+    private int ThumbFormat9 = 0;
+    private int ThumbFormat10 = 0;
+    private int ThumbFormat11 = 0;
+    private int ThumbFormat12 = 0;
+    private int ThumbFormat13 = 0;
+    private int ThumbFormat14 = 0;
+    private int ThumbFormat15 = 0;
+    private int ThumbFormat16 = 0;
+    private int ThumbFormat17 = 0;
+    private int ThumbFormat18 = 0;
+    private int ThumbFormat19 = 0;
     private int StepThumb()
     {
         var instructionAddress = Registers.ProgramCounter;
@@ -210,12 +285,14 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     //Format 2
                     decoded = "ADD/SUB f2";
                     this.ExecuteThumbFormat2(instruction);
+                    ThumbFormat2++;
                 }
                 else
                 {
                     //format 1
                     decoded = "LSL/LSR/ASR f1";
                     this.ExecuteThumbFormat1(instruction);
+                    ThumbFormat1++;
                 }
                 return 1;
             }
@@ -225,6 +302,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 3
                 decoded = "MOV/CMP/ADD/SUB f3";
                 this.ExecuteThumbFormat3(instruction);
+                ThumbFormat3++;
                 return 1;
             }
 
@@ -235,12 +313,14 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     //format 4
                     decoded = "ALU OP f4";
                     this.ExecuteThumbFormat4(instruction);
+                    ThumbFormat4++;
                     return 1;
                 }
                 else
                 {
                     //format 5
                     decoded = "ADD/CMP/MOV/bx f5";
+                    ThumbFormat5++;
                     return this.ExecuteThumbFormat5(instruction);
                 }
             }
@@ -250,6 +330,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 6
                 decoded = "LDR PC f6";
                 this.ExecuteThumbFormat6(instruction);
+                ThumbFormat6++;
                 return 2;
             }
 
@@ -260,12 +341,14 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                     //format 7
                     decoded = "LDR/STR f7";
                     this.ExecuteThumbFormat7(instruction);
+                    ThumbFormat7++;
                 }
                 else
                 {
                     //format 8
                     decoded = "LDR/STR seHW f8";
                     this.ExecuteThumbFormat8(instruction);
+                    ThumbFormat8++;
                 }
 
                 return 2;
@@ -276,6 +359,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 9
                 decoded = "LDR/STR immOff f9";
                 this.ExecuteThumbFormat9(instruction);
+                ThumbFormat9++;
                 return 2;
             }
 
@@ -284,6 +368,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 10
                 decoded = "LDR/STR HW f10";
                 this.ExecuteThumbFormat10(instruction);
+                ThumbFormat10++;
                 return 2;
             }
 
@@ -292,6 +377,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 11
                 decoded = "LDR/STR SP rel f11";
                 this.ExecuteThumbFormat11(instruction);
+                ThumbFormat11++;
                 return 2;
             }
 
@@ -300,6 +386,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 12
                 decoded = "SP or PC Load f12";
                 this.ExecuteThumbFormat12(instruction);
+                ThumbFormat12++;
                 return 2;
             }
 
@@ -308,6 +395,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 13
                 decoded = "offset SP f13";
                 this.ExecuteThumbFormat13(instruction);
+                ThumbFormat13++;
                 return 1;
             }
 
@@ -315,6 +403,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             {
                 //format 14
                 decoded = "PUSH/POP reg f14";
+                ThumbFormat14++;
                 return this.ExecuteThumbFormat14(instruction);
             }
 
@@ -322,6 +411,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             {
                 //format 15
                 decoded = "mult Load/store f15";
+                ThumbFormat15++;
                 return this.ExecuteThumbFormat15(instruction);
             }
 
@@ -329,6 +419,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             {
                 //format 17
                 decoded = "SWI f17";
+                ThumbFormat17++;
                 this.ExecuteThumbFormat17(instruction);
                 return 4;
             }
@@ -338,6 +429,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 16
                 decoded = "COND B f16";
                 this.ExecuteThumbFormat16(instruction);
+                ThumbFormat16++;
                 return 3;
             }
 
@@ -346,6 +438,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 18
                 decoded = "B f18";
                 this.ExecuteThumbFormat18(instruction);
+                ThumbFormat18++;
                 return 3;
             }
 
@@ -354,6 +447,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 //format 19
                 decoded = "Long BL f19";
                 this.ExecuteThumbFormat19(instruction);
+                ThumbFormat19++;
                 return 3;
             }
 
@@ -434,6 +528,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         var functionVector = comment >> 16;
         if (functionVector == 0x6)
+        {
+            var q = 1;
+        }
+        if (false)
         {
             //TODO: temp must add functions in bios
             //div
