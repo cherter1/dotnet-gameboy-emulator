@@ -272,7 +272,7 @@ public sealed class Ppu
             spriteCount = SpriteStuff_TempName(y, sprites);
         }
 
-        var enabledSprites = sprites[..spriteCount];
+        Span<ScanlineSpriteInfo> enabledSprites = stackalloc ScanlineSpriteInfo[spriteCount];
         SortSpriteIndicesByPriority(sprites[..spriteCount], enabledSprites);
 
         for (var x = 0; x < ScreenWidth; x++)
@@ -352,7 +352,7 @@ public sealed class Ppu
 
                 if (sprite.IsRotational) //TODO: make this less gross
                 {
-                    var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 :  sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
+                    var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
                     if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority > priorityLine)
                     {
                         continue; //sprite not in x range or lower priority than previously drawn pixel
@@ -444,7 +444,7 @@ public sealed class Ppu
                 {
                     continue; // dont draw if zero index, pixel should be transparent
                 }
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * sprite.PaletteNumber));
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
                 if (sprite.Mode == 1) //semi-transparent
                 {
                     if ((blendControl & 0xc0) == 0x40) //additive
@@ -524,13 +524,13 @@ public sealed class Ppu
         var bg2Control = _memory.Io.REG_BG2CNT;
         var bg3Control = _memory.Io.REG_BG3CNT;
 
-        ReadOnlySpan<ushort> bgControls = [ _memory.Io.REG_BG2CNT, _memory.Io.REG_BG3CNT ];
-        Span<int> fixedSourceXTable = [ _internalBg2X, _internalBg3X ];
-        Span<int> fixedSourceYTable = [ _internalBg2Y, _internalBg3Y ];
-        ReadOnlySpan<ushort> bgPaTable = [ _memory.Io.REG_BG2PA, _memory.Io.REG_BG3PA ];
-        ReadOnlySpan<ushort> bgPbTable = [ _memory.Io.REG_BG2PB, _memory.Io.REG_BG3PB ];
-        ReadOnlySpan<ushort> bgPcTable = [ _memory.Io.REG_BG2PC, _memory.Io.REG_BG3PC ];
-        ReadOnlySpan<ushort> bgPdTable = [ _memory.Io.REG_BG2PD, _memory.Io.REG_BG3PD ];
+        ReadOnlySpan<ushort> bgControls = [_memory.Io.REG_BG2CNT, _memory.Io.REG_BG3CNT];
+        Span<int> fixedSourceXTable = [_internalBg2X, _internalBg3X];
+        Span<int> fixedSourceYTable = [_internalBg2Y, _internalBg3Y];
+        ReadOnlySpan<ushort> bgPaTable = [_memory.Io.REG_BG2PA, _memory.Io.REG_BG3PA];
+        ReadOnlySpan<ushort> bgPbTable = [_memory.Io.REG_BG2PB, _memory.Io.REG_BG3PB];
+        ReadOnlySpan<ushort> bgPcTable = [_memory.Io.REG_BG2PC, _memory.Io.REG_BG3PC];
+        ReadOnlySpan<ushort> bgPdTable = [_memory.Io.REG_BG2PD, _memory.Io.REG_BG3PD];
         ReadOnlySpan<int> bgSizeTable =
         [
             BackgroundHelpers.GetRotationalBackgroundSize((bg2Control >> 14) & 0b11),
@@ -578,11 +578,7 @@ public sealed class Ppu
             spriteCount = SpriteStuff_TempName(y, sprites);
         }
 
-        var enabledSprites = sprites[..spriteCount];
-        if (y == 105)
-        {
-            var q = 1;
-        }
+        Span<ScanlineSpriteInfo> enabledSprites = stackalloc ScanlineSpriteInfo[spriteCount];
         SortSpriteIndicesByPriority(sprites[..spriteCount], enabledSprites);
 
         for (int x = 0; x < ScreenWidth; x++)
@@ -650,7 +646,7 @@ public sealed class Ppu
 
                 if (sprite.IsRotational) //TODO: make this less gross
                 {
-                    var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 :  sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
+                    var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
                     if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority >= priorityLine)
                     {
                         continue; //sprite not in x range or lower priority than previously drawn pixel
@@ -742,14 +738,15 @@ public sealed class Ppu
                 {
                     continue; // dont draw if zero index, pixel should be transparent
                 }
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * sprite.PaletteNumber));
+
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
                 if (sprite.Mode == 1) //semi-transparent
                 {
                     if ((blendControl & 0xc0) == 0x40) //additive
                     {
                         //temp - get last pixel non-transparent
                         /*
-                        ushort pixel = 0b0000000_11111_11111;
+                        ushort pixel = 0b0011111_11111_11111;
                         var redB = pixel & 0x1f;
                         var greenB = (pixel >> 5) & 0x1f;
                         var blueB = (pixel >> 10) & 0x1f;

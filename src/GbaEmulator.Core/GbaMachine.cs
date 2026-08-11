@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GbaEmulator.Core.Bios;
 using GbaEmulator.Core.Cpu;
 using GbaEmulator.Core.Dma;
@@ -76,15 +77,31 @@ public sealed class GbaMachine
     {
         var iterations = 0;
         var consumed = 0;
+        var cpuWatch = new Stopwatch();
+        var dmaWatch = new Stopwatch();
+        var timerWatch = new Stopwatch();
+        var ppuWatch = new Stopwatch();
         while (consumed < cycles)
         {
+            cpuWatch.Start();
             var instructionCycles = Cpu.Step();
+            cpuWatch.Stop();
+            dmaWatch.Start();
             Dma.RunDmas(DmaTimingType.Immediately, Bus);
+            dmaWatch.Stop();
+            timerWatch.Start();
             Timers.Step(instructionCycles);
+            timerWatch.Stop();
+            ppuWatch.Start();
             Ppu.Step(instructionCycles, Bus);
+            ppuWatch.Stop();
             consumed += instructionCycles;
             iterations += 1;
         }
         //Console.WriteLine($"{iterations} iterations completed");
+        //Console.WriteLine($"{cpuWatch.ElapsedMilliseconds} ms in CPU");
+        //Console.WriteLine($"{dmaWatch.ElapsedMilliseconds} ms in DMA");
+        //Console.WriteLine($"{timerWatch.ElapsedMilliseconds} ms in timers");
+        //Console.WriteLine($"{ppuWatch.ElapsedMilliseconds} ms in ppu");
     }
 }
