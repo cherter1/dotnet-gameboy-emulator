@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.ExceptionServices;
 using GbaEmulator.Core.Bios;
 using GbaCartridge = GbaEmulator.Core.Cartridge.Cartridge;
 
@@ -159,5 +160,68 @@ public sealed class GbaBus(GbaMemory memory)
                 Console.WriteLine($"Address Accessed: 0x{address:x8}");
                 return MemoryRegion.Unused;
         }
+    }
+
+    public int GetCpuAccessCycles(uint address, AccessWidth width, bool sequential)
+    {
+        return (int)(address >> 24) switch
+        {
+            0x00 => 1, //BIOS
+            0x02 => width == AccessWidth.Word ? 6 : 3, //EWRAM
+            0x03 => 1, //IWRAM
+            0x04 => 1, //IO
+            0x05 => width == AccessWidth.Word ? 2 : 1, //Palette RAM
+            0x06 => width == AccessWidth.Word ? 2 : 1, //VRAM
+            0x07 => 1, //OAM
+            0x08 or 0x09 => GetGamePakRomCycles(waitState: 0, width, sequential),
+            0x0A or 0x0B => GetGamePakRomCycles(waitState: 1, width, sequential),
+            0x0C or 0x0D => GetGamePakRomCycles(waitState: 2, width, sequential),
+            0x0E or 0x0F => 1, //SRAM
+            _ => 1
+        };
+    }
+
+    public int GetGamePakRomCycles(int waitState, AccessWidth width, bool sequential)
+    {
+        int first;
+        int second;
+        switch (waitState)
+        {
+            case 0:
+                first = DecodeFirstAccess((memory.Io.REG_WAITCNT >> 2) & 0b11);
+                second = ((memory.Io.REG_WAITCNT >> 4) & 1) == 0 ? 2 : 1;
+                break;
+            case 1:
+                first = DecodeFirstAccess((memory.Io.REG_WAITCNT >> 5) & 0b11);
+                second = ((memory.Io.REG_WAITCNT >> 7) & 1) == 0 ? 4 : 1;
+                break;
+            case 2:
+                first = DecodeFirstAccess((memory.Io.REG_WAITCNT >> 8) & 0b11);
+                second = ((memory.Io.REG_WAITCNT >> 10) & 1) == 0 ? 8 : 1;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(waitState));
+        }
+
+        int initial = sequential ? second : first;
+        return width switch
+        {
+            AccessWidth.Byte => initial,
+            AccessWidth.Halfword => initial,
+            AccessWidth.Word => initial + second,
+            _ => throw new ArgumentOutOfRangeException(nameof(width))
+        };
+    }
+
+    private static int DecodeFirstAccess(int value)
+    {
+        return value switch
+        {
+            0 => 4,
+            1 => 3,
+            2 => 2,
+            3 => 8,
+            _ => throw new ArgumentOutOfRangeException(nameof(value)),
+        };
     }
 }

@@ -32,6 +32,8 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     public void SetThumbState(bool enabled) =>
         Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 5, enabled));
 
+    private int _cycles;
+
     public int Step()
     {
         try
@@ -79,10 +81,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 Console.WriteLine(nameof(ThumbFormat19) + $": {ThumbFormat19:N0}");
             }
 
-            if (Registers.ProgramCounter == 0x400)
-            {
-                var x = 1;
-            }
+            _cycles = 0;
 
             return Cpsr.ThumbState ? StepThumb() : StepArm();
         }
@@ -112,6 +111,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         var instruction = bus.Read32(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 4;
+
         var pcBeforeExecute = Registers.ProgramCounter;
         var decoded = "UNKNOWN";
         try
@@ -468,8 +468,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         /*
            |..3 ..................2 ..................1 ..................0|
            |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-           |_Cond__|1_0_1|L|___________________Offset______________________| B,BL,BLX
+           |_Cond__|1_0_1|L|___________________Offset______________________| B,BL
          */
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
 
         var link = BitUtils.IsBitSet(instruction, 24);
         var offset = BitUtils.SignExtend((int)(instruction & 0x00FFFFFF) << 2, 26);
@@ -481,6 +483,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         //docs say +8 but only do +4 because StepArm() function also adds 4
         Registers.ProgramCounter = (uint)(pc + 4 + offset);
+
+        //2S + 1N cycles basically 1S and FlushingPipeline
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void ExecuteArmBranchExchange(uint instruction)
@@ -488,9 +494,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         /*
            |..3 ..................2 ..................1 ..................0|
            |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-           |_Cond__|0_0_0_1_0_0_1_0_1_1_1_1_1_1_1_1_1_1_1_1|0_0|L|1|__Rn___| BX,BLX
+           |_Cond__|0_0_0_1_0_0_1_0_1_1_1_1_1_1_1_1_1_1_1_1|0_0|L|1|__Rn___| BX
            no BLX for this cpu only since its armv4T
          */
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
 
         var rn = (int)instruction & 0xF;
         var target = Registers[rn];
@@ -501,6 +509,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         target &= ~1u; //clear bit 0 because to realign memory
         Registers.ProgramCounter = target;
+
+        //2S + 1N cycles basically 1S and FlushingPipeline
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
 
     }
 
@@ -748,6 +760,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             Registers[destinationRegister] = loadedWord;
         }
+
+        //LDR 1S + 1N + 1I cycles
+        //LDR PC 2S + 2N + 1I cycles
+        //STR 2N cycles
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: load); //LDR S , STR N
     }
 
     private void ExecuteHalfwordSignedDataTransfer(uint instruction)
@@ -840,6 +857,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             Registers[rd] = loadedValue;
         }
     }
+
     private void ExecuteMrs(uint instruction)
     {
         /*
@@ -853,6 +871,9 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         var statusReg = pSource ? Registers.GetSpsr(Cpsr.Mode).ToUInt32() : Cpsr.ToUInt32();
 
         Registers[rd] = statusReg;
+
+        //1S cycle
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void ExecuteMsr(uint instruction)
@@ -895,6 +916,9 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             Cpsr = status;
         }
+
+        //1S cycle
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private uint DecodeImmediateOperand(uint instruction, out bool carryOut)

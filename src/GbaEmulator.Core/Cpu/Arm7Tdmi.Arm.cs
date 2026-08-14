@@ -1,4 +1,5 @@
 using GbaEmulator.Core.Common;
+using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Cpu;
 
@@ -19,10 +20,14 @@ public sealed partial class Arm7Tdmi
         var setFlags = BitUtils.IsBitSet(instruction, 20);
         var accumulate = BitUtils.IsBitSet(instruction, 21);
 
-        var result = Registers[rm] * Registers[rs];
+        var multiplierOperand = Registers[rs];
+        var result = Registers[rm] * multiplierOperand;
+
+        int bitMultiplier = 0;
         if (accumulate)
         {
             result += Registers[rn];
+            bitMultiplier = 1;
         }
 
         if (setFlags)
@@ -32,6 +37,45 @@ public sealed partial class Arm7Tdmi
         }
 
         Registers[rd] = result;
+
+        bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, false);
+
+        // 1S + mI cycles or if accumulate 1S + (m + 1)I cycles
+        _cycles += bitMultiplier; //I cycles
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+    }
+
+    private static int GetMultiplierArrayCycles(uint multiplierOperand, bool unSigned)
+    {
+        const uint SingleCycleMask = 0xffffff00;
+        const uint DoubleCycleMask = 0xffff0000;
+        const uint TripleCycleMask = 0xff000000;
+        if (unSigned)
+        {
+            if ((multiplierOperand & SingleCycleMask) == 0)
+            {
+                return 1;
+            }
+
+            if ((multiplierOperand & DoubleCycleMask) == 0)
+            {
+                return 2;
+            }
+
+            return (multiplierOperand & TripleCycleMask) == 0 ? 3 : 4;
+        }
+
+        if ((multiplierOperand & SingleCycleMask) is 0 or SingleCycleMask)
+        {
+            return 1;
+        }
+
+        if ((multiplierOperand & DoubleCycleMask) is 0 or DoubleCycleMask)
+        {
+            return 2;
+        }
+
+        return (multiplierOperand & TripleCycleMask) is 0 or TripleCycleMask ? 3 : 4;
     }
 
     private void ExecuteArmMultiplyLong(uint instruction)
@@ -39,7 +83,7 @@ public sealed partial class Arm7Tdmi
         /*
           |..3 ..................2 ..................1 ..................0|
           |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-          |_Cond__|0_0_0_0_1|U|A|S|__RdHi_|__RdLo_|__Rs___|1_0_0_1|__Rm___| Mul
+          |_Cond__|0_0_0_0_1|U|A|S|__RdHi_|__RdLo_|__Rs___|1_0_0_1|__Rm___| Mull
          */
 
         var rm = (int)(instruction & 0xF);
@@ -49,15 +93,19 @@ public sealed partial class Arm7Tdmi
         var setFlags = BitUtils.IsBitSet(instruction, 20);
         var accumulate = BitUtils.IsBitSet(instruction, 21);
         var signed = BitUtils.IsBitSet(instruction, 22);
+        var multiplierOperand = Registers[rs];
 
+        int bitMultiplier = 1;
         if (signed)
         {
             //signed mul
-            long res = (long)(int)Registers[rm] * (int)Registers[rs];
+            long res = (long)(int)Registers[rm] * (int)multiplierOperand;
             if (accumulate)
             {
                 long acc = (long)(((ulong)Registers[rdHi] << 32) | Registers[rdLo]);
                 res += acc;
+
+                bitMultiplier += 1;
             }
 
             Registers[rdLo] = (uint)(res & 0xFFFFFFFF);
@@ -71,15 +119,18 @@ public sealed partial class Arm7Tdmi
             var setNegative = ((res >> 32) & 0x80000000) != 0;
             SetNegative(setNegative);
             SetZero(res == 0);
+            bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, false);
         }
         else
         {
             //unsigned mul
-            var res = (ulong)Registers[rm] * Registers[rs];
+            var res = (ulong)Registers[rm] * multiplierOperand;
             if (accumulate)
             {
                 ulong acc = ((ulong)Registers[rdHi] << 32) | Registers[rdLo];
                 res += acc;
+
+                bitMultiplier += 1;
             }
 
             Registers[rdLo] = (uint)(res & 0xFFFFFFFF);
@@ -93,7 +144,12 @@ public sealed partial class Arm7Tdmi
             var setNegative = ((res >> 32) & 0x80000000) != 0;
             SetNegative(setNegative);
             SetZero(res == 0);
+            bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, true);
         }
+
+        //1S + (m+1)I cycles unless accumulate then 1S + (m+2)I cycles
+        _cycles += bitMultiplier; //I cycles
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void ExecuteArmDataProcessing(uint instruction)
@@ -111,10 +167,6 @@ public sealed partial class Arm7Tdmi
         var setFlags = BitUtils.IsBitSet(instruction, 20);
         var rn = (int)((instruction >> 16) & 0xF);
         var rd = (int)((instruction >> 12) & 0xF);
-        if (rd == 15)
-        {
-            var x = 1;
-        }
 
         var operand1 = rn == 15
             ? BitUtils.IsBitSet(instruction, 4) && !immediate
@@ -297,5 +349,20 @@ public sealed partial class Arm7Tdmi
             default:
                 throw new NotSupportedException($"ARM opcode 0x{opcode:X} is not implemented yet.");
         }
+
+        if (rd == 15)
+        {
+            //simulates pipeline flush adding extra cycle S cycle and N cycle
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        }
+
+        if (!immediate && BitUtils.IsBitSet(instruction, 4))
+        {
+            //if register shift then add I cycle
+            _cycles += 1;
+        }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 }
