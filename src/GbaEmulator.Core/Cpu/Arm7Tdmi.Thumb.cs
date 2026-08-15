@@ -1,5 +1,6 @@
 using System.Numerics;
 using GbaEmulator.Core.Common;
+using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Cpu;
 
@@ -46,7 +47,7 @@ public sealed partial class Arm7Tdmi
             case 0b10: //ASR
                 if (offset == 0)
                 {
-                    var carryOut = BitUtils.IsBitSet((uint)sourceValue, 31); 
+                    var carryOut = BitUtils.IsBitSet((uint)sourceValue, 31);
                     result = carryOut ? 0xFFFFFFFF : 0;
                     SetCarry(carryOut);
                     break;
@@ -61,8 +62,9 @@ public sealed partial class Arm7Tdmi
         }
 
         Registers[rd] = result;
-
         UpdateNz(result);
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat2(ushort instruction)
@@ -92,6 +94,8 @@ public sealed partial class Arm7Tdmi
 
         UpdateArithmeticFlags(Registers[rs], operand2, result, opCode);
         Registers[rd] = result;
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat3(ushort instruction)
@@ -134,6 +138,8 @@ public sealed partial class Arm7Tdmi
             default:
                 throw new NotSupportedException("not a valid opCode for Thumb format 3");
         }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat4(ushort instruction)
@@ -171,6 +177,7 @@ public sealed partial class Arm7Tdmi
                 UpdateNz(result);
                 Registers[rd] = result;
 
+                _cycles++; //I
                 break;
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
@@ -179,6 +186,7 @@ public sealed partial class Arm7Tdmi
                 UpdateNz(result);
                 Registers[rd] = result;
 
+                _cycles++; //I
                 break;
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
@@ -187,6 +195,7 @@ public sealed partial class Arm7Tdmi
                 UpdateNz(result);
                 Registers[rd] = result;
 
+                _cycles++; //I
                 break;
             case 0b0101: //ADC
                 var wide = (ulong)Registers[rd] + Registers[rs] + cy;
@@ -214,6 +223,7 @@ public sealed partial class Arm7Tdmi
                 }
                 Registers[rd] = result;
 
+                _cycles++; //I
                 break;
             case 0b1000: //TST
                 result = Registers[rd] & Registers[rs];
@@ -243,11 +253,13 @@ public sealed partial class Arm7Tdmi
 
                 break;
             case 0b1101: //MUL
-                result = Registers[rd] * Registers[rs];
+                var multiplierOperand = Registers[rd];
+                result = multiplierOperand * Registers[rs];
                 Registers[rd] = result;
                 UpdateNz(result);
                 SetCarry(false);
 
+                _cycles += GetMultiplierArrayCycles(multiplierOperand, false); //mI cycles
                 break;
             case 0b1110: //BIC
                 result = Registers[rd] & ~Registers[rs];
@@ -264,9 +276,11 @@ public sealed partial class Arm7Tdmi
             default:
                 throw new NotSupportedException("not a valid opCode for Thumb format 4");
         }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
-    private int ExecuteThumbFormat5(ushort instruction)
+    private void ExecuteThumbFormat5(ushort instruction)
     {
         /*
            |..........1 ..................0|
@@ -288,6 +302,10 @@ public sealed partial class Arm7Tdmi
                 if (rd == 15)
                 {
                     Registers[rd] &= ~1u;
+
+                    //refill pipeline adds 1S and 1N
+                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
                 }
 
                 break;
@@ -301,6 +319,10 @@ public sealed partial class Arm7Tdmi
                 if (rd == 15)
                 {
                     Registers[rd] &= ~1u;
+
+                    //refill pipeline adds 1S and 1N
+                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
                 }
 
                 break;
@@ -313,10 +335,15 @@ public sealed partial class Arm7Tdmi
                 //32 bit align if entering arm else 16 bit aligned
                 target &= setThumb ? ~1u : ~3u;
                 Registers.ProgramCounter = target;
-                return 3;
+
+                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter,
+                    setThumb ? AccessWidth.Halfword : AccessWidth.Word, sequential: false); //N
+                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter,
+                    setThumb ? AccessWidth.Halfword : AccessWidth.Word, sequential: true) * 2; //2S
+                return;
         }
 
-        return 1;
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat6(ushort instruction)
@@ -332,6 +359,10 @@ public sealed partial class Arm7Tdmi
         var pc = (Registers.ProgramCounter + 2) & ~3u;
         var address = pc + (uint)offset;
         Registers[rd] = bus.Read32(address);
+
+        _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false); //N
+        _cycles++; //I
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
     }
 
     private void ExecuteThumbFormat7(ushort instruction)
@@ -351,17 +382,37 @@ public sealed partial class Arm7Tdmi
 
         if (isLoad) //LDR
         {
-            Registers[rd] = byteTransfer ? bus.Read8(effectiveAddress) : bus.Read32(effectiveAddress);
+            if (byteTransfer)
+            {
+                Registers[rd] = bus.Read8(effectiveAddress);
+
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+            }
+            else
+            {
+                Registers[rd] = bus.Read32(effectiveAddress);
+
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+            }
+
+            _cycles++; //I
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
         }
         else //STR
         {
             if (byteTransfer)
             {
                 bus.Write8(effectiveAddress, (byte)Registers[rd]);
-                return;
+
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+            }
+            else
+            {
+                bus.Write32(effectiveAddress, Registers[rd]);
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
             }
 
-            bus.Write32(effectiveAddress, Registers[rd]);
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false); //N
         }
     }
 
@@ -384,11 +435,14 @@ public sealed partial class Arm7Tdmi
             case 0b00: //STRH
                 bus.Write16(effectiveAddress, (ushort)Registers[rd]);
 
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false);
                 break;
             case 0b01: //LDSB
                 var loadedByte = bus.Read8(effectiveAddress);
                 Registers[rd] = (uint)BitUtils.SignExtend(loadedByte, 8);
 
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+                _cycles++; //I
                 break;
             case 0b10: //LDRH
                 uint value = bus.Read16(effectiveAddress);
@@ -399,6 +453,8 @@ public sealed partial class Arm7Tdmi
 
                 Registers[rd] = value;
 
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
+                _cycles++; //I
                 break;
             case 0b11: //LDSH
                 var loadedHalfword = bus.Read16(effectiveAddress);
@@ -411,10 +467,14 @@ public sealed partial class Arm7Tdmi
                     Registers[rd] = (uint)BitUtils.SignExtend(loadedHalfword, 16);
                 }
 
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
+                _cycles++; //I
                 break;
             default:
                 throw new NotSupportedException("not a valid opCode for Thumb format 8");
         }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: opCode != 0); //N for store else S
     }
 
     private void ExecuteThumbFormat9(ushort instruction)
@@ -440,20 +500,28 @@ public sealed partial class Arm7Tdmi
             case 0b00: //STR
                 bus.Write32(effectiveAddress, Registers[rd]);
 
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
                 break;
             case 0b01: //LDR
                 Registers[rd] = bus.Read32(effectiveAddress);
 
+                _cycles++; //I
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
                 break;
             case 0b10: //STRB
                 bus.Write8(effectiveAddress, (byte)Registers[rd]);
 
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
                 break;
             case 0b11: //LDRB
                 Registers[rd] = bus.Read8(effectiveAddress);
 
+                _cycles++; //I
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
                 break;
         }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: opCode is 0b01 or 0b11); //N for store else S
     }
 
     private void ExecuteThumbFormat10(ushort instruction)
@@ -479,11 +547,16 @@ public sealed partial class Arm7Tdmi
             }
 
             Registers[rd] = value;
+
+            _cycles++; //I
         }
         else //STRH
         {
             bus.Write16(effectiveAddress, (ushort)Registers[rd]);
         }
+
+        _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad); //N for store else S
     }
 
     private void ExecuteThumbFormat11(ushort instruction)
