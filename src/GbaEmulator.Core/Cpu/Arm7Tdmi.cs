@@ -529,9 +529,9 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
 
         var newCpsr = Cpsr.ToUInt32();
-        newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor;
-        newCpsr = BitUtils.SetBit(newCpsr, 7, true);
-        newCpsr = BitUtils.SetBit(newCpsr, 5, false);
+        newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor; //set supervisor mode
+        newCpsr = BitUtils.SetBit(newCpsr, 7, true); //set irq disable
+        newCpsr = BitUtils.SetBit(newCpsr, 5, false); //disable thumb
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
         Registers[14] = Registers.ProgramCounter;

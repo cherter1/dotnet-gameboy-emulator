@@ -575,11 +575,18 @@ public sealed partial class Arm7Tdmi
         if (isLoad) //LDR
         {
             Registers[rd] = bus.Read32(effectiveAddress);
+
+            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+            _cycles++; //I
         }
         else //STR
         {
             bus.Write32(effectiveAddress, Registers[rd]);
+
+            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
         }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad); //N for STR else S
     }
 
     private void ExecuteThumbFormat12(ushort instruction)
@@ -598,6 +605,8 @@ public sealed partial class Arm7Tdmi
             : (Registers.ProgramCounter + 2) & ~3u;
 
         Registers[rd] = operand1 + (uint)immediate;
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
     }
 
     private void ExecuteThumbFormat13(ushort instruction)
@@ -619,9 +628,11 @@ public sealed partial class Arm7Tdmi
         {
             Registers[13] = Registers.StackPointer + (uint)imm;
         }
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
     }
 
-    private int ExecuteThumbFormat14(ushort instruction)
+    private void ExecuteThumbFormat14(ushort instruction)
     {
         /*
            |..........1 ..................0|
@@ -629,9 +640,7 @@ public sealed partial class Arm7Tdmi
            |1_0_1_1|L|1_0|R|____RList______| push/pop registers
          */
 
-        var transferCount = 0;
         var isPush = !BitUtils.IsBitSet(instruction, 11);
-
         if (isPush)
         {
             for (int reg = 8; reg >= 0; reg--)
@@ -640,10 +649,10 @@ public sealed partial class Arm7Tdmi
                 if (!shouldTransfer)
                     continue;
 
-                transferCount++;
                 Registers[13] -= 4;
                 var register = Registers[reg];
                 bus.Write32(Registers.StackPointer, reg == 8 ? Registers.LinkRegister : register);
+                _cycles += bus.GetCpuAccessCycles(Registers.StackPointer, AccessWidth.Halfword, sequential: BitOperations.TrailingZeroCount(instruction) != reg);
             }
         }
         else
@@ -654,11 +663,18 @@ public sealed partial class Arm7Tdmi
                 if (!shouldTransfer)
                     continue;
 
-                transferCount++;
                 var result = bus.Read32(Registers.StackPointer & ~3u);
+
+                _cycles += bus.GetCpuAccessCycles(Registers.StackPointer, AccessWidth.Halfword,
+                    sequential: BitOperations.TrailingZeroCount(instruction) != reg);
+
                 if (reg == 8)
                 {
                     Registers[15] = result & ~1u;
+
+                    //refill pipeline
+                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false); //N
+                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
                 }
                 else
                 {
@@ -666,11 +682,12 @@ public sealed partial class Arm7Tdmi
                 }
                 Registers[13] += 4;
             }
+            _cycles++; //I
         }
-        return transferCount + 1;
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: !isPush);
     }
 
-    private int ExecuteThumbFormat15(ushort instruction)
+    private void ExecuteThumbFormat15(ushort instruction)
     {
         /*
            |..........1 ..................0|
@@ -695,7 +712,9 @@ public sealed partial class Arm7Tdmi
             {
                 bus.Write32(address, Registers[15] + 4);
             }
-            return 2;
+
+            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false);
+            return;
         }
 
         for (int reg = 0; reg < 8; reg++)
@@ -707,28 +726,33 @@ public sealed partial class Arm7Tdmi
             if (isLoad) //LDMIA
             {
                 Registers[reg] = bus.Read32(address);
+                _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
             }
             else //STMIA
             {
                 if (reg == rb && reg != BitOperations.TrailingZeroCount(instruction))
                 {
                     bus.Write32(address, finalAddress);
+                    _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
                 }
                 else
                 {
                     bus.Write32(address, Registers[reg]);
+                    _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
                 }
             }
 
             address += 4u;
         }
 
+        _cycles += isLoad ? 1 : 0; //I cycle for load only
+
         if (!isLoad || !BitUtils.IsBitSet(instruction, rb))
         {
             Registers[rb] = finalAddress;
         }
 
-        return transferCount + 1;
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad);
     }
 
     private void ExecuteThumbFormat16(ushort instruction)
@@ -742,12 +766,18 @@ public sealed partial class Arm7Tdmi
         var cond = (instruction >> 8) & 0x0F;
         if (!ConditionPassed((Condition)cond))
         {
+            //1S cycle for unmet conditions
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
             return;
         }
 
         var offset = BitUtils.SignExtend((instruction & 0xFF) << 1, 9);
 
         Registers.ProgramCounter = (uint)(Registers.ProgramCounter + 2 + offset);
+
+        //refill pipeline
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true) * 2; //2S
     }
 
     private void ExecuteThumbFormat17(ushort instruction)
@@ -764,13 +794,16 @@ public sealed partial class Arm7Tdmi
         Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
 
         var newCpsr = Cpsr.ToUInt32();
-        newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor;
-        newCpsr = BitUtils.SetBit(newCpsr, 7, true);
-        newCpsr = BitUtils.SetBit(newCpsr, 5, false);
+        newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor; //set supervisor mode
+        newCpsr = BitUtils.SetBit(newCpsr, 7, true); //set irq disable
+        newCpsr = BitUtils.SetBit(newCpsr, 5, false); //disable thumb
 
         Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
     }
 
     private void ExecuteThumbFormat18(ushort instruction)
@@ -783,6 +816,9 @@ public sealed partial class Arm7Tdmi
 
         var offset = BitUtils.SignExtend((instruction & 0x7FF) << 1, 12);
         Registers.ProgramCounter = (Registers.ProgramCounter + 2) + (uint)offset;
+
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true) * 2;
     }
 
     private void ExecuteThumbFormat19(ushort instruction)
@@ -807,5 +843,7 @@ public sealed partial class Arm7Tdmi
             var signedOffset = BitUtils.SignExtend(offset << 12, 23);
             Registers[14] = (uint)(Registers.ProgramCounter + 2 + signedOffset);
         }
+
+        _cycles += 3; //TODO: figure cycles later
     }
 }
