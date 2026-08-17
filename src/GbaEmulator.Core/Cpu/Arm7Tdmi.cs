@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
@@ -12,7 +13,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
     private int _traceIndex;
     public RegisterBank Registers { get; private set; } = null!;
-    public ProgramStatusRegister Cpsr { get; private set; } = new() { Mode = CpuMode.System, IrqDisable = true };
+    public ProgramStatusRegister Cpsr = new() { Mode = CpuMode.System, IrqDisable = true };
 
     public void Reset(bool skipBios)
     {
@@ -618,7 +619,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         var currentMode = Cpsr.Mode;
         if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15)) // system banked registers if r15 not in list and S=1
         {
-            Cpsr = Cpsr.ChangeMode(CpuMode.System);
+            Cpsr.Mode = CpuMode.System;
         }
 
         uint address = startAddress;
@@ -666,7 +667,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 
         if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15))
         {
-            Cpsr = Cpsr.ChangeMode(currentMode);
+            Cpsr.Mode = currentMode;
         }
 
         if (isWriteback && (!isLoad || !BitUtils.IsBitSet(instruction, rn))) // no writeback for ldm if rn is in Rlist
@@ -1008,6 +1009,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         };
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool ConditionPassed(Condition condition) =>
         condition switch
         {
@@ -1046,52 +1048,45 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         Registers[14] = nextInstructionAddress + 4u;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateNz(uint result)
     {
-        var cpsr = Cpsr.ToUInt32();
-        // N
-        cpsr = BitUtils.SetBit(cpsr, 31, (result & 0x80000000) != 0);
-        // Z
-        cpsr = BitUtils.SetBit(cpsr, 30, result == 0);
-        Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
+        Cpsr.Negative = (result & 0x80000000) != 0;
+        Cpsr.Zero = result == 0;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetCarry(bool carry) =>
-        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 29, carry));
+        Cpsr.Carry = carry;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetOverflow(bool overflow) =>
-        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 28, overflow));
+        Cpsr.Overflow = overflow;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNegative(bool negative) =>
-        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 31, negative));
+        Cpsr.Negative = negative;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetZero(bool zero) =>
-        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 30, zero));
+        Cpsr.Zero = zero;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateArithmeticFlags(uint left, uint right, uint result, bool subtraction)
     {
-        var cpsr = Cpsr.ToUInt32();
-        // N
-        cpsr = BitUtils.SetBit(cpsr, 31, (result & 0x80000000) != 0);
-        // Z
-        cpsr = BitUtils.SetBit(cpsr, 30, result == 0);
+        Cpsr.Negative = (result & 0x80000000) != 0;
+        Cpsr.Zero = result == 0;
 
         if (subtraction)
         {
-            // C
-            cpsr = BitUtils.SetBit(cpsr, 29, left >= right);
-            // V
-            cpsr = BitUtils.SetBit(cpsr, 28, ((left ^ right) & (left ^ result) & 0x80000000) != 0);
+            Cpsr.Carry = left >= right;
+            Cpsr.Overflow = ((left ^ right) & (left ^ result) & 0x80000000) != 0;
         }
         else
         {
-            // C
-            cpsr = BitUtils.SetBit(cpsr, 29, result < left || result < right);
-            // V
-            cpsr = BitUtils.SetBit(cpsr, 28, (~(left ^ right) & (left ^ result) & 0x80000000) != 0);
+            Cpsr.Carry = result < left || result < right;
+            Cpsr.Overflow = (~(left ^ right) & (left ^ result) & 0x80000000) != 0;
         }
-
-        Cpsr = ProgramStatusRegister.FromUInt32(cpsr);
     }
 
     private uint ShiftLeft(uint value, int amount, out bool carryOut)

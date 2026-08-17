@@ -6,7 +6,7 @@ public sealed class Cartridge
     public byte[] RomData { get; }
     public string Title { get; }
 
-    private Cartridge(string path, byte[] romData)
+    public Cartridge(string path, byte[] romData)
     {
         Path = path;
         RomData = romData;
