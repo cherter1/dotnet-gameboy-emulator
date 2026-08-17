@@ -1,4 +1,5 @@
 using GbaEmulator.Core.Cpu;
+using GbaEmulator.Core.Cpu.TempOptimize;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
 
@@ -12,5 +13,13 @@ public class CpuUtilities
         var interrupts = new InterruptController(memory);
         var bus = new GbaBus(memory);
         return (new Arm7Tdmi(bus, interrupts), bus);
+    }
+
+    public static (CpuOpt Cpu, BusOpt Bus) CreateCpuOpt()
+    {
+        var memory = new GbaMemory();
+        var interrupts = new InterruptController(memory);
+        var bus = new BusOpt(memory);
+        return (new CpuOpt(bus, interrupts), bus);
     }
 }

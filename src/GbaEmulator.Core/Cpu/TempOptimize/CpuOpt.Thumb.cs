@@ -2,9 +2,9 @@ using System.Numerics;
 using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Memory;
 
-namespace GbaEmulator.Core.Cpu;
+namespace GbaEmulator.Core.Cpu.TempOptimize;
 
-public sealed partial class Arm7Tdmi
+public sealed partial class CpuOpt
 {
     private void ExecuteThumbFormat1(ushort instruction)
     {

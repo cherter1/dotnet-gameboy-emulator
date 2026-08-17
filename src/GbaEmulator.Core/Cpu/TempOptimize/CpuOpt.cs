@@ -5,10 +5,9 @@ using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
 
-namespace GbaEmulator.Core.Cpu;
+namespace GbaEmulator.Core.Cpu.TempOptimize;
 
-//Armv4TM arm version
-public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
+public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 {
     private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
     private int _traceIndex;
@@ -156,12 +155,21 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
 
             var bits27_26 = (instruction >> 26) & 0b11;
-            if (bits27_26 == 0b01)
+            if (bits27_26 == 0b01 && (instruction & 0x100000) != 0) //bit 20 set is load
             {
-                // LDR, STR
-                decoded = "LDR/STR";
+                // LDR
+                decoded = "LDR";
                 ArmSingleDataTransfer++;
-                ExecuteArmSingleDataTransfer(instruction);
+                ExecuteArmSingleDataTransferLoad(instruction);
+                return;
+            }
+
+            if (bits27_26 == 0b01 && (instruction & 0x100000) == 0) //bit 20 not set is store
+            {
+                // STR
+                decoded = "STR";
+                ArmSingleDataTransfer++;
+                ExecuteSingleDataTransferStore(instruction);
                 return;
             }
 
@@ -718,7 +726,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //1S cycle
     }
 
-    private void ExecuteArmSingleDataTransfer(uint instruction)
+    private void ExecuteSingleDataTransferStore(uint instruction)
     {
         /*
           |..3 ..................2 ..................1 ..................0|
@@ -728,13 +736,17 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
          */
 
         var isOffsetImmediate = (instruction & 0x02000000) == 0;
-        var preIndex = BitUtils.IsBitSet(instruction, 24);
-        var addOffset = BitUtils.IsBitSet(instruction, 23);
-        var byteTransfer = BitUtils.IsBitSet(instruction, 22);
-        var writeback = BitUtils.IsBitSet(instruction, 21);
-        var load = BitUtils.IsBitSet(instruction, 20);
+        //var preIndex = BitUtils.IsBitSet(instruction, 24);
+        var preIndex = (instruction & 0x1000000) != 0; //bit 24
+        //var addOffset = BitUtils.IsBitSet(instruction, 23);
+        var addOffset = (instruction & 0x800000) != 0; //bit 23
+        //var byteTransfer = BitUtils.IsBitSet(instruction, 22);
+        var byteTransfer = (instruction & 0x400000) != 0; //bit 22
+        //var writeback = BitUtils.IsBitSet(instruction, 21);
+        var writeback = (instruction & 0x200000) != 0; //bit 21
+
         var baseRegister = (int)((instruction >> 16) & 0xF);
-        var destinationRegister = (int)((instruction >> 12) & 0xF);
+        var destinationRegister = (int)(instruction >> 12) & 0xF;
         var offset = isOffsetImmediate
             ? instruction & 0xFFF
             : ComputeShiftedRegisterOperand(instruction, out _);
@@ -746,34 +758,18 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             ? addOffset ? address + offset : address - offset
             : address;
 
-        uint loadedWord = 0;
-        if (load)
+        var writeValue = destinationRegister == 15
+            ? Registers[destinationRegister] + 8
+            : Registers[destinationRegister];
+
+        if (byteTransfer)
         {
-            if (byteTransfer)
-            {
-                loadedWord = bus.Read8(effectiveAddress);
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
-            }
-            else
-            {
-                loadedWord = bus.Read32(effectiveAddress);
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
-            }
-        }
-        else if (byteTransfer)
-        {
-            var writeValue = destinationRegister == 15
-                ? Registers[destinationRegister] + 8
-                : Registers[destinationRegister];
             bus.Write8(effectiveAddress, (byte)writeValue);
 
             _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
         }
         else
         {
-            var writeValue = destinationRegister == 15
-                ? Registers[destinationRegister] + 8
-                : Registers[destinationRegister];
             bus.Write32(effectiveAddress, writeValue);
 
             _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
@@ -788,23 +784,80 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             Registers[baseRegister] = effectiveAddress;
         }
 
-        if (load)
-        {
-            Registers[destinationRegister] = loadedWord;
+        //LDR 1S + 1N + 1I cycles
+        //LDR PC 2S + 2N + 1I cycles
+        //STR 2N cycles
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //LDR S , STR N
+    }
 
-            _cycles++; //1I
-            if (destinationRegister == 15)
-            {
-                //if LDR PC add another 1S and 1N for pipeline refill
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
-            }
+    private void ExecuteArmSingleDataTransferLoad(uint instruction)
+    {
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_1_0|P|U|B|W|L|__Rn___|__Rd___|_________Offset________| TransImm9
+          |_Cond__|0_1_1|P|U|B|W|L|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| TransReg9
+         */
+
+        var isOffsetImmediate = (instruction & 0x02000000) == 0;
+        //var preIndex = BitUtils.IsBitSet(instruction, 24);
+        var preIndex = (instruction & 0x1000000) != 0; //bit 24
+        //var addOffset = BitUtils.IsBitSet(instruction, 23);
+        var addOffset = (instruction & 0x800000) != 0; //bit 23
+        //var byteTransfer = BitUtils.IsBitSet(instruction, 22);
+        var byteTransfer = (instruction & 0x400000) != 0; //bit 22
+        //var writeback = BitUtils.IsBitSet(instruction, 21);
+        var writeback = (instruction & 0x200000) != 0; //bit 21
+
+        var baseRegister = (int)((instruction >> 16) & 0xF);
+        var destinationRegister = (int)(instruction >> 12) & 0xF;
+        var offset = isOffsetImmediate
+            ? instruction & 0xFFF
+            : ComputeShiftedRegisterOperand(instruction, out _);
+
+        var address = baseRegister == 15
+            ? Registers[baseRegister] + 4
+            : Registers[baseRegister];
+        var effectiveAddress = preIndex
+            ? addOffset ? address + offset : address - offset
+            : address;
+
+        uint loadedWord;
+
+        if (byteTransfer)
+        {
+            loadedWord = bus.Read8(effectiveAddress);
+            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
+        }
+        else
+        {
+            loadedWord = bus.Read32(effectiveAddress);
+            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
+        }
+
+        if (!preIndex)
+        {
+            Registers[baseRegister] = addOffset ? address + offset : address - offset;
+        }
+        else if (writeback)
+        {
+            Registers[baseRegister] = effectiveAddress;
+        }
+
+        Registers[destinationRegister] = loadedWord;
+
+        _cycles++; //1I
+        if (destinationRegister == 15)
+        {
+            //if LDR PC add another 1S and 1N for pipeline refill
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
         //LDR 1S + 1N + 1I cycles
         //LDR PC 2S + 2N + 1I cycles
         //STR 2N cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: load); //LDR S , STR N
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //LDR S
     }
 
     private void ExecuteHalfwordSignedDataTransfer(uint instruction)
