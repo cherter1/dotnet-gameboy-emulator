@@ -178,7 +178,7 @@ public sealed partial class CpuOpt
             ? DecodeImmediateOperand(instruction, out var logicalCarryOut)
             : ComputeShiftedRegisterOperand(instruction, out logicalCarryOut);
 
-        var cy = Cpsr.Carry ? 1u : 0u;
+        var cy = Registers.Cpsr.Carry ? 1u : 0u;
         uint result;
         ulong wide;
         switch (opcode)
@@ -208,8 +208,8 @@ public sealed partial class CpuOpt
                 Registers[rd] = result;
                 if (setFlags && rd == 15)
                 {
-                    var restoredPsr = Registers.GetSpsr(Cpsr.Mode);
-                    Cpsr = restoredPsr;
+                    var restoredPsr = Registers.GetSpsr();
+                    Registers.Cpsr = restoredPsr;
                 }
                 if (rd != 15 && setFlags)
                 {
@@ -286,10 +286,10 @@ public sealed partial class CpuOpt
                 UpdateArithmeticFlags(operand1, operand2, result, subtraction: true);
                 if (rd == 15 && setFlags)
                 {
-                    var oldMode = Cpsr.Mode;
+                    var oldMode = Registers.Cpsr.Mode;
                     if (oldMode != CpuMode.User && oldMode != CpuMode.System)
                     {
-                        Cpsr = Registers.GetSpsr(oldMode);
+                        Registers.Cpsr = Registers.GetSpsr();
                     }
                     //Registers.ProgramCounter += 4;
                 }
@@ -321,8 +321,8 @@ public sealed partial class CpuOpt
 
                 if (rd == 15 && setFlags)
                 {
-                    var oldMode = Cpsr.Mode;
-                    Cpsr = Registers.GetSpsr(oldMode);
+                    Registers.Cpsr = Registers.GetSpsr();
+                    //TODO mode
                 }
 
                 break;

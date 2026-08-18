@@ -12,7 +12,7 @@ ScuffedBios.o
 ScuffedBios.bin
 
 # benchmark logs
-**/BenchmarkDotNet.Artifacts/*.log
+**/BenchmarkDotNet.Artifacts/
 
 # Build results
 [Dd]ebug/

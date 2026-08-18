@@ -11,15 +11,14 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 {
     private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
     private int _traceIndex;
-    public RegisterBank Registers { get; private set; } = null!;
-    public ProgramStatusRegister Cpsr = new() { Mode = CpuMode.System, IrqDisable = true };
+    public OptRegBank Registers { get; private set; } = null!;
 
     public void Reset(bool skipBios)
     {
-        Registers = new RegisterBank(() => Cpsr.Mode);
+        Registers = new OptRegBank();
         Registers.InitializeForGba();
 
-        Cpsr = new ProgramStatusRegister
+        Registers.Cpsr = new ProgramStatusRegister
         {
             Mode = CpuMode.System,
             IrqDisable = false,
@@ -29,16 +28,13 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         Registers.ProgramCounter = skipBios ? 0x08000000u : 0u;
     }
 
-    public void SetThumbState(bool enabled) =>
-        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 5, enabled));
-
     private int _cycles;
 
     public int Step()
     {
         try
         {
-            if (interrupts.ShouldServiceIrq(Cpsr.IrqDisable))
+            if (interrupts.ShouldServiceIrq(Registers.Cpsr.IrqDisable))
             {
                 EnterIrqException();
                 return 4;
@@ -82,7 +78,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             }
 
             _cycles = 0;
-            if (Cpsr.ThumbState)
+            if (Registers.Cpsr.ThumbState)
             {
                 StepThumb();
             }
@@ -154,8 +150,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 return;
             }
 
-            var bits27_26 = (instruction >> 26) & 0b11;
-            if (bits27_26 == 0b01 && (instruction & 0x100000) != 0) //bit 20 set is load
+            // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
+            if ((instruction & 0xc100000) != 0x4100000) //bit 20 set is load
             {
                 // LDR
                 decoded = "LDR";
@@ -164,7 +160,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 return;
             }
 
-            if (bits27_26 == 0b01 && (instruction & 0x100000) == 0) //bit 20 not set is store
+            // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0000_0000_0000_0000_0000_0000
+            if ((instruction & 0xc100000) == 0x4000000) //bit 20 not set is store
             {
                 // STR
                 decoded = "STR";
@@ -181,90 +178,82 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 return;
             }
 
-            if (bits27_26 == 0b00)
+            if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
             {
-                if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
-                {
-                    // BX
-                    decoded = "BX";
-                    ExecuteArmBranchExchange(instruction);
-                    ArmBranchExchange++;
-                    return;
-                }
-
-                //equivalent mask
-                //((instruction & 0x0FB00FF0) == 0x01000090)
-                if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
-                    ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
-                    ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
-                {
-                    // SWP, SWPB
-                    decoded = "SWP/SWPB";
-                    ExecuteArmSingleDataSwap(instruction);
-                    ArmSingleDataSwap++;
-                    return;
-                }
-
-                if ((instruction & 0x0FC000F0) == 0x00000090)
-                {
-                    decoded = "MULTIPLY";
-                    this.ExecuteArmMultiply(instruction);
-                    ArmMultiply++;
-                    return;
-                }
-
-                if ((instruction & 0x0F8000F0) == 0x00800090)
-                {
-                    decoded = "MULTIPLY LONG";
-                    this.ExecuteArmMultiplyLong(instruction);
-                    ArmMultiplyLong++;
-                    return;
-                }
-
-                if ((instruction & 0x0E000090) == 0x00000090)
-                {
-                    // LDRH, STRH, LDRSB, LDRSH
-                    decoded = "LDRH, STRH, LDRSB, LDRSH";
-                    ExecuteHalfwordSignedDataTransfer(instruction);
-                    ArmHalfwordSignedDataTransfer++;
-                    return;
-                }
-
-                if ((instruction & 0x0FBF0FFF) == 0x010F0000)
-                {
-                    //MRS
-                    decoded = "MRS";
-                    ExecuteMrs(instruction);
-                    ArmMrs++;
-                    return;
-                }
-
-                //MSR
-                if ((instruction & 0x0DB0F000) == 0x0120F000)
-                {
-                    decoded = "MSR";
-                    ExecuteMsr(instruction);
-                    ArmMsr++;
-                    return;
-                }
-
-                decoded = "DATA PROC";
-                ExecuteArmDataProcessing(instruction);
-                ArmDataProc++;
+                // BX
+                decoded = "BX";
+                ExecuteArmBranchExchange(instruction);
+                ArmBranchExchange++;
                 return;
             }
 
-            decoded = "NOT SUPPORTED";
-            throw new NotSupportedException($"Unhandled ARM instruction 0x{instruction:X8}");
+            //equivalent mask
+            //((instruction & 0x0FB00FF0) == 0x01000090)
+            if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
+                ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
+                ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
+            {
+                // SWP, SWPB
+                decoded = "SWP/SWPB";
+                ExecuteArmSingleDataSwap(instruction);
+                ArmSingleDataSwap++;
+                return;
+            }
+
+            if ((instruction & 0x0FC000F0) == 0x00000090)
+            {
+                decoded = "MULTIPLY";
+                this.ExecuteArmMultiply(instruction);
+                ArmMultiply++;
+                return;
+            }
+
+            if ((instruction & 0x0F8000F0) == 0x00800090)
+            {
+                decoded = "MULTIPLY LONG";
+                this.ExecuteArmMultiplyLong(instruction);
+                ArmMultiplyLong++;
+                return;
+            }
+
+            if ((instruction & 0x0E000090) == 0x00000090)
+            {
+                // LDRH, STRH, LDRSB, LDRSH
+                decoded = "LDRH, STRH, LDRSB, LDRSH";
+                ExecuteHalfwordSignedDataTransfer(instruction);
+                ArmHalfwordSignedDataTransfer++;
+                return;
+            }
+
+            if ((instruction & 0x0FBF0FFF) == 0x010F0000)
+            {
+                //MRS
+                decoded = "MRS";
+                ExecuteMrs(instruction);
+                ArmMrs++;
+                return;
+            }
+
+            //MSR
+            if ((instruction & 0x0DB0F000) == 0x0120F000)
+            {
+                decoded = "MSR";
+                ExecuteMsr(instruction);
+                ArmMsr++;
+                return;
+            }
+
+            decoded = "DATA PROC";
+            ExecuteArmDataProcessing(instruction);
+            ArmDataProc++;
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
                 Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+                pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
             DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
-
     }
 
     private int ThumbFormat1 = 0;
@@ -469,9 +458,9 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
                 Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+                pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
             DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
     }
@@ -512,7 +501,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         var rn = (int)instruction & 0xF;
         var target = Registers[rn];
 
-        Cpsr.ThumbState = (target & 1) != 0;
+        Registers.Cpsr.ThumbState = (target & 1) != 0;
 
         target &= ~1u; //clear bit 0 because to realign memory
         Registers.ProgramCounter = target;
@@ -533,14 +522,15 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         var comment = instruction & 0x00FFFFFFu;
         Console.WriteLine("ARM SWI: comment = " + comment.ToString("X8"));
 
-        Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
+        Registers.SetSpsr(CpuMode.Supervisor, Registers.Cpsr);
 
-        var newCpsr = Cpsr.ToUInt32();
+        var newCpsr = Registers.Cpsr.ToUInt32();
         newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor; //set supervisor mode
         newCpsr = BitUtils.SetBit(newCpsr, 7, true); //set irq disable
         newCpsr = BitUtils.SetBit(newCpsr, 5, false); //disable thumb
 
-        Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
+        //TODO: mode
+        Registers.Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
 
@@ -622,10 +612,11 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             return;
         }
 
-        var currentMode = Cpsr.Mode;
+        var currentMode = Registers.Cpsr.Mode;
         if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15)) // system banked registers if r15 not in list and S=1
         {
-            Cpsr.Mode = CpuMode.System;
+            //TODO Mode
+            Registers.Cpsr.Mode = CpuMode.System;
         }
 
         uint address = startAddress;
@@ -673,7 +664,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
         if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15))
         {
-            Cpsr.Mode = currentMode;
+            //TODO mode
+            Registers.Cpsr.Mode = currentMode;
         }
 
         if (isWriteback && (!isLoad || !BitUtils.IsBitSet(instruction, rn))) // no writeback for ldm if rn is in Rlist
@@ -972,7 +964,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
         var pSource = BitUtils.IsBitSet(instruction, 22);
         var rd = (int)(instruction >> 12) & 0xF;
-        var statusReg = pSource ? Registers.GetSpsr(Cpsr.Mode).ToUInt32() : Cpsr.ToUInt32();
+        var statusReg = pSource ? Registers.GetSpsr().ToUInt32() : Registers.Cpsr.ToUInt32();
 
         Registers[rd] = statusReg;
 
@@ -1000,8 +992,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             : Registers[rm];
 
         var oldPsr = useSpsr
-            ? Registers.GetSpsr(Cpsr.Mode).ToUInt32()
-            : Cpsr.ToUInt32();
+            ? Registers.GetSpsr().ToUInt32()
+            : Registers.Cpsr.ToUInt32();
 
         uint newPsr = flagBits switch
         {
@@ -1014,11 +1006,12 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         var status = ProgramStatusRegister.FromUInt32(newPsr);
         if (useSpsr)
         {
-            Registers.SetSpsr(Cpsr.Mode, status);
+            Registers.SetSpsr(Registers.Cpsr.Mode, status);
         }
         else
         {
-            Cpsr = status;
+            //TODO: Mode
+            Registers.Cpsr = status;
         }
 
         //1S cycle
@@ -1030,7 +1023,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         var immediate = instruction & 0xFF;
         var rotate = (int)((instruction >> 8) & 0xF) * 2;
         var result = BitUtils.RotateRight(immediate, rotate);
-        carryOut = rotate == 0 ? Cpsr.Carry : BitUtils.IsBitSet(result, 31);
+        carryOut = rotate == 0 ? Registers.Cpsr.Carry : BitUtils.IsBitSet(result, 31);
         return result;
     }
 
@@ -1064,20 +1057,20 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
     private bool ConditionPassed(Condition condition) =>
         condition switch
         {
-            Condition.Eq => Cpsr.Zero,
-            Condition.Ne => !Cpsr.Zero,
-            Condition.Cs => Cpsr.Carry,
-            Condition.Cc => !Cpsr.Carry,
-            Condition.Mi => Cpsr.Negative,
-            Condition.Pl => !Cpsr.Negative,
-            Condition.Vs => Cpsr.Overflow,
-            Condition.Vc => !Cpsr.Overflow,
-            Condition.Hi => Cpsr is { Carry: true, Zero: false },
-            Condition.Ls => !Cpsr.Carry || Cpsr.Zero,
-            Condition.Ge => Cpsr.Negative == Cpsr.Overflow,
-            Condition.Lt => Cpsr.Negative != Cpsr.Overflow,
-            Condition.Gt => !Cpsr.Zero && Cpsr.Negative == Cpsr.Overflow,
-            Condition.Le => Cpsr.Zero || Cpsr.Negative != Cpsr.Overflow,
+            Condition.Eq => Registers.Cpsr.Zero,
+            Condition.Ne => !Registers.Cpsr.Zero,
+            Condition.Cs => Registers.Cpsr.Carry,
+            Condition.Cc => !Registers.Cpsr.Carry,
+            Condition.Mi => Registers.Cpsr.Negative,
+            Condition.Pl => !Registers.Cpsr.Negative,
+            Condition.Vs => Registers.Cpsr.Overflow,
+            Condition.Vc => !Registers.Cpsr.Overflow,
+            Condition.Hi => Registers.Cpsr is { Carry: true, Zero: false },
+            Condition.Ls => !Registers.Cpsr.Carry || Registers.Cpsr.Zero,
+            Condition.Ge => Registers.Cpsr.Negative == Registers.Cpsr.Overflow,
+            Condition.Lt => Registers.Cpsr.Negative != Registers.Cpsr.Overflow,
+            Condition.Gt => !Registers.Cpsr.Zero && Registers.Cpsr.Negative == Registers.Cpsr.Overflow,
+            Condition.Le => Registers.Cpsr.Zero || Registers.Cpsr.Negative != Registers.Cpsr.Overflow,
             Condition.Al => true, _ => false
         };
 
@@ -1085,58 +1078,59 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
     {
         var nextInstructionAddress = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x18;
-        Registers.SetSpsr(CpuMode.Irq, Cpsr);
-        Cpsr = new ProgramStatusRegister
+        Registers.SetSpsr(CpuMode.Irq, Registers.Cpsr);
+        Registers.Cpsr = new ProgramStatusRegister
         {
             Mode = CpuMode.Irq,
             IrqDisable = true,
             ThumbState = false,
-            Negative = Cpsr.Negative,
-            Zero = Cpsr.Zero,
-            Carry = Cpsr.Carry,
-            Overflow = Cpsr.Overflow
+            Negative = Registers.Cpsr.Negative,
+            Zero = Registers.Cpsr.Zero,
+            Carry = Registers.Cpsr.Carry,
+            Overflow = Registers.Cpsr.Overflow
         };
+        //TODO reg mode
         Registers[14] = nextInstructionAddress + 4u;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateNz(uint result)
     {
-        Cpsr.Negative = (result & 0x80000000) != 0;
-        Cpsr.Zero = result == 0;
+        Registers.Cpsr.Negative = (result & 0x80000000) != 0;
+        Registers.Cpsr.Zero = result == 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetCarry(bool carry) =>
-        Cpsr.Carry = carry;
+        Registers.Cpsr.Carry = carry;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetOverflow(bool overflow) =>
-        Cpsr.Overflow = overflow;
+        Registers.Cpsr.Overflow = overflow;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNegative(bool negative) =>
-        Cpsr.Negative = negative;
+        Registers.Cpsr.Negative = negative;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetZero(bool zero) =>
-        Cpsr.Zero = zero;
+        Registers.Cpsr.Zero = zero;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateArithmeticFlags(uint left, uint right, uint result, bool subtraction)
     {
-        Cpsr.Negative = (result & 0x80000000) != 0;
-        Cpsr.Zero = result == 0;
+        Registers.Cpsr.Negative = (result & 0x80000000) != 0;
+        Registers.Cpsr.Zero = result == 0;
 
         if (subtraction)
         {
-            Cpsr.Carry = left >= right;
-            Cpsr.Overflow = ((left ^ right) & (left ^ result) & 0x80000000) != 0;
+            Registers.Cpsr.Carry = left >= right;
+            Registers.Cpsr.Overflow = ((left ^ right) & (left ^ result) & 0x80000000) != 0;
         }
         else
         {
-            Cpsr.Carry = result < left || result < right;
-            Cpsr.Overflow = (~(left ^ right) & (left ^ result) & 0x80000000) != 0;
+            Registers.Cpsr.Carry = result < left || result < right;
+            Registers.Cpsr.Overflow = (~(left ^ right) & (left ^ result) & 0x80000000) != 0;
         }
     }
 
@@ -1145,7 +1139,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         switch (amount)
         {
             case 0:
-                carryOut = Cpsr.Carry;
+                carryOut = Registers.Cpsr.Carry;
                 return value;
             case >= 32:
                 //last bit shifted out if == 32 otherwise always no carry out
@@ -1162,7 +1156,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         switch (amount)
         {
             case 0 when registerShift:
-                carryOut = Cpsr.Carry;
+                carryOut = Registers.Cpsr.Carry;
                 return value;
             case 0:
                 carryOut = BitUtils.IsBitSet(value, 31);
@@ -1185,7 +1179,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 carryOut = BitUtils.IsBitSet(value, 31);
                 return carryOut ? 0xFFFFFFFF : 0;
             case 0:
-                carryOut = Cpsr.Carry;
+                carryOut = Registers.Cpsr.Carry;
                 return value;
             default:
                 carryOut = ((value >> (amount - 1)) & 1U) != 0;
@@ -1199,13 +1193,13 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         {
             carryOut = BitUtils.IsBitSet(value, 0);
             var rotated = BitUtils.RotateRight(value, 1);
-            rotated = BitUtils.SetBit(rotated, 31, Cpsr.Carry);
+            rotated = BitUtils.SetBit(rotated, 31, Registers.Cpsr.Carry);
             return rotated;
         }
 
         var result = BitUtils.RotateRight(value, amount);
         carryOut = amount == 0 ?
-            Cpsr.Carry : //when rs == 0 carry remains unchanged
+            Registers.Cpsr.Carry : //when rs == 0 carry remains unchanged
             BitUtils.IsBitSet(result, 31);
         return result;
     }

@@ -154,7 +154,7 @@ public sealed partial class CpuOpt
         var rs = (instruction >> 3) & 0b111;
         var opCode = (instruction >> 6) & 0xF;
 
-        var cy = Cpsr.Carry ? 1u : 0u;
+        var cy = Registers.Cpsr.Carry ? 1u : 0u;
         uint result;
         switch (opCode)
         {
@@ -330,7 +330,7 @@ public sealed partial class CpuOpt
                 var target = source;
                 var setThumb = (target & 1) != 0;
 
-                Cpsr.ThumbState = (target & 1) != 0;
+                Registers.Cpsr.ThumbState = (target & 1) != 0;
 
                 //32 bit align if entering arm else 16 bit aligned
                 target &= setThumb ? ~1u : ~3u;
@@ -791,11 +791,12 @@ public sealed partial class CpuOpt
         var comment = instruction & 0xFF;
         Console.WriteLine("THUMB SWI Enter: comment = " + comment.ToString("X8"));
 
-        Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
+        Registers.SetSpsr(CpuMode.Supervisor, Registers.Cpsr);
 
-        Cpsr.Mode = CpuMode.Supervisor;
-        Cpsr.IrqDisable = true;
-        Cpsr.ThumbState = false;
+        //todo mode
+        Registers.Cpsr.Mode = CpuMode.Supervisor;
+        Registers.Cpsr.IrqDisable = true;
+        Registers.Cpsr.ThumbState = false;
 
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
