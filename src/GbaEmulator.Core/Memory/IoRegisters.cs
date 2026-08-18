@@ -293,41 +293,41 @@ public sealed class IoRegisters
                 REG_TM0D_RELOAD = value;
                 break;
             case 0x04000102:
-                REG_TM0CNT = value;
-                if ((value & 0x0080) != 0)
+                if ((value & 0x0080) != 0 && (REG_TM0CNT & 0x80) == 0)
                 {
                     REG_TM0D_COUNTER = REG_TM0D_RELOAD;
                 }
+                REG_TM0CNT = value;
                 break;
             case 0x04000104:
                 REG_TM1D_RELOAD = value;
                 break;
             case 0x04000106:
-                REG_TM1CNT = value;
-                if ((value & 0x0080) != 0)
+                if ((value & 0x0080) != 0 && (REG_TM1CNT & 0x80) == 0)
                 {
                     REG_TM1D_COUNTER = REG_TM1D_RELOAD;
                 }
+                REG_TM1CNT = value;
                 break;
             case 0x04000108:
                 REG_TM2D_RELOAD = value;
                 break;
             case 0x0400010A:
-                REG_TM2CNT = value;
-                if ((value & 0x0080) != 0)
+                if ((value & 0x0080) != 0 && (REG_TM2CNT & 0x80) == 0)
                 {
                     REG_TM2D_COUNTER = REG_TM2D_RELOAD;
                 }
+                REG_TM2CNT = value;
                 break;
             case 0x0400010C:
                 REG_TM3D_RELOAD = value;
                 break;
             case 0x0400010E:
-                REG_TM3CNT = value;
-                if ((value & 0x0080) != 0)
+                if ((value & 0x0080) != 0 && (REG_TM3CNT & 0x80) == 0)
                 {
                     REG_TM3D_COUNTER = REG_TM3D_RELOAD;
                 }
+                REG_TM3CNT = value;
                 break;
             #endregion
             #region Interrupts

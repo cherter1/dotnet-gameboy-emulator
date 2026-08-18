@@ -9,7 +9,7 @@ public sealed class TimerChannel(int index)
 
     public void Step(int cycles, ushort control, ref ushort counter, ushort reload, InterruptController interrupts)
     {
-        if ((control & 0x80) == 0)
+        if ((control & 0x80) == 0) //bit 7 set high enabled
         {
             return;
         }
@@ -17,6 +17,11 @@ public sealed class TimerChannel(int index)
         var prescaler = PrescalerValues[control & 0b11];
         _prescalerAccumulator += cycles;
 
+        if ((control & 0b100) != 0 && index != 0) //bit 2 set cascade, except timer 0
+        {
+            //cascade overflow
+            return;
+        }
         while (_prescalerAccumulator >= prescaler)
         {
             _prescalerAccumulator -= prescaler;

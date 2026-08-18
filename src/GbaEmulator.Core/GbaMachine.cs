@@ -86,15 +86,19 @@ public sealed class GbaMachine
             cpuWatch.Start();
             var instructionCycles = Cpu.Step();
             cpuWatch.Stop();
+
             dmaWatch.Start();
             Dma.RunDmas(DmaTimingType.Immediately, Bus);
             dmaWatch.Stop();
+
             timerWatch.Start();
             Timers.Step(instructionCycles);
             timerWatch.Stop();
+
             ppuWatch.Start();
             Ppu.Step(instructionCycles, Bus);
             ppuWatch.Stop();
+
             consumed += instructionCycles;
             iterations += 1;
         }
