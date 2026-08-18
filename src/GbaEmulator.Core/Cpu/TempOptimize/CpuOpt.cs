@@ -156,7 +156,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 // LDR
                 decoded = "LDR";
                 ArmSingleDataTransfer++;
-                ExecuteArmSingleDataTransferLoad(instruction);
+                ExecuteSingleDataLoad(instruction);
                 return;
             }
 
@@ -166,7 +166,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 // STR
                 decoded = "STR";
                 ArmSingleDataTransfer++;
-                ExecuteSingleDataTransferStore(instruction);
+                ExecuteSingleDataStore(instruction);
                 return;
             }
 
@@ -718,7 +718,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //1S cycle
     }
 
-    private void ExecuteSingleDataTransferStore(uint instruction)
+    private void ExecuteSingleDataStore(uint instruction)
     {
         /*
           |..3 ..................2 ..................1 ..................0|
@@ -728,13 +728,9 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
          */
 
         var isOffsetImmediate = (instruction & 0x02000000) == 0;
-        //var preIndex = BitUtils.IsBitSet(instruction, 24);
         var preIndex = (instruction & 0x1000000) != 0; //bit 24
-        //var addOffset = BitUtils.IsBitSet(instruction, 23);
         var addOffset = (instruction & 0x800000) != 0; //bit 23
-        //var byteTransfer = BitUtils.IsBitSet(instruction, 22);
         var byteTransfer = (instruction & 0x400000) != 0; //bit 22
-        //var writeback = BitUtils.IsBitSet(instruction, 21);
         var writeback = (instruction & 0x200000) != 0; //bit 21
 
         var baseRegister = (int)((instruction >> 16) & 0xF);
@@ -776,13 +772,10 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             Registers[baseRegister] = effectiveAddress;
         }
 
-        //LDR 1S + 1N + 1I cycles
-        //LDR PC 2S + 2N + 1I cycles
-        //STR 2N cycles
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //LDR S , STR N
     }
 
-    private void ExecuteArmSingleDataTransferLoad(uint instruction)
+    private void ExecuteSingleDataLoad(uint instruction)
     {
         /*
           |..3 ..................2 ..................1 ..................0|
@@ -792,13 +785,9 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
          */
 
         var isOffsetImmediate = (instruction & 0x02000000) == 0;
-        //var preIndex = BitUtils.IsBitSet(instruction, 24);
         var preIndex = (instruction & 0x1000000) != 0; //bit 24
-        //var addOffset = BitUtils.IsBitSet(instruction, 23);
         var addOffset = (instruction & 0x800000) != 0; //bit 23
-        //var byteTransfer = BitUtils.IsBitSet(instruction, 22);
         var byteTransfer = (instruction & 0x400000) != 0; //bit 22
-        //var writeback = BitUtils.IsBitSet(instruction, 21);
         var writeback = (instruction & 0x200000) != 0; //bit 21
 
         var baseRegister = (int)((instruction >> 16) & 0xF);
@@ -829,7 +818,9 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
         if (!preIndex)
         {
-            Registers[baseRegister] = addOffset ? address + offset : address - offset;
+            Registers[baseRegister] = addOffset
+                ? address + offset
+                : address - offset;
         }
         else if (writeback)
         {
@@ -843,12 +834,10 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         {
             //if LDR PC add another 1S and 1N for pipeline refill
             _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2;
+            return;
         }
 
-        //LDR 1S + 1N + 1I cycles
-        //LDR PC 2S + 2N + 1I cycles
-        //STR 2N cycles
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //LDR S
     }
 
