@@ -4,7 +4,7 @@ using GbaEmulator.Core.Cpu.TempOptimize;
 using GbaEmulator.Core.Memory;
 using GbaEmulator.Core.Tests.TestUtils;
 
-namespace GbaEmulator.Core.Benchmarks;
+namespace GbaEmulator.Core.Benchmarks.Cpu;
 
 [MemoryDiagnoser]
 [SimpleJob(launchCount: 3)]
@@ -16,13 +16,13 @@ public class ArmSingleDataTransferBenchmarks
     private const int StepsPerInvoke = 16_384;
     private const uint RomBase = 0x08000000;
 
-    private Arm7Tdmi _loadCpu = null!;
-    private GbaBus _loadBus = null!;
-    private Arm7Tdmi _storeCpu = null!;
-    private GbaBus _storeBus = null!;
+    public Arm7Tdmi _loadCpu = null!;
+    public GbaBus _loadBus = null!;
+    public Arm7Tdmi _storeCpu = null!;
+    public GbaBus _storeBus = null!;
 
-    private CpuOpt _loadCpuOpt = null!;
-    private BusOpt _loadBusOpt = null!;
+    public CpuOpt _loadCpuOpt = null!;
+    public BusOpt _loadBusOpt = null!;
     public CpuOpt _storeCpuOpt = null!;
     public BusOpt _storeBusOpt = null!;
 
@@ -77,7 +77,7 @@ public class ArmSingleDataTransferBenchmarks
         _storeCpuOpt.Registers[2] = 0x8;
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
+    //[Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
     public int StepArm_Ldr()
     {
         _loadCpu.Registers.ProgramCounter = RomBase;
@@ -91,7 +91,7 @@ public class ArmSingleDataTransferBenchmarks
         return totalCycles;
     }
 
-    //[Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
     public int StepArm_Str()
     {
         _storeCpu.Registers.ProgramCounter = RomBase;
@@ -105,7 +105,7 @@ public class ArmSingleDataTransferBenchmarks
         return totalCycles;
     }
 
-    [Benchmark(OperationsPerInvoke = StepsPerInvoke)]
+    //[Benchmark(OperationsPerInvoke = StepsPerInvoke)]
     public int Opt_StepArm_Ldr()
     {
         _loadCpuOpt.Registers.ProgramCounter = RomBase;
@@ -119,7 +119,7 @@ public class ArmSingleDataTransferBenchmarks
         return totalCycles;
     }
 
-    //[Benchmark(OperationsPerInvoke = StepsPerInvoke)]
+    [Benchmark(OperationsPerInvoke = StepsPerInvoke)]
     public int Opt_StepArm_Str()
     {
         _storeCpuOpt.Registers.ProgramCounter = RomBase;

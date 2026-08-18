@@ -151,7 +151,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             }
 
             // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
-            if ((instruction & 0xc100000) != 0x4100000) //bit 20 set is load
+            if ((instruction & 0xc100000) == 0x4100000) //bit 20 set is load
             {
                 // LDR
                 decoded = "LDR";
@@ -216,11 +216,22 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 return;
             }
 
-            if ((instruction & 0x0E000090) == 0x00000090)
+            // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0001_0000_0000_0000_1001_0000
+            if ((instruction & 0x0E100090) == 0x100090)
             {
-                // LDRH, STRH, LDRSB, LDRSH
-                decoded = "LDRH, STRH, LDRSB, LDRSH";
-                ExecuteHalfwordSignedDataTransfer(instruction);
+                // LDRH, LDRSB, LDRSH
+                decoded = "LDRH, LDRSB, LDRSH";
+                ExecuteHalfwordSignedDataLoad(instruction);
+                ArmHalfwordSignedDataTransfer++;
+                return;
+            }
+
+            // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0000_0000_0000_0000_1001_0000
+            if ((instruction & 0x0E100090) == 0x90)
+            {
+                // STRH
+                decoded = "STRH";
+                ExecuteHalfwordDataStore(instruction);
                 ArmHalfwordSignedDataTransfer++;
                 return;
             }
@@ -841,9 +852,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //LDR S
     }
 
-    private void ExecuteHalfwordSignedDataTransfer(uint instruction)
+    private void ExecuteHalfwordDataStore(uint instruction)
     {
-        //LDRH, STRH, LDRSB, LDRSH
         /*
           |..3 ..................2 ..................1 ..................0|
           |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
@@ -857,7 +867,6 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             : Registers[rn];
         var rd = (int)(instruction >> 12) & 0xF;
         var opCode = (instruction >> 5) & 0b11;
-        var isLoad = BitUtils.IsBitSet(instruction, 20);
         var isWriteback = BitUtils.IsBitSet(instruction, 21);
         var immediate = BitUtils.IsBitSet(instruction, 22);
         var isUp = BitUtils.IsBitSet(instruction, 23);
@@ -874,56 +883,85 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             ? updatedAddress
             : baseAddress;
 
-        uint loadedValue = 0;
-        if (isLoad)
+        if (opCode != 0b01)
         {
-            switch (opCode)
-            {
-                case 0b00: //reserved for swp
-                    throw new NotSupportedException("opcode 0b00 should be reserved for a SWP instruction");
-                case 0b01: //unsigned halfword
-                    loadedValue = bus.Read16(effectiveAddress);
-                    loadedValue = BitOperations.RotateRight(loadedValue, (int)((effectiveAddress & 1u) * 8));
-
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
-                    break;
-                case 0b10: //signed byte
-                    loadedValue = (uint)(sbyte)bus.Read8(effectiveAddress);
-
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N cycle
-                    break;
-                case 0b11: //signed halfword
-                    var rawHalfword = bus.Read16(effectiveAddress);
-                    if ((effectiveAddress & 1) != 0)
-                    {
-                        loadedValue = (uint)BitUtils.SignExtend((rawHalfword >> 8) & 0xff, 8);
-                        break;
-                    }
-                    loadedValue = (uint)BitUtils.SignExtend(rawHalfword, 16);
-
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
-                    break;
-                default:
-                    throw new NotSupportedException("not a possible opcode for this singed/halfword data transfer");
-            }
-
-            if (rd == 15)
-            {
-                Registers.ProgramCounter = loadedValue & ~3u;
-            }
+            throw new NotSupportedException("Only STRH is supported for halfword/signed store");
         }
-        else //store
-        {
-            if (opCode != 0b01)
-            {
-                throw new NotSupportedException("Only STRH is supported for halfword/signed store");
-            }
 
-            uint value = rd == 15
-                ? Registers.ProgramCounter + 4
-                : Registers[rd];
-            bus.Write16(effectiveAddress, (ushort)value);
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N cycle
+        uint value = rd == 15
+            ? Registers.ProgramCounter + 4
+            : Registers[rd];
+        bus.Write16(effectiveAddress, (ushort)value);
+        _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N cycle
+
+        if (isPreIndex && isWriteback || !isPreIndex)
+        {
+            Registers[rn] = updatedAddress;
+        }
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //STR N
+    }
+
+    private void ExecuteHalfwordSignedDataLoad(uint instruction)
+    {
+        //LDRH, STRH, LDRSB, LDRSH
+        /*
+          |..3 ..................2 ..................1 ..................0|
+          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
+          |_Cond__|0_0_0|P|U|0|W|L|__Rn___|__Rd___|0_0_0_0|1|S|H|1|__Rm___| reg offset
+          |_Cond__|0_0_0|P|U|1|W|L|__Rn___|__Rd___|_H_Off_|1|S|H|1|_L_Off_| imm offset
+         */
+
+        var rn = (int)(instruction >> 16) & 0xF;
+        var baseAddress = rn == 15
+            ? Registers.ProgramCounter + 4
+            : Registers[rn];
+        var rd = (int)(instruction >> 12) & 0xF;
+        var opCode = (instruction >> 5) & 0b11;
+        var isWriteback = BitUtils.IsBitSet(instruction, 21);
+        var immediate = BitUtils.IsBitSet(instruction, 22);
+        var isUp = BitUtils.IsBitSet(instruction, 23);
+        var isPreIndex = BitUtils.IsBitSet(instruction, 24);
+
+        var immOffset = ((instruction >> 4) & 0xF0) | (instruction & 0x0F);
+        var rm = (int)instruction & 0x0F;
+        var offset = immediate ? immOffset : Registers[rm];
+
+        var updatedAddress = isUp
+            ? baseAddress + offset
+            : baseAddress - offset;
+        var effectiveAddress = isPreIndex
+            ? updatedAddress
+            : baseAddress;
+
+        uint loadedValue;
+        switch (opCode)
+        {
+            case 0b00: //reserved for swp
+                throw new NotSupportedException("opcode 0b00 should be reserved for a SWP instruction");
+            case 0b01: //unsigned halfword
+                loadedValue = bus.Read16(effectiveAddress);
+                loadedValue = BitOperations.RotateRight(loadedValue, (int)((effectiveAddress & 1u) * 8));
+
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
+                break;
+            case 0b10: //signed byte
+                loadedValue = (uint)(sbyte)bus.Read8(effectiveAddress);
+
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N cycle
+                break;
+            case 0b11: //signed halfword
+                var rawHalfword = bus.Read16(effectiveAddress);
+                if ((effectiveAddress & 1) != 0)
+                {
+                    loadedValue = (uint)BitUtils.SignExtend((rawHalfword >> 8) & 0xff, 8);
+                    break;
+                }
+                loadedValue = (uint)BitUtils.SignExtend(rawHalfword, 16);
+
+                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
+                break;
+            default:
+                throw new NotSupportedException("not a possible opcode for this singed/halfword data transfer");
         }
 
         if (isPreIndex && isWriteback || !isPreIndex)
@@ -931,16 +969,18 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             Registers[rn] = updatedAddress;
         }
 
-        if (isLoad)
+        Registers[rd] = loadedValue;
+        if (rd == 15)
         {
-            Registers[rd] = loadedValue;
+            Registers.ProgramCounter = loadedValue & ~3u;
 
-            _cycles++; //I cycle
+            //refill pipeline
             _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N cycle
             _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: isLoad); //LDR S , STR N
+        _cycles++; //I cycle
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
     }
 
     private void ExecuteMrs(uint instruction)

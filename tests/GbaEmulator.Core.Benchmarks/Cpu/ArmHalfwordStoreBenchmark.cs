@@ -1,0 +1,81 @@
+using BenchmarkDotNet.Attributes;
+using GbaEmulator.Core.Cpu;
+using GbaEmulator.Core.Cpu.TempOptimize;
+using GbaEmulator.Core.Memory;
+using GbaEmulator.Core.Tests.TestUtils;
+
+namespace GbaEmulator.Core.Benchmarks.Cpu;
+
+[MemoryDiagnoser]
+[SimpleJob(launchCount: 3)]
+[MinIterationTime(250)]
+[MaxRelativeError(0.005)]
+[StatisticalTestColumn("2%")]
+public class ArmHalfwordStoreBenchmark
+{
+    private const int StepsPerInvoke = 16_384;
+    private const uint RomBase = 0x08000000;
+
+    public Arm7Tdmi _storeCpu = null!;
+    public GbaBus _storeBus = null!;
+
+    public CpuOpt _storeCpuOpt = null!;
+    public BusOpt _storeBusOpt = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        (_storeCpu, _storeBus) = CpuUtilities.CreateCpu();
+        (_storeCpuOpt, _storeBusOpt) = CpuUtilities.CreateCpuOpt();
+        _storeCpu.Reset(true);
+        _storeCpuOpt.Reset(true);
+
+        byte[] rom = new byte[StepsPerInvoke * sizeof(uint)];
+
+        for (int offset = 0; offset < rom.Length; offset += sizeof(uint))
+        {
+            rom[offset + 0] = 0xb4;
+            rom[offset + 1] = 0x30;
+            rom[offset + 2] = 0xc4;
+            rom[offset + 3] = 0xe1;
+        }
+
+        _storeBus.LoadCartridge(new Cartridge.Cartridge("store.gba", rom));
+
+        _storeBusOpt.LoadCartridge(new Cartridge.Cartridge("storeOpt.gba", rom));
+
+        _storeCpu.Registers[3] = 0x10;
+        _storeCpu.Registers[4] = 0x03000000;
+
+        _storeCpuOpt.Registers[3] = 0x10;
+        _storeCpuOpt.Registers[4] = 0x03000000;
+    }
+
+    [Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
+    public int StepArm_Strh()
+    {
+        _storeCpu.Registers.ProgramCounter = RomBase;
+        int totalCycles = 0;
+
+        for (int i = 0; i < StepsPerInvoke; i++)
+        {
+            totalCycles = _storeCpu.Step();
+        }
+
+        return totalCycles;
+    }
+
+    [Benchmark(OperationsPerInvoke = StepsPerInvoke)]
+    public int Opt_StepArm_Strh()
+    {
+        _storeCpuOpt.Registers.ProgramCounter = RomBase;
+        int totalCycles = 0;
+
+        for (int i = 0; i < StepsPerInvoke; i++)
+        {
+            totalCycles = _storeCpuOpt.Step();
+        }
+
+        return totalCycles;
+    }
+}
