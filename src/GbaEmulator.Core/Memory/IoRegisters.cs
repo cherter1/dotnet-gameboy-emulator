@@ -1,3 +1,5 @@
+using GbaEmulator.Core.Timers;
+
 namespace GbaEmulator.Core.Memory;
 
 public sealed class IoRegisters
@@ -290,44 +292,28 @@ public sealed class IoRegisters
             #endregion
             #region Timers
             case 0x04000100:
-                REG_TM0D_RELOAD = value;
+                _timerController.WriteReload(0, value);
                 break;
             case 0x04000102:
-                if ((value & 0x0080) != 0 && (REG_TM0CNT & 0x80) == 0)
-                {
-                    REG_TM0D_COUNTER = REG_TM0D_RELOAD;
-                }
-                REG_TM0CNT = value;
+                _timerController.WriteControl(0, value);
                 break;
             case 0x04000104:
-                REG_TM1D_RELOAD = value;
+                _timerController.WriteReload(1, value);
                 break;
             case 0x04000106:
-                if ((value & 0x0080) != 0 && (REG_TM1CNT & 0x80) == 0)
-                {
-                    REG_TM1D_COUNTER = REG_TM1D_RELOAD;
-                }
-                REG_TM1CNT = value;
+                _timerController.WriteControl(1, value);
                 break;
             case 0x04000108:
-                REG_TM2D_RELOAD = value;
+                _timerController.WriteReload(2, value);
                 break;
             case 0x0400010A:
-                if ((value & 0x0080) != 0 && (REG_TM2CNT & 0x80) == 0)
-                {
-                    REG_TM2D_COUNTER = REG_TM2D_RELOAD;
-                }
-                REG_TM2CNT = value;
+                _timerController.WriteControl(2, value);
                 break;
             case 0x0400010C:
-                REG_TM3D_RELOAD = value;
+                _timerController.WriteReload(3, value);
                 break;
             case 0x0400010E:
-                if ((value & 0x0080) != 0 && (REG_TM3CNT & 0x80) == 0)
-                {
-                    REG_TM3D_COUNTER = REG_TM3D_RELOAD;
-                }
-                REG_TM3CNT = value;
+                _timerController.WriteControl(3, value);
                 break;
             #endregion
             #region Interrupts
@@ -421,14 +407,14 @@ public sealed class IoRegisters
             0x040000DE => REG_DMA3CNT_H,
             #endregion
             #region Timers
-            0x04000100 => REG_TM0D_COUNTER,
-            0x04000102 => REG_TM0CNT,
-            0x04000104 => REG_TM1D_COUNTER,
-            0x04000106 => REG_TM1CNT,
-            0x04000108 => REG_TM2D_COUNTER,
-            0x0400010A => REG_TM2CNT,
-            0x0400010C => REG_TM3D_COUNTER,
-            0x0400010E => REG_TM3CNT,
+            0x04000100 => _timerController.ReadCounter(0),
+            0x04000102 => _timerController.ReadControl(0),
+            0x04000104 => _timerController.ReadCounter(1),
+            0x04000106 => _timerController.ReadControl(1),
+            0x04000108 => _timerController.ReadCounter(2),
+            0x0400010A => _timerController.ReadControl(2),
+            0x0400010C => _timerController.ReadCounter(3),
+            0x0400010E => _timerController.ReadControl(3),
             #endregion
             #region Keypad
             0x04000130 => REG_KEYINPUT,
@@ -736,42 +722,11 @@ public sealed class IoRegisters
 
     #region Timers
 
-    /// <summary>
-    /// 0x04000100
-    /// </summary>
-    public ushort REG_TM0D_RELOAD { get; set; }
-    public ushort REG_TM0D_COUNTER { get; set; }
-    /// <summary>
-    /// 0x04000102
-    /// </summary>
-    public ushort REG_TM0CNT { get; set; }
-    /// <summary>
-    /// 0x04000104
-    /// </summary>
-    public ushort REG_TM1D_RELOAD { get; set; }
-    public ushort REG_TM1D_COUNTER { get; set; }
-    /// <summary>
-    /// 0x04000106
-    /// </summary>
-    public ushort REG_TM1CNT { get; set; }
-    /// <summary>
-    /// 0x04000108
-    /// </summary>
-    public ushort REG_TM2D_RELOAD { get; set; }
-    public ushort REG_TM2D_COUNTER { get; set; }
-    /// <summary>
-    /// 0x0400010A
-    /// </summary>
-    public ushort REG_TM2CNT { get; set; }
-    /// <summary>
-    /// 0x0400010C
-    /// </summary>
-    public ushort REG_TM3D_RELOAD { get; set; }
-    public ushort REG_TM3D_COUNTER { get; set; }
-    /// <summary>
-    /// 0x0400010E
-    /// </summary>
-    public ushort REG_TM3CNT { get; set; }
+    private TimerController _timerController = null!;
+    internal void ConnectTimerController(TimerController timerController)
+    {
+        _timerController = timerController;
+    }
     #endregion
 
     #region Serial Communication (1)

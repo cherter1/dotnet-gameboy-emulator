@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using GbaEmulator.Core.Bios;
 using GbaEmulator.Core.Cpu;
+using GbaEmulator.Core.Cpu.TempOptimize;
 using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Input;
 using GbaEmulator.Core.Interrupts;
@@ -51,7 +52,8 @@ public sealed class GbaMachine
         var memory = new GbaMemory();
         var interrupts = new InterruptController(memory);
         var keypad = new KeypadState(memory);
-        var timers = new TimerController(interrupts, memory);
+        var timers = new TimerController(interrupts);
+        memory.Io.ConnectTimerController(timers);
         var dma = new DmaController(interrupts, memory);
         var ppu = new Ppu(interrupts, dma, memory);
         var bus = new GbaBus(memory);
@@ -92,7 +94,8 @@ public sealed class GbaMachine
             dmaWatch.Stop();
 
             timerWatch.Start();
-            Timers.Step(instructionCycles);
+            //Timers.Step(instructionCycles);
+            Timers.Advance(instructionCycles);
             timerWatch.Stop();
 
             ppuWatch.Start();

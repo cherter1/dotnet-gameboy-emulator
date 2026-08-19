@@ -2,12 +2,14 @@ namespace GbaEmulator.Core.Timers;
 
 public struct TimerState
 {
-    public ushort Reload;
-    public ushort CounterAtBase;
-    public ushort Control;
-
-    public ulong BaseCycle;
+    //The clock cycle at the last snapshot
+    public ulong SnapshotCycle;
     public ulong NextOverflowCycle;
+
+    public ushort Control;
+    public ushort Reload;
+    //The Counter's value when last snapshot taken
+    public ushort CounterSnapshot;
 
     public byte PrescalerShift;
 

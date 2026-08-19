@@ -28,6 +28,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         Registers.ProgramCounter = skipBios ? 0x08000000u : 0u;
     }
 
+    public void SetThumbState(bool enabled) =>
+        Registers.Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Registers.Cpsr.ToUInt32(), 5, enabled));
     private int _cycles;
 
     public int Step()

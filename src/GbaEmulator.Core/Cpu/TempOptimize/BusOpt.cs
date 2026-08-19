@@ -26,8 +26,8 @@ public sealed class BusOpt(GbaMemory memory)
 
         uint raw = region switch
         {
-            MemoryRegion.Io => memory.Io.ReadIo32Aligned(aligned),
             MemoryRegion.Unused => 0,
+            MemoryRegion.Io => memory.Io.ReadIo32Aligned(aligned),
             _ => BinaryPrimitives.ReadUInt32LittleEndian(buffer)
             //_ => (uint)((buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) |
              //           buffer[0])
@@ -44,6 +44,7 @@ public sealed class BusOpt(GbaMemory memory)
         var region = ResolveRegion(address, 2, out var buffer);
         return region switch
         {
+            MemoryRegion.Unused => 0,
             MemoryRegion.Io => memory.Io.ReadIo16Aligned(address),
             _ => (ushort)((buffer[1] << 8) | buffer[0])
         };
@@ -54,6 +55,7 @@ public sealed class BusOpt(GbaMemory memory)
         var region = ResolveRegion(address, 1, out var buffer);
         return region switch
         {
+            MemoryRegion.Unused => 0,
             MemoryRegion.Io => memory.Io.ReadIo8(address),
             _ => buffer[0]
         };
@@ -115,7 +117,6 @@ public sealed class BusOpt(GbaMemory memory)
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private MemoryRegion ResolveRegion(uint address, int size, out Span<byte> buffer)
     {
         int offset;
