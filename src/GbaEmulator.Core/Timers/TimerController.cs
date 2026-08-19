@@ -56,6 +56,111 @@ public sealed class TimerController
         }
     }
 
+    public ushort ReadCounter(int index)
+    {
+        ref TimerState timer = ref _timers[index];
+        if (!timer.Enabled || timer.Cascade)
+        {
+            return timer.CounterAtBase;
+        }
+
+        ulong elapsedCycles = _cycles - timer.BaseCycle;
+        ulong increments = elapsedCycles >> timer.PrescalerShift;
+
+        return (ushort)(timer.CounterAtBase + increments);
+    }
+
+    private ushort ReadRunningCounter(ref TimerState timer)
+    {
+        if (!timer.Enabled || timer.Cascade)
+        {
+            return timer.CounterAtBase;
+        }
+
+        ulong elapsedCycles = _cycles - timer.BaseCycle;
+        ulong increments = elapsedCycles >> timer.PrescalerShift;
+
+        return (ushort)(timer.CounterAtBase + increments);
+    }
+
+    private void ScheduleOverflow(ref TimerState timer)
+    {
+        if (!timer.Enabled || timer.Cascade)
+        {
+            timer.NextOverflowCycle = ulong.MaxValue;
+            return;
+        }
+
+        ulong incrementsUntilOverflow = 0x10000ul - timer.CounterAtBase;
+        timer.NextOverflowCycle = timer.BaseCycle + (incrementsUntilOverflow << timer.PrescalerShift);
+    }
+
+    public void WriteControl(int index, ushort value)
+    {
+        ref TimerState timer = ref _timers[index];
+
+        bool wasEnabled = timer.Enabled;
+        bool setEnabled = (value & 0x80) != 0;
+        bool oldCascade = timer.Cascade;
+        bool newCascade = index != 0 && (value & 0x4) != 0;
+
+        byte newPrescalerShift = (value & 0b11) switch
+        {
+            0 => 0, //2Pow0 aka every 1 cycles
+            1 => 6, //2Pow6 aka every 64 cycles
+            2 => 8, //2Pow8 aka every 256 cycles
+            3 => 10, //2Pow10 aka every 1024 cycles
+            _ => 0
+        };
+
+        timer.IrqEnabled = (value & 0x40) != 0; //bit 7 IRQ
+        if (!wasEnabled && setEnabled) //Turn Timer On
+        {
+            timer.Enabled = true;
+            timer.Cascade = newCascade;
+            timer.PrescalerShift = newPrescalerShift;
+            timer.CounterAtBase = timer.Reload;
+            timer.BaseCycle = _cycles;
+
+            ScheduleOverflow(ref timer);
+        }
+        else if (wasEnabled && !setEnabled) //Turn Timer Off
+        {
+            timer.CounterAtBase = ReadRunningCounter(ref timer);
+            timer.BaseCycle = _cycles;
+            timer.Enabled = false;
+            timer.Cascade = newCascade;
+            timer.PrescalerShift = newPrescalerShift;
+            timer.NextOverflowCycle = ulong.MaxValue;
+        }
+        else if (wasEnabled) //timer stays enabled
+        {
+            bool timingChanged = oldCascade != newCascade || timer.PrescalerShift != newPrescalerShift;
+
+            if (timingChanged)
+            {
+                //Counter does not change but start timing from current globalCycle
+                timer.CounterAtBase = ReadRunningCounter(ref timer);
+                timer.BaseCycle = _cycles;
+            }
+
+            timer.Cascade = newCascade;
+            timer.PrescalerShift = newPrescalerShift;
+
+            if (timingChanged)
+            {
+                ScheduleOverflow(ref timer);
+            }
+        }
+        else //timer stays disabled
+        {
+            timer.Cascade = newCascade;
+            timer.PrescalerShift = newPrescalerShift;
+            timer.NextOverflowCycle = ulong.MaxValue;
+        }
+        RecalculateNextTimerOverflow();
+    }
+
     private void ProcessTimerOverflows()
     {
         for (int i = 0; i < 4; i++)
@@ -68,7 +173,6 @@ public sealed class TimerController
             }
             ProcessClockTimerOverflow(i);
         }
-
         RecalculateNextTimerOverflow();
     }
 
@@ -76,7 +180,7 @@ public sealed class TimerController
     {
         ref TimerState timer = ref _timers[index];
 
-        ulong termCycles = (0x10000ul - timer.Reload) << timer.PrescalerShift; // timerTerm * Prescalar(cycles per increment) = totalCycles from start to overflow
+        ulong termCycles = (0x10000ul - timer.Reload) << timer.PrescalerShift; // timerTerm * Prescaler(cycles per increment) = totalCycles from start to overflow
 
         ulong overflowCount = 1 + ((_cycles - timer.NextOverflowCycle) / termCycles); //num overflows
         ulong lastOverflowCycle = timer.NextOverflowCycle + ((overflowCount - 1) * termCycles);
@@ -135,14 +239,13 @@ public sealed class TimerController
         ulong next = ulong.MaxValue;
         for (int i = 0; i < 4; i++)
         {
-            ref  TimerState timer = ref _timers[i];
+            ref TimerState timer = ref _timers[i];
 
             if (timer.Enabled && !timer.Cascade && timer.NextOverflowCycle < next)
             {
                 next = timer.NextOverflowCycle;
             }
         }
-
         _nextTimerOverflow = next;
     }
 }
