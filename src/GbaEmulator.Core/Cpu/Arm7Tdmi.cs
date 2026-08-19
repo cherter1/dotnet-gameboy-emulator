@@ -902,8 +902,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             Registers[rd] = loadedValue;
 
             _cycles++; //I cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
+            if (rd == 15)
+            {
+                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N cycle
+                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
+            }
         }
 
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: isLoad); //LDR S , STR N

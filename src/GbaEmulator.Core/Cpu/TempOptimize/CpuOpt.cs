@@ -667,10 +667,10 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                         : Registers[tReg];
                     bus.Write32(address, value);
                 }
-
-                _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word,
-                    sequential: tReg != BitOperations.TrailingZeroCount(instruction)); //First transfer N, the rest are S
             }
+
+            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word,
+                sequential: tReg != BitOperations.TrailingZeroCount(instruction)); //First transfer N, the rest are S
 
             address += 4;
         }
@@ -785,7 +785,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             Registers[baseRegister] = effectiveAddress;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //LDR S , STR N
+        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //STR N
     }
 
     private void ExecuteSingleDataLoad(uint instruction)
@@ -956,6 +956,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 if ((effectiveAddress & 1) != 0)
                 {
                     loadedValue = (uint)BitUtils.SignExtend((rawHalfword >> 8) & 0xff, 8);
+                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
                     break;
                 }
                 loadedValue = (uint)BitUtils.SignExtend(rawHalfword, 16);
