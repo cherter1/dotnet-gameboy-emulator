@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using GbaEmulator.Core.Bios;
 using GbaEmulator.Core.Cpu;
-using GbaEmulator.Core.Cpu.TempOptimize;
 using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Input;
 using GbaEmulator.Core.Interrupts;

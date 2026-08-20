@@ -5,7 +5,7 @@ using GbaEmulator.Core.Bios;
 using GbaEmulator.Core.Memory;
 using GbaCartridge = GbaEmulator.Core.Cartridge.Cartridge;
 
-namespace GbaEmulator.Core.Cpu.TempOptimize;
+namespace GbaEmulator.Core.Cpu;
 
 public sealed class BusOpt(GbaMemory memory)
 {

@@ -2,7 +2,7 @@ using System.Numerics;
 using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Memory;
 
-namespace GbaEmulator.Core.Cpu.TempOptimize;
+namespace GbaEmulator.Core.Cpu;
 
 public sealed partial class CpuOpt
 {

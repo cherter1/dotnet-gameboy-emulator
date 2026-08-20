@@ -1,4 +1,4 @@
-﻿namespace GbaEmulator.Core.Cpu.TempOptimize;
+﻿namespace GbaEmulator.Core.Cpu;
 
 public sealed class OptRegBank
 {

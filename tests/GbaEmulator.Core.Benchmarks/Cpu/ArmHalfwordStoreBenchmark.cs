@@ -1,6 +1,5 @@
 using BenchmarkDotNet.Attributes;
 using GbaEmulator.Core.Cpu;
-using GbaEmulator.Core.Cpu.TempOptimize;
 using GbaEmulator.Core.Memory;
 using GbaEmulator.Core.Tests.TestUtils;
 
@@ -10,7 +9,7 @@ namespace GbaEmulator.Core.Benchmarks.Cpu;
 [SimpleJob(launchCount: 3)]
 [MinIterationTime(250)]
 [MaxRelativeError(0.005)]
-[StatisticalTestColumn("2%")]
+[StatisticalTestColumn("1%")]
 public class ArmHalfwordStoreBenchmark
 {
     private const int StepsPerInvoke = 16_384;

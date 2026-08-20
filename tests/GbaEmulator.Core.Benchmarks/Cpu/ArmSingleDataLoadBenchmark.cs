@@ -10,8 +10,7 @@ namespace GbaEmulator.Core.Benchmarks.Cpu;
 [MinIterationTime(250)]
 [MaxRelativeError(0.005)]
 [StatisticalTestColumn("1%")]
-[DisassemblyDiagnoser(maxDepth: 1, printSource: true, exportCombinedDisassemblyReport: true, exportDiff: true)]
-public class ArmHalfwordLoadBenchmark
+public class ArmSingleDataLoadBenchmark
 {
     private const int StepsPerInvoke = 16_384;
     private const uint RomBase = 0x08000000;
@@ -34,27 +33,27 @@ public class ArmHalfwordLoadBenchmark
 
         for (int offset = 0; offset < rom.Length; offset += sizeof(uint))
         {
-            rom[offset + 0] = 0xb3;
-            rom[offset + 1] = 0x10;
-            rom[offset + 2] = 0x92;
-            rom[offset + 3] = 0xe1;
+            rom[offset + 0] = 0xa2;
+            rom[offset + 1] = 0x00;
+            rom[offset + 2] = 0x91;
+            rom[offset + 3] = 0xe7;
         }
 
         _loadBus.LoadCartridge(new Cartridge.Cartridge("load.gba", rom));
 
         _loadBusOpt.LoadCartridge(new Cartridge.Cartridge("loadOpt.gba", rom));
 
-        _loadCpu.Registers[1] = 0x10;
-        _loadCpu.Registers[2] = 0x03000000;
-        _loadCpu.Registers[3] = 0x4;
+        _loadCpu.Registers[0] = 0x10;
+        _loadCpu.Registers[1] = 0x03000000;
+        _loadCpu.Registers[2] = 0x8;
 
-        _loadCpuOpt.Registers[1] = 0x10;
-        _loadCpuOpt.Registers[2] = 0x03000000;
-        _loadCpuOpt.Registers[3] = 0x4;
+        _loadCpuOpt.Registers[0] = 0x10;
+        _loadCpuOpt.Registers[1] = 0x03000000;
+        _loadCpuOpt.Registers[2] = 0x8;
     }
 
     [Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
-    public int StepArm_Ldrh()
+    public int StepArm_Ldr()
     {
         _loadCpu.Registers.ProgramCounter = RomBase;
         int totalCycles = 0;
@@ -68,7 +67,7 @@ public class ArmHalfwordLoadBenchmark
     }
 
     [Benchmark(OperationsPerInvoke = StepsPerInvoke)]
-    public int Opt_StepArm_Ldrh()
+    public int Opt_StepArm_Ldr()
     {
         _loadCpuOpt.Registers.ProgramCounter = RomBase;
         int totalCycles = 0;

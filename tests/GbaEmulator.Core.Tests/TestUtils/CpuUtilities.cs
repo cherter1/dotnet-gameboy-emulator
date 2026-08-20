@@ -1,5 +1,4 @@
 using GbaEmulator.Core.Cpu;
-using GbaEmulator.Core.Cpu.TempOptimize;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
 
