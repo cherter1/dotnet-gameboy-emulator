@@ -68,7 +68,7 @@ public sealed class IoRegisters
 
         switch (address)
         {
-            //TODO: watch writeonly
+            //TODO: watch readonly
             #region Display
             case 0x04000000:
                 REG_DISPCNT = value;
@@ -197,8 +197,83 @@ public sealed class IoRegisters
                 break;
             #endregion
             #region Sound
+            case 0x04000060:
+                REG_SOUND1CNT_L = value;
+                break;
+            case 0x04000062:
+                REG_SOUND1CNT_H = value;
+                break;
+            case 0x04000064:
+                REG_SOUND1CNT_X = value;
+                break;
+            case 0x04000068:
+                REG_SOUND2CNT_L = value;
+                break;
+            case 0x0400006c:
+                REG_SOUND2CNT_H = value;
+                break;
+            case 0x04000070:
+                REG_SOUND3CNT_L = value;
+                break;
+            case 0x04000072:
+                REG_SOUND3CNT_H = value;
+                break;
+            case 0x04000074:
+                REG_SOUND3CNT_X = value;
+                break;
+            case 0x04000078:
+                REG_SOUND4CNT_L = value;
+                break;
+            case 0x0400007c:
+                REG_SOUND4CNT_H = value;
+                break;
+            case 0x04000080:
+                REG_SOUNDCNT_L = value;
+                break;
+            case 0x04000082:
+                REG_SOUNDCNT_H = value;
+                break;
+            case 0x04000084:
+                REG_SOUNDCNT_X = value;
+                break;
             case 0x04000088:
                 REG_SOUNDBIAS = value;
+                break;
+            case 0x04000090:
+                REG_WAVE_RAM0_L = value;
+                break;
+            case 0x04000092:
+                REG_WAVE_RAM0_H = value;
+                break;
+            case 0x04000094:
+                REG_WAVE_RAM1_L = value;
+                break;
+            case 0x04000096:
+                REG_WAVE_RAM1_H = value;
+                break;
+            case 0x04000098:
+                REG_WAVE_RAM2_L = value;
+                break;
+            case 0x0400009a:
+                REG_WAVE_RAM2_H = value;
+                break;
+            case 0x0400009c:
+                REG_WAVE_RAM3_L = value;
+                break;
+            case 0x0400009e:
+                REG_WAVE_RAM3_H = value;
+                break;
+            case 0x040000a0:
+                REG_FIFO_A = (REG_FIFO_A & 0xffff0000) | value;
+                break;
+            case 0x040000a2:
+                REG_FIFO_A = (REG_FIFO_A & 0xffff) | ((uint)value << 16);
+                break;
+            case 0x040000a4:
+                REG_FIFO_B = (REG_FIFO_A & 0xffff0000) | value;
+                break;
+            case 0x040000a6:
+                REG_FIFO_B = (REG_FIFO_A & 0xffff) | ((uint)value << 16);
                 break;
             #endregion
             #region Dma
@@ -390,23 +465,56 @@ public sealed class IoRegisters
             0x04000054 => REG_BLDY,
             #endregion
             #region Sound
+            0x04000060 => REG_SOUND1CNT_L,
+            0x04000062 => REG_SOUND1CNT_H,
+            0x04000064 => REG_SOUND1CNT_X,
+            0x04000068 => REG_SOUND2CNT_L,
+            0x0400006C => REG_SOUND2CNT_H,
+            0x04000070 => REG_SOUND3CNT_L,
+            0x04000072 => REG_SOUND3CNT_H,
+            0x04000074 => REG_SOUND3CNT_X,
+            0x04000078 => REG_SOUND4CNT_L,
+            0x0400007c => REG_SOUND4CNT_H,
+            0x04000080 => REG_SOUNDCNT_L,
+            0x04000082 => REG_SOUNDCNT_H,
+            0x04000084 => REG_SOUNDCNT_X,
             0x04000088 => REG_SOUNDBIAS,
+            0x04000090 => REG_WAVE_RAM0_L,
+            0x04000092 => REG_WAVE_RAM0_H,
+            0x04000094 => REG_WAVE_RAM1_L,
+            0x04000096 => REG_WAVE_RAM1_H,
+            0x04000098 => REG_WAVE_RAM2_L,
+            0x0400009a => REG_WAVE_RAM2_H,
+            0x0400009c => REG_WAVE_RAM3_L,
+            0x0400009e => REG_WAVE_RAM3_H,
+            0x040000a0 => (ushort)REG_FIFO_A,
+            0x040000a2 => (ushort)(REG_FIFO_A >> 16),
+            0x040000a4 => (ushort)REG_FIFO_B,
+            0x040000a6 => (ushort)(REG_FIFO_B >> 16),
             #endregion
             #region Dma
-            0x040000B0 => (ushort)REG_DMA0SAD, //shiftlater
-            0x040000B4 => (ushort)REG_DMA0DAD, //shiftlater
+            0x040000B0 => (ushort)REG_DMA0SAD,
+            0x040000B2 => (ushort)(REG_DMA0SAD >> 16),
+            0x040000B4 => (ushort)REG_DMA0DAD,
+            0x040000B6 => (ushort)(REG_DMA0DAD >> 16),
             0x040000B8 => REG_DMA0CNT_L,
             0x040000BA => REG_DMA0CNT_H,
-            0x040000BC => (ushort)REG_DMA1SAD, //shiftlater
-            0x040000C0 => (ushort)REG_DMA1DAD, //shiftlater
+            0x040000BC => (ushort)REG_DMA1SAD,
+            0x040000Be => (ushort)(REG_DMA1SAD >> 16),
+            0x040000C0 => (ushort)REG_DMA1DAD,
+            0x040000C2 => (ushort)(REG_DMA1DAD >> 16),
             0x040000C4 => REG_DMA1CNT_L,
             0x040000C6 => REG_DMA1CNT_H,
-            0x040000C8 => (ushort)REG_DMA2SAD, //shiftlater
-            0x040000CC => (ushort)REG_DMA2DAD, //shiftlater
+            0x040000C8 => (ushort)REG_DMA2SAD,
+            0x040000Ca => (ushort)(REG_DMA2SAD >> 16),
+            0x040000CC => (ushort)REG_DMA2DAD,
+            0x040000Ce => (ushort)(REG_DMA2DAD >> 16),
             0x040000D0 => REG_DMA2CNT_L,
             0x040000D2 => REG_DMA2CNT_H,
-            0x040000D4 => (ushort)REG_DMA3SAD, //shiftlater
-            0x040000D8 => (ushort)REG_DMA3DAD, //shiftlater
+            0x040000D4 => (ushort)REG_DMA3SAD,
+            0x040000D6 => (ushort)(REG_DMA3SAD >> 16),
+            0x040000D8 => (ushort)REG_DMA3DAD,
+            0x040000Da => (ushort)(REG_DMA3DAD >> 16),
             0x040000DC => REG_DMA3CNT_L,
             0x040000DE => REG_DMA3CNT_H,
             #endregion
@@ -646,6 +754,38 @@ public sealed class IoRegisters
     /// 0x04000088
     /// </summary>
     public ushort REG_SOUNDBIAS { get; set; }
+    /// <summary>
+    /// 0x04000090
+    /// </summary>
+    public ushort REG_WAVE_RAM0_L { get; set; }
+    /// <summary>
+    /// 0x04000092
+    /// </summary>
+    public ushort REG_WAVE_RAM0_H { get; set; }
+    /// <summary>
+    /// 0x04000094
+    /// </summary>
+    public ushort REG_WAVE_RAM1_L { get; set; }
+    /// <summary>
+    /// 0x04000096
+    /// </summary>
+    public ushort REG_WAVE_RAM1_H { get; set; }
+    /// <summary>
+    /// 0x04000098
+    /// </summary>
+    public ushort REG_WAVE_RAM2_L { get; set; }
+    /// <summary>
+    /// 0x0400009a
+    /// </summary>
+    public ushort REG_WAVE_RAM2_H { get; set; }
+    /// <summary>
+    /// 0x0400009c
+    /// </summary>
+    public ushort REG_WAVE_RAM3_L { get; set; }
+    /// <summary>
+    /// 0x0400009e
+    /// </summary>
+    public ushort REG_WAVE_RAM3_H { get; set; }
     /// <summary>
     /// 0x040000A0
     /// </summary>

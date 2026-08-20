@@ -205,6 +205,7 @@ public sealed class Ppu
                 break;
             case 5: //bitmap based mode
                 //render mode 5
+                Console.WriteLine("RENDER MODE 5");
                 break;
             default:
                 //should only be used when forceBlank bit is set in DisplayControl register
@@ -489,7 +490,7 @@ public sealed class Ppu
 
     public void RenderMode1(int y)
     {
-        
+        Console.WriteLine("RENDER MODE 1");
     }
 
     private int _internalBg2X;
@@ -933,6 +934,7 @@ public sealed class Ppu
 
     private void RenderMode3(int y)
     {
+        Console.WriteLine("RENDER MODE 3");
         for (var x = 0; x < ScreenWidth; x++)
         {
             var offset = ((y * ScreenWidth) + x) * 2;
@@ -944,6 +946,7 @@ public sealed class Ppu
 
     private void RenderMode4(int y)
     {
+        Console.WriteLine("RENDER MODE 4");
         var useFrame1 = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 4);
         var dispCnt = _memory.Io.REG_DISPCNT;
         var bg2 = _memory.Io.REG_BG2CNT;
