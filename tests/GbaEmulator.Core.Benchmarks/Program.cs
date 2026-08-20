@@ -1,3 +1,4 @@
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using GbaEmulator.Core.Benchmarks.Cpu;
 using GbaEmulator.Core.Cpu;
@@ -8,7 +9,7 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        BenchmarkRunner.Run<ArmSingleDataTransferBenchmarks>();
+        BenchmarkRunner.Run<ArmHalfwordLoadBenchmark>();
 
         //var armb = new ArmAluBenchmarks();
         //armb.Setup();

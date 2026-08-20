@@ -1,3 +1,4 @@
+using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Timers;
 
 namespace GbaEmulator.Core.Memory;
@@ -319,12 +320,15 @@ public sealed class IoRegisters
             #region Interrupts
             case 0x04000200:
                 REG_IE = value;
+                _interruptController.UpdateServiceIrq();
                 break;
             case 0x04000202:
                 REG_IF &= (ushort)~value;
+                _interruptController.UpdateServiceIrq();
                 break;
             case 0x04000208:
                 REG_IME = (value & 1) != 0;
+                _interruptController.UpdateServiceIrq();
                 break;
             #endregion
             #region Cartridge and System Control
@@ -723,7 +727,7 @@ public sealed class IoRegisters
     #region Timers
 
     private TimerController _timerController = null!;
-    internal void ConnectTimerController(TimerController timerController)
+    public void ConnectTimerController(TimerController timerController)
     {
         _timerController = timerController;
     }
@@ -749,6 +753,11 @@ public sealed class IoRegisters
 
     #region Interrupts
 
+    private InterruptController _interruptController = null!;
+    public void ConnectInterruptController(InterruptController interruptController)
+    {
+        _interruptController = interruptController;
+    }
     /// <summary>
     /// 0x04000200
     /// </summary>

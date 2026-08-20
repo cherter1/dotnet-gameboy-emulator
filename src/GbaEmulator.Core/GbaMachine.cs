@@ -54,6 +54,7 @@ public sealed class GbaMachine
         var keypad = new KeypadState(memory);
         var timers = new TimerController(interrupts);
         memory.Io.ConnectTimerController(timers);
+        memory.Io.ConnectInterruptController(interrupts);
         var dma = new DmaController(interrupts, memory);
         var ppu = new Ppu(interrupts, dma, memory);
         var bus = new GbaBus(memory);

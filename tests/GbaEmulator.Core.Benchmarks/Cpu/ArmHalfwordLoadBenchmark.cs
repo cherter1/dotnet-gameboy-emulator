@@ -11,6 +11,7 @@ namespace GbaEmulator.Core.Benchmarks.Cpu;
 [MinIterationTime(250)]
 [MaxRelativeError(0.005)]
 [StatisticalTestColumn("2%")]
+[DisassemblyDiagnoser(maxDepth: 1, printSource: true, exportCombinedDisassemblyReport: true, exportDiff: true)]
 public class ArmHalfwordLoadBenchmark
 {
     private const int StepsPerInvoke = 16_384;

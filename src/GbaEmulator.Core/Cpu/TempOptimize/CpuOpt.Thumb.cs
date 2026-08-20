@@ -28,7 +28,7 @@ public sealed partial class CpuOpt
                 result = (uint)(sourceValue << offset);
                 if (offset != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 32 - offset));
+                    Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, 32 - offset);
                 }
 
                 break;
@@ -36,12 +36,12 @@ public sealed partial class CpuOpt
                 if (offset == 0)
                 {
                     result = 0;
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 31));
+                    Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, 31);
                     break;
                 }
 
                 result = (uint)(sourceValue >>> offset);
-                SetCarry(BitUtils.IsBitSet((uint)sourceValue, offset - 1));
+                Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, offset - 1);
 
                 break;
             case 0b10: //ASR
@@ -49,12 +49,12 @@ public sealed partial class CpuOpt
                 {
                     var carryOut = BitUtils.IsBitSet((uint)sourceValue, 31);
                     result = carryOut ? 0xFFFFFFFF : 0;
-                    SetCarry(carryOut);
+                    Registers.Cpsr.Carry = carryOut;
                     break;
                 }
 
                 result = (uint)(sourceValue >> offset);
-                SetCarry(BitUtils.IsBitSet((uint)sourceValue, offset - 1));
+                Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, offset - 1);
 
                 break;
             default:
@@ -173,7 +173,7 @@ public sealed partial class CpuOpt
             case 0b0010: //LSL
                 var shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.ShiftLeft(Registers[rd], shiftAmount, out bool carryOut);
-                SetCarry(carryOut);
+                Registers.Cpsr.Carry = carryOut;
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -182,7 +182,7 @@ public sealed partial class CpuOpt
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.ShiftRightLogical(Registers[rd], shiftAmount, true, out carryOut);
-                SetCarry(carryOut);
+                Registers.Cpsr.Carry = carryOut;
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -191,7 +191,7 @@ public sealed partial class CpuOpt
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.ShiftRightArithmetic(Registers[rd], shiftAmount, true, out carryOut);
-                SetCarry(carryOut);
+                Registers.Cpsr.Carry = carryOut;
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -201,7 +201,7 @@ public sealed partial class CpuOpt
                 var wide = (ulong)Registers[rd] + Registers[rs] + cy;
                 result = (uint)wide;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: false);
-                SetCarry(wide >> 32 != 0);
+                Registers.Cpsr.Carry = wide >> 32 != 0;
                 Registers[rd] = result;
 
                 break;
@@ -209,7 +209,7 @@ public sealed partial class CpuOpt
                 var longResult = (ulong)Registers[rd] - Registers[rs] + cy - 1u;
                 result = (uint)longResult;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: true);
-                SetCarry((long)longResult >= 0);
+                Registers.Cpsr.Carry = (long)longResult >= 0;
                 Registers[rd] = result;
 
                 break;
@@ -219,7 +219,7 @@ public sealed partial class CpuOpt
                 UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(carryOut);
+                    Registers.Cpsr.Carry = carryOut;
                 }
                 Registers[rd] = result;
 
@@ -257,7 +257,7 @@ public sealed partial class CpuOpt
                 result = multiplierOperand * Registers[rs];
                 Registers[rd] = result;
                 UpdateNz(result);
-                SetCarry(false);
+                Registers.Cpsr.Carry = false;
 
                 _cycles += GetMultiplierArrayCycles(multiplierOperand, false); //mI cycles
                 break;

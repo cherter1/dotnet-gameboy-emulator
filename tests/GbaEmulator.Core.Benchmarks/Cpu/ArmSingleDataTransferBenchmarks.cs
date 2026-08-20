@@ -77,7 +77,7 @@ public class ArmSingleDataTransferBenchmarks
         _storeCpuOpt.Registers[2] = 0x8;
     }
 
-    //[Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
     public int StepArm_Ldr()
     {
         _loadCpu.Registers.ProgramCounter = RomBase;
@@ -91,7 +91,7 @@ public class ArmSingleDataTransferBenchmarks
         return totalCycles;
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
+    //[Benchmark(Baseline = true, OperationsPerInvoke = StepsPerInvoke)]
     public int StepArm_Str()
     {
         _storeCpu.Registers.ProgramCounter = RomBase;
@@ -105,7 +105,7 @@ public class ArmSingleDataTransferBenchmarks
         return totalCycles;
     }
 
-    //[Benchmark(OperationsPerInvoke = StepsPerInvoke)]
+    [Benchmark(OperationsPerInvoke = StepsPerInvoke)]
     public int Opt_StepArm_Ldr()
     {
         _loadCpuOpt.Registers.ProgramCounter = RomBase;
@@ -119,7 +119,7 @@ public class ArmSingleDataTransferBenchmarks
         return totalCycles;
     }
 
-    [Benchmark(OperationsPerInvoke = StepsPerInvoke)]
+    //[Benchmark(OperationsPerInvoke = StepsPerInvoke)]
     public int Opt_StepArm_Str()
     {
         _storeCpuOpt.Registers.ProgramCounter = RomBase;

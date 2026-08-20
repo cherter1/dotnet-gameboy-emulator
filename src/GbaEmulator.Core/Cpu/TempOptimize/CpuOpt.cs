@@ -36,12 +36,13 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
     {
         try
         {
-            if (interrupts.ShouldServiceIrq(Registers.Cpsr.IrqDisable))
+            if (!Registers.Cpsr.IrqDisable && interrupts.ServiceIrq)
             {
                 EnterIrqException();
                 return 4;
             }
 
+#if DEBUG
             if (Registers.ProgramCounter % 2 == 1)
             {
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
@@ -78,6 +79,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 Console.WriteLine(nameof(ThumbFormat18) + $": {ThumbFormat18:N0}");
                 Console.WriteLine(nameof(ThumbFormat19) + $": {ThumbFormat19:N0}");
             }
+#endif
 
             _cycles = 0;
             if (Registers.Cpsr.ThumbState)
@@ -93,7 +95,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         }
         catch (Exception)
         {
-            DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+            //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             throw;
         }
     }
@@ -262,10 +264,10 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
-                Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
-            DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+            //var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
+            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
+            //    pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
+            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
     }
 
@@ -471,10 +473,10 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
-                Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
-            DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+            //var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
+            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
+            //    pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
+            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
     }
 

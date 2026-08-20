@@ -45,6 +45,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 return 4;
             }
 
+#if DEBUG
             if (Registers.ProgramCounter % 2 == 1)
             {
                 DebugUtilities.DumpTrace(_traces, ref _traceIndex);
@@ -81,6 +82,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 Console.WriteLine(nameof(ThumbFormat18) + $": {ThumbFormat18:N0}");
                 Console.WriteLine(nameof(ThumbFormat19) + $": {ThumbFormat19:N0}");
             }
+#endif
 
             _cycles = 0;
             if (Cpsr.ThumbState)
@@ -96,7 +98,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         catch (Exception)
         {
-            DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+            //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
             throw;
         }
     }
@@ -251,10 +253,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
-                Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
-            DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+            //var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
+            //    pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
 
     }
@@ -461,10 +463,10 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         finally
         {
-            var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
-                Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-                pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
-            DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+            //var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
+            //    pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
     }
 

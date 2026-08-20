@@ -32,8 +32,8 @@ public sealed partial class CpuOpt
 
         if (setFlags)
         {
-            SetNegative(BitUtils.IsBitSet(result, 31));
-            SetZero(result == 0);
+            Registers.Cpsr.Negative = (result & 0x80000000) != 0;
+            Registers.Cpsr.Zero = result == 0;
         }
 
         Registers[rd] = result;
@@ -116,9 +116,8 @@ public sealed partial class CpuOpt
                 return;
             }
 
-            var setNegative = ((res >> 32) & 0x80000000) != 0;
-            SetNegative(setNegative);
-            SetZero(res == 0);
+            Registers.Cpsr.Negative = ((res >> 32) & 0x80000000) != 0;
+            Registers.Cpsr.Zero = res == 0;
             bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, false);
         }
         else
@@ -141,9 +140,8 @@ public sealed partial class CpuOpt
                 return;
             }
 
-            var setNegative = ((res >> 32) & 0x80000000) != 0;
-            SetNegative(setNegative);
-            SetZero(res == 0);
+            Registers.Cpsr.Negative = ((res >> 32) & 0x80000000) != 0;
+            Registers.Cpsr.Zero = res == 0;
             bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, true);
         }
 
@@ -189,7 +187,7 @@ public sealed partial class CpuOpt
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(logicalCarryOut);
+                    Registers.Cpsr.Carry = logicalCarryOut;
                 }
 
                 break;
@@ -199,7 +197,7 @@ public sealed partial class CpuOpt
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(logicalCarryOut);
+                    Registers.Cpsr.Carry = logicalCarryOut;
                 }
 
                 break;
@@ -243,7 +241,7 @@ public sealed partial class CpuOpt
                 {
                     UpdateArithmeticFlags(operand1, operand2, result, subtraction: false);
                     //Set Carry after to set it correctly
-                    SetCarry(wide >> 32 != 0);
+                    Registers.Cpsr.Carry = wide >> 32 != 0;
                 }
 
                 break;
@@ -254,7 +252,7 @@ public sealed partial class CpuOpt
                 {
                     UpdateArithmeticFlags(operand1, operand2, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
-                    SetCarry((long)wide >= 0);
+                    Registers.Cpsr.Carry = (long)wide >= 0;
                 }
 
                 break;
@@ -265,20 +263,20 @@ public sealed partial class CpuOpt
                 {
                     UpdateArithmeticFlags(operand2, operand1, (uint)wide, subtraction: true);
                     //Set Carry after to set it correctly
-                    SetCarry((long)wide >= 0);
+                    Registers.Cpsr.Carry = (long)wide >= 0;
                 }
 
                 break;
             case 0x08: //TST
                 result = operand1 & operand2;
                 UpdateNz(result);
-                SetCarry(logicalCarryOut);
+                Registers.Cpsr.Carry = logicalCarryOut;
 
                 break;
             case 0x09: //TEQ
                 result = operand1 ^ operand2;
                 UpdateNz(result);
-                SetCarry(logicalCarryOut);
+                Registers.Cpsr.Carry = logicalCarryOut;
 
                 break;
             case 0xA: //CMP
@@ -306,7 +304,7 @@ public sealed partial class CpuOpt
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(logicalCarryOut);
+                    Registers.Cpsr.Carry = logicalCarryOut;
                 }
 
                 break;
@@ -316,7 +314,7 @@ public sealed partial class CpuOpt
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(logicalCarryOut);
+                    Registers.Cpsr.Carry = logicalCarryOut;
                 }
 
                 if (rd == 15 && setFlags)
@@ -332,7 +330,7 @@ public sealed partial class CpuOpt
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(logicalCarryOut);
+                    Registers.Cpsr.Carry = logicalCarryOut;
                 }
 
                 break;
@@ -342,7 +340,7 @@ public sealed partial class CpuOpt
                 if (setFlags)
                 {
                     UpdateNz(result);
-                    SetCarry(logicalCarryOut);
+                    Registers.Cpsr.Carry = logicalCarryOut;
                 }
 
                 break;
