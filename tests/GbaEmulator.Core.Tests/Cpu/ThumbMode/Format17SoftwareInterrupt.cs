@@ -29,9 +29,9 @@ public sealed class Format17SoftwareInterrupt
         //Assert
         Assert.Equal(0x00000008u, cpu.Registers.ProgramCounter);
         Assert.Equal(0x02000102u, cpu.Registers.LinkRegister);
-        Assert.False(cpu.Cpsr.ThumbState);
+        Assert.False(cpu.Registers.Cpsr.ThumbState);
 
-        var oldCpsr = cpu.Registers.GetSpsr(CpuMode.Supervisor);
+        var oldCpsr = cpu.Registers.GetSpsr();
         Assert.True(oldCpsr.ThumbState);
         Assert.True(oldCpsr.Zero);
         Assert.True(oldCpsr.Overflow);

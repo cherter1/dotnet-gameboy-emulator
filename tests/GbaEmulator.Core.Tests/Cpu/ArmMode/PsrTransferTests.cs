@@ -23,7 +23,7 @@ public sealed class PsrTransferTests
         cpu.Step();
 
         //Assert
-        Assert.Equal(cpu.Cpsr.ToUInt32(), cpu.Registers[0]);
+        Assert.Equal(cpu.Registers.Cpsr.ToUInt32(), cpu.Registers[0]);
     }
 
     [Fact]
@@ -90,8 +90,8 @@ public sealed class PsrTransferTests
         cpu.Step();
 
         //Assert
-        Assert.Equal(CpuMode.User, cpu.Cpsr.Mode);
-        Assert.Equal(0x90u, cpu.Cpsr.ToUInt32());
+        Assert.Equal(CpuMode.User, cpu.Registers.Cpsr.Mode);
+        Assert.Equal(0x90u, cpu.Registers.Cpsr.ToUInt32());
     }
 
     [Fact]
@@ -114,10 +114,10 @@ public sealed class PsrTransferTests
         cpu.Step();
 
         //Assert
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -137,9 +137,9 @@ public sealed class PsrTransferTests
         cpu.Step();
 
         //Assert
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 }

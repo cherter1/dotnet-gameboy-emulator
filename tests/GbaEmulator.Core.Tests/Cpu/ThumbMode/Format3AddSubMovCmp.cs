@@ -27,11 +27,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -55,10 +55,10 @@ public sealed class Format3AddSubMovCmp
         //Assert
         Assert.Equal(0x1u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -82,10 +82,10 @@ public sealed class Format3AddSubMovCmp
         //Assert
         Assert.Equal(0xffu, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -107,11 +107,11 @@ public sealed class Format3AddSubMovCmp
         Assert.Equal(0x0u, cpu.Registers[0]);
 
         //Carry set high when didnt occur
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -133,11 +133,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Negative);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -159,11 +159,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0xffu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -185,11 +185,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -216,10 +216,10 @@ public sealed class Format3AddSubMovCmp
         //Assert
         Assert.Equal(0xfu, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
     
     [Fact]
@@ -243,11 +243,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -271,11 +271,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x80000000u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Carry);
     }
 
     [Fact]
@@ -299,11 +299,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x800000ffu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Negative);
 
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Carry);
     }
 
     [Fact]
@@ -324,11 +324,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -353,11 +353,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0xfu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -379,11 +379,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0xffffffffu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Negative);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -406,11 +406,11 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0xffffffffu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Negative);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -432,10 +432,10 @@ public sealed class Format3AddSubMovCmp
 
         //Assert
         Assert.Equal(0x7fffffffu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
     }
 }

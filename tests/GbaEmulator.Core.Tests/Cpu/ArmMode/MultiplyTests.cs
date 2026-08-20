@@ -29,8 +29,8 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(21u, cpu.Registers[0]);
 
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -57,9 +57,9 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(21u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -85,9 +85,9 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -113,9 +113,9 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -143,9 +143,9 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(26u, cpu.Registers[0]);
 
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -173,9 +173,9 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(1u, cpu.Registers[0]);
 
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -203,9 +203,9 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -233,8 +233,8 @@ public sealed class MultiplyTests
         //Assert
         Assert.Equal(0xffffffff, cpu.Registers[0]);
 
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 }

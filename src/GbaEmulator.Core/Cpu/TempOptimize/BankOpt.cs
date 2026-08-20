@@ -1,6 +1,6 @@
-﻿namespace GbaEmulator.Core.Cpu;
+namespace GbaEmulator.Core.Cpu;
 
-public sealed class OptRegBank
+public sealed class BankOpt
 {
     public ProgramStatusRegister Cpsr = new() { Mode = CpuMode.System, IrqDisable = true };
 

@@ -1,7 +1,9 @@
-namespace GbaEmulator.Core.Cpu;
+﻿namespace GbaEmulator.Core.Cpu;
 
-public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
+public sealed class RegisterBank
 {
+    public ProgramStatusRegister Cpsr = new() { Mode = CpuMode.System, IrqDisable = true };
+
     private readonly uint[] _shared = new uint[16];
     //fiq mode banks registers 8-12 so index[0] here is r8_fiq and so on
     private readonly uint[] _fiqBankedRegisters = new uint[5];
@@ -26,7 +28,7 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
     {
         get => index switch
         {
-            >= 8 and <= 12 when getCurrentMode() == CpuMode.Fiq => _fiqBankedRegisters[index - 8],
+            >= 8 and <= 12 when Cpsr.Mode == CpuMode.Fiq => _fiqBankedRegisters[index - 8],
             13 => StackPointer,
             14 => LinkRegister,
             _ => _shared[index]
@@ -35,7 +37,7 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
         {
             switch (index)
             {
-                case >= 8 and <= 12 when getCurrentMode() == CpuMode.Fiq:
+                case >= 8 and <= 12 when Cpsr.Mode == CpuMode.Fiq:
                     _fiqBankedRegisters[index - 8] = value;
                     break;
                 case 13:
@@ -53,7 +55,7 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
 
     public uint StackPointer
     {
-        get => getCurrentMode() switch
+        get => Cpsr.Mode switch
         {
             CpuMode.Fiq => _spFiq,
             CpuMode.Irq => _spIrq,
@@ -62,7 +64,7 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
         };
         private set
         {
-            switch (getCurrentMode())
+            switch (Cpsr.Mode)
             {
                 case CpuMode.Fiq:
                     _spFiq = value;
@@ -85,7 +87,7 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
     }
     public uint LinkRegister
     {
-        get => getCurrentMode() switch
+        get => Cpsr.Mode switch
         {
             CpuMode.Fiq => _lrFiq,
             CpuMode.Irq => _lrIrq,
@@ -94,7 +96,7 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
         };
         private set
         {
-            switch (getCurrentMode())
+            switch (Cpsr.Mode)
             {
                 case CpuMode.Fiq:
                     _lrFiq = value;
@@ -115,19 +117,18 @@ public sealed class RegisterBank(Func<CpuMode> getCurrentMode)
             }
         }
     }
-
     public uint ProgramCounter
     {
         get => _shared[15];
         set => _shared[15] = value;
     }
 
-    public ProgramStatusRegister GetSpsr(CpuMode mode) => mode switch
+    public ProgramStatusRegister GetSpsr() => Cpsr.Mode switch
     {
         CpuMode.Fiq => _spsrFiq,
         CpuMode.Irq => _spsrIrq,
         CpuMode.Supervisor => _spsrSvc,
-        _ => throw new InvalidOperationException($"Mode {mode} has no SPSR")
+        _ => throw new InvalidOperationException($"Mode {Cpsr.Mode} has no SPSR")
     };
 
     public void SetSpsr(CpuMode mode, ProgramStatusRegister value)

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Interrupts;
@@ -7,20 +6,18 @@ using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Cpu;
 
-//Armv4TM arm version
 public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 {
     private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
     private int _traceIndex;
     public RegisterBank Registers { get; private set; } = null!;
-    public ProgramStatusRegister Cpsr = new() { Mode = CpuMode.System, IrqDisable = true };
 
     public void Reset(bool skipBios)
     {
-        Registers = new RegisterBank(() => Cpsr.Mode);
+        Registers = new RegisterBank();
         Registers.InitializeForGba();
 
-        Cpsr = new ProgramStatusRegister
+        Registers.Cpsr = new ProgramStatusRegister
         {
             Mode = CpuMode.System,
             IrqDisable = false,
@@ -31,15 +28,14 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     }
 
     public void SetThumbState(bool enabled) =>
-        Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Cpsr.ToUInt32(), 5, enabled));
-
+        Registers.Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Registers.Cpsr.ToUInt32(), 5, enabled));
     private int _cycles;
 
     public int Step()
     {
         try
         {
-            if (interrupts.ShouldServiceIrq(Cpsr.IrqDisable))
+            if (!Registers.Cpsr.IrqDisable && interrupts.ServiceIrq)
             {
                 EnterIrqException();
                 return 4;
@@ -85,7 +81,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
 #endif
 
             _cycles = 0;
-            if (Cpsr.ThumbState)
+            if (Registers.Cpsr.ThumbState)
             {
                 StepThumb();
             }
@@ -103,6 +99,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
     }
 
+#region DEBUG
     private int ArmBranch = 0;
     private int ArmBlockDataTransfer = 0;
     private int ArmSingleDataTransfer = 0;
@@ -115,6 +112,27 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     private int ArmMrs = 0;
     private int ArmMsr = 0;
     private int ArmDataProc = 0;
+    private int ThumbFormat1 = 0;
+    private int ThumbFormat2 = 0;
+    private int ThumbFormat3 = 0;
+    private int ThumbFormat4 = 0;
+    private int ThumbFormat5 = 0;
+    private int ThumbFormat6 = 0;
+    private int ThumbFormat7 = 0;
+    private int ThumbFormat8 = 0;
+    private int ThumbFormat9 = 0;
+    private int ThumbFormat10 = 0;
+    private int ThumbFormat11 = 0;
+    private int ThumbFormat12 = 0;
+    private int ThumbFormat13 = 0;
+    private int ThumbFormat14 = 0;
+    private int ThumbFormat15 = 0;
+    private int ThumbFormat16 = 0;
+    private int ThumbFormat17 = 0;
+    private int ThumbFormat18 = 0;
+    private int ThumbFormat19 = 0;
+#endregion
+
     private void StepArm()
     {
         var instructionAddress = Registers.ProgramCounter;
@@ -157,13 +175,23 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 return;
             }
 
-            var bits27_26 = (instruction >> 26) & 0b11;
-            if (bits27_26 == 0b01)
+            // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
+            if ((instruction & 0xc100000) == 0x4100000) //bit 20 set is load
             {
-                // LDR, STR
-                decoded = "LDR/STR";
+                // LDR
+                decoded = "LDR";
                 ArmSingleDataTransfer++;
-                ExecuteArmSingleDataTransfer(instruction);
+                ExecuteSingleDataLoad(instruction);
+                return;
+            }
+
+            // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0000_0000_0000_0000_0000_0000
+            if ((instruction & 0xc100000) == 0x4000000) //bit 20 not set is store
+            {
+                // STR
+                decoded = "STR";
+                ArmSingleDataTransfer++;
+                ExecuteSingleDataStore(instruction);
                 return;
             }
 
@@ -175,111 +203,95 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 return;
             }
 
-            if (bits27_26 == 0b00)
+            if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
             {
-                if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
-                {
-                    // BX
-                    decoded = "BX";
-                    ExecuteArmBranchExchange(instruction);
-                    ArmBranchExchange++;
-                    return;
-                }
-
-                //equivalent mask
-                //((instruction & 0x0FB00FF0) == 0x01000090)
-                if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
-                    ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
-                    ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
-                {
-                    // SWP, SWPB
-                    decoded = "SWP/SWPB";
-                    ExecuteArmSingleDataSwap(instruction);
-                    ArmSingleDataSwap++;
-                    return;
-                }
-
-                if ((instruction & 0x0FC000F0) == 0x00000090)
-                {
-                    decoded = "MULTIPLY";
-                    this.ExecuteArmMultiply(instruction);
-                    ArmMultiply++;
-                    return;
-                }
-
-                if ((instruction & 0x0F8000F0) == 0x00800090)
-                {
-                    decoded = "MULTIPLY LONG";
-                    this.ExecuteArmMultiplyLong(instruction);
-                    ArmMultiplyLong++;
-                    return;
-                }
-
-                if ((instruction & 0x0E000090) == 0x00000090)
-                {
-                    // LDRH, STRH, LDRSB, LDRSH
-                    decoded = "LDRH, STRH, LDRSB, LDRSH";
-                    ExecuteHalfwordSignedDataTransfer(instruction);
-                    ArmHalfwordSignedDataTransfer++;
-                    return;
-                }
-
-                if ((instruction & 0x0FBF0FFF) == 0x010F0000)
-                {
-                    //MRS
-                    decoded = "MRS";
-                    ExecuteMrs(instruction);
-                    ArmMrs++;
-                    return;
-                }
-
-                //MSR
-                if ((instruction & 0x0DB0F000) == 0x0120F000)
-                {
-                    decoded = "MSR";
-                    ExecuteMsr(instruction);
-                    ArmMsr++;
-                    return;
-                }
-
-                decoded = "DATA PROC";
-                ExecuteArmDataProcessing(instruction);
-                ArmDataProc++;
+                // BX
+                decoded = "BX";
+                ExecuteArmBranchExchange(instruction);
+                ArmBranchExchange++;
                 return;
             }
 
-            decoded = "NOT SUPPORTED";
-            throw new NotSupportedException($"Unhandled ARM instruction 0x{instruction:X8}");
+            //equivalent mask
+            //((instruction & 0x0FB00FF0) == 0x01000090)
+            if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
+                ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
+                ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
+            {
+                // SWP, SWPB
+                decoded = "SWP/SWPB";
+                ExecuteArmSingleDataSwap(instruction);
+                ArmSingleDataSwap++;
+                return;
+            }
+
+            if ((instruction & 0x0FC000F0) == 0x00000090)
+            {
+                decoded = "MULTIPLY";
+                this.ExecuteArmMultiply(instruction);
+                ArmMultiply++;
+                return;
+            }
+
+            if ((instruction & 0x0F8000F0) == 0x00800090)
+            {
+                decoded = "MULTIPLY LONG";
+                this.ExecuteArmMultiplyLong(instruction);
+                ArmMultiplyLong++;
+                return;
+            }
+
+            // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0001_0000_0000_0000_1001_0000
+            if ((instruction & 0x0E100090) == 0x100090)
+            {
+                // LDRH, LDRSB, LDRSH
+                decoded = "LDRH, LDRSB, LDRSH";
+                ExecuteHalfwordSignedDataLoad(instruction);
+                ArmHalfwordSignedDataTransfer++;
+                return;
+            }
+
+            // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0000_0000_0000_0000_1001_0000
+            if ((instruction & 0x0E100090) == 0x90)
+            {
+                // STRH
+                decoded = "STRH";
+                ExecuteHalfwordDataStore(instruction);
+                ArmHalfwordSignedDataTransfer++;
+                return;
+            }
+
+            if ((instruction & 0x0FBF0FFF) == 0x010F0000)
+            {
+                //MRS
+                decoded = "MRS";
+                ExecuteMrs(instruction);
+                ArmMrs++;
+                return;
+            }
+
+            //MSR
+            if ((instruction & 0x0DB0F000) == 0x0120F000)
+            {
+                decoded = "MSR";
+                ExecuteMsr(instruction);
+                ArmMsr++;
+                return;
+            }
+
+            decoded = "DATA PROC";
+            ExecuteArmDataProcessing(instruction);
+            ArmDataProc++;
         }
         finally
         {
-            //var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            //var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
             //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-            //    pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+            //    pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
             //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
-
     }
 
-    private int ThumbFormat1 = 0;
-    private int ThumbFormat2 = 0;
-    private int ThumbFormat3 = 0;
-    private int ThumbFormat4 = 0;
-    private int ThumbFormat5 = 0;
-    private int ThumbFormat6 = 0;
-    private int ThumbFormat7 = 0;
-    private int ThumbFormat8 = 0;
-    private int ThumbFormat9 = 0;
-    private int ThumbFormat10 = 0;
-    private int ThumbFormat11 = 0;
-    private int ThumbFormat12 = 0;
-    private int ThumbFormat13 = 0;
-    private int ThumbFormat14 = 0;
-    private int ThumbFormat15 = 0;
-    private int ThumbFormat16 = 0;
-    private int ThumbFormat17 = 0;
-    private int ThumbFormat18 = 0;
-    private int ThumbFormat19 = 0;
     private void StepThumb()
     {
         var instructionAddress = Registers.ProgramCounter;
@@ -463,518 +475,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         }
         finally
         {
-            //var trace = new CpuTrace(instructionAddress, instruction, Cpsr.ThumbState, Cpsr.Mode, Registers[0],
+            //var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
             //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-            //    pcBeforeExecute, Registers.ProgramCounter, Cpsr.ToUInt32(), decoded);
+            //    pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
             //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
         }
-    }
-
-    private void ExecuteArmBranch(uint instruction)
-    {
-        /*
-           |..3 ..................2 ..................1 ..................0|
-           |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-           |_Cond__|1_0_1|L|___________________Offset______________________| B,BL
-         */
-
-        var link = BitUtils.IsBitSet(instruction, 24);
-        var offset = BitUtils.SignExtend((int)(instruction & 0x00FFFFFF) << 2, 26);
-        var pc = Registers.ProgramCounter;
-        if (link)
-        {
-            Registers[14] = pc;
-        }
-
-        //docs say +8 but only do +4 because StepArm() function also adds 4
-        Registers.ProgramCounter = (uint)(pc + 4 + offset);
-
-        //2S + 1N cycles basically 1S and FlushingPipeline
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //1N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S
-    }
-
-    private void ExecuteArmBranchExchange(uint instruction)
-    {
-        /*
-           |..3 ..................2 ..................1 ..................0|
-           |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-           |_Cond__|0_0_0_1_0_0_1_0_1_1_1_1_1_1_1_1_1_1_1_1|0_0|L|1|__Rn___| BX
-           no BLX for this cpu only since its armv4T
-         */
-
-        var rn = (int)instruction & 0xF;
-        var target = Registers[rn];
-
-        Cpsr.ThumbState = (target & 1) != 0;
-
-        target &= ~1u; //clear bit 0 because to realign memory
-        Registers.ProgramCounter = target;
-
-        //2S + 1N cycles basically 1S and FlushingPipeline
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //1N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //2S
-    }
-
-    private void ExecuteSoftwareInterrupt(uint instruction)
-    {
-        /*
-          |..3 ..................2 ..................1 ..................0|
-          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-          |_Cond__|1_1_1_1|_____________Ignored_by_Processor______________| SWI
-         */
-
-        var comment = instruction & 0x00FFFFFFu;
-        Console.WriteLine("ARM SWI: comment = " + comment.ToString("X8"));
-
-        Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
-
-        var newCpsr = Cpsr.ToUInt32();
-        newCpsr = (newCpsr & ~0x1Fu) | (uint)CpuMode.Supervisor; //set supervisor mode
-        newCpsr = BitUtils.SetBit(newCpsr, 7, true); //set irq disable
-        newCpsr = BitUtils.SetBit(newCpsr, 5, false); //disable thumb
-
-        Cpsr = ProgramStatusRegister.FromUInt32(newCpsr);
-        Registers[14] = Registers.ProgramCounter;
-        Registers.ProgramCounter = 0x8; //vector address 0x8
-
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
-
-        var functionVector = comment >> 16;
-        if (functionVector == 0x6)
-        {
-            var q = 1;
-        }
-        if (false)
-        {
-            //TODO: temp must add functions in bios
-            //div
-            var numerator = (int)Registers[0];
-            var denominator = (int)Registers[1];
-            //TODO: not handling divide by zero
-            var result = numerator / denominator;
-            Registers[0] = (uint)result;
-            var remainder = numerator % denominator;
-            Registers[1] = (uint)remainder;
-            Registers[3] = (uint)result;
-            //var absoluteValue = (uint)result;
-        }
-    }
-
-    private void ExecuteBlockDataTransfer(uint instruction)
-    {
-        /*
-           |..3 ..................2 ..................1 ..................0|
-           |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-           |_Cond__|1_0_0|P|U|S|W|L|__Rn___|_________Register_List_________| LDM, STM
-         */
-
-        var isPreIndex = BitUtils.IsBitSet(instruction, 24);
-        var isUp = BitUtils.IsBitSet(instruction, 23);
-        var forcePsrOrUser = BitUtils.IsBitSet(instruction, 22);
-        var isWriteback = BitUtils.IsBitSet(instruction, 21);
-        var isLoad = BitUtils.IsBitSet(instruction, 20);
-        var rn = (int)(instruction >> 16) & 0x0F;
-
-        var registerList = (ushort)(instruction & 0xFFFF);
-
-        int count = BitOperations.PopCount(registerList);
-        uint bytes = (uint)(count * 4);
-        bytes = bytes == 0 ? 0x40 : bytes; //if zero transfer count act like full transfer 0x40
-
-        uint baseAddress = rn == 15 ? Registers.ProgramCounter + 4 : Registers[rn];
-
-        uint startAddress, finalAddress;
-        if (isUp)
-        {
-            finalAddress = baseAddress + bytes;
-            startAddress = isPreIndex ? baseAddress + 4 : baseAddress;
-        }
-        else
-        {
-            finalAddress = baseAddress - bytes;
-            startAddress = isPreIndex
-                ? baseAddress - bytes
-                : baseAddress - bytes + 4;
-        }
-
-        if (count == 0)
-        {
-            Registers[rn] = isUp ? Registers[rn] + 0x40 : Registers[rn] - 0x40;
-
-            if (isLoad)
-            {
-                Registers[15] = bus.Read32(startAddress & ~3u);
-            }
-            else
-            {
-                bus.Write32(startAddress, Registers[15] + 8);
-            }
-
-            _cycles += bus.GetCpuAccessCycles(startAddress, AccessWidth.Word, sequential: false);
-            return;
-        }
-
-        var currentMode = Cpsr.Mode;
-        if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15)) // system banked registers if r15 not in list and S=1
-        {
-            Cpsr.Mode = CpuMode.System;
-        }
-
-        uint address = startAddress;
-
-        for (int tReg = 0; tReg < 16; tReg++)
-        {
-            var shouldTransfer = BitUtils.IsBitSet(instruction, tReg);
-            if (!shouldTransfer)
-                continue;
-
-            if (isLoad)
-            {
-                uint value = bus.Read32(address & ~3u);
-
-                if (tReg == 15)
-                {
-                    //word align program counter
-                    Registers.ProgramCounter = value & ~3u;
-                }
-                else
-                {
-                    Registers[tReg] = value;
-                }
-            }
-            else
-            {
-                if (tReg == rn && tReg != BitOperations.TrailingZeroCount(instruction))
-                {
-                    bus.Write32(address, finalAddress);
-                }
-                else
-                {
-                    uint value = tReg == 15
-                        ? Registers.ProgramCounter + 8
-                        : Registers[tReg];
-                    bus.Write32(address, value);
-                }
-
-                _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word,
-                    sequential: tReg != BitOperations.TrailingZeroCount(instruction)); //First transfer N, the rest are S
-            }
-
-            address += 4;
-        }
-
-        if (forcePsrOrUser && !BitUtils.IsBitSet(instruction, 15))
-        {
-            Cpsr.Mode = currentMode;
-        }
-
-        if (isWriteback && (!isLoad || !BitUtils.IsBitSet(instruction, rn))) // no writeback for ldm if rn is in Rlist
-        {
-            Registers[rn] = finalAddress;
-        }
-
-        if (isLoad && BitUtils.IsBitSet(instruction, 15))
-        {
-            //ldm refill pipeline if r15 in rList
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
-        }
-
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: isLoad);
-    }
-
-    private void ExecuteArmSingleDataSwap(uint instruction)
-    {
-        /*
-           |..3 ..................2 ..................1 ..................0|
-           |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-           |_Cond__|0_0_0_1_0|B|0_0|__Rn___|__Rd___|0_0_0_0|1_0_0_1|__Rm___| SWP, SWPB
-         */
-
-        var byteSwap = BitUtils.IsBitSet(instruction, 22);
-        var rd = (int)(instruction >> 12) & 0xF;
-        var rn = (int)(instruction >> 16) & 0xF;
-        var rm = (int)instruction & 0xF;
-
-        var address = Registers[rn];
-        if (byteSwap)
-        {
-            var temp = bus.Read8(address);
-            bus.Write8(address, (byte)(Registers[rm] & 0xFF));
-            Registers[rd] = temp;
-
-            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Byte, sequential: false) * 2; //2N cycles
-        }
-        else
-        {
-            var temp = bus.Read32(address);
-            bus.Write32(address, Registers[rm]);
-            Registers[rd] = temp;
-
-            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false) * 2; //2N cycles
-        }
-
-        _cycles++; //I
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //1S cycle
-    }
-
-    private void ExecuteArmSingleDataTransfer(uint instruction)
-    {
-        /*
-          |..3 ..................2 ..................1 ..................0|
-          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-          |_Cond__|0_1_0|P|U|B|W|L|__Rn___|__Rd___|_________Offset________| TransImm9
-          |_Cond__|0_1_1|P|U|B|W|L|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| TransReg9
-         */
-
-        var isOffsetImmediate = (instruction & 0x02000000) == 0;
-        var preIndex = BitUtils.IsBitSet(instruction, 24);
-        var addOffset = BitUtils.IsBitSet(instruction, 23);
-        var byteTransfer = BitUtils.IsBitSet(instruction, 22);
-        var writeback = BitUtils.IsBitSet(instruction, 21);
-        var load = BitUtils.IsBitSet(instruction, 20);
-        var baseRegister = (int)((instruction >> 16) & 0xF);
-        var destinationRegister = (int)((instruction >> 12) & 0xF);
-        var offset = isOffsetImmediate
-            ? instruction & 0xFFF
-            : ComputeShiftedRegisterOperand(instruction, out _);
-
-        var address = baseRegister == 15
-            ? Registers[baseRegister] + 4
-            : Registers[baseRegister];
-        var effectiveAddress = preIndex
-            ? addOffset ? address + offset : address - offset
-            : address;
-
-        uint loadedWord = 0;
-        if (load)
-        {
-            if (byteTransfer)
-            {
-                loadedWord = bus.Read8(effectiveAddress);
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
-            }
-            else
-            {
-                loadedWord = bus.Read32(effectiveAddress);
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
-            }
-        }
-        else if (byteTransfer)
-        {
-            var writeValue = destinationRegister == 15
-                ? Registers[destinationRegister] + 8
-                : Registers[destinationRegister];
-            bus.Write8(effectiveAddress, (byte)writeValue);
-
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
-        }
-        else
-        {
-            var writeValue = destinationRegister == 15
-                ? Registers[destinationRegister] + 8
-                : Registers[destinationRegister];
-            bus.Write32(effectiveAddress, writeValue);
-
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
-        }
-
-        if (!preIndex)
-        {
-            Registers[baseRegister] = addOffset ? address + offset : address - offset;
-        }
-        else if (writeback)
-        {
-            Registers[baseRegister] = effectiveAddress;
-        }
-
-        if (load)
-        {
-            Registers[destinationRegister] = loadedWord;
-
-            _cycles++; //1I
-            if (destinationRegister == 15)
-            {
-                //if LDR PC add another 1S and 1N for pipeline refill
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
-            }
-        }
-
-        //LDR 1S + 1N + 1I cycles
-        //LDR PC 2S + 2N + 1I cycles
-        //STR 2N cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: load); //LDR S , STR N
-    }
-
-    private void ExecuteHalfwordSignedDataTransfer(uint instruction)
-    {
-        //LDRH, STRH, LDRSB, LDRSH
-        /*
-          |..3 ..................2 ..................1 ..................0|
-          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-          |_Cond__|0_0_0|P|U|0|W|L|__Rn___|__Rd___|0_0_0_0|1|S|H|1|__Rm___| reg offset
-          |_Cond__|0_0_0|P|U|1|W|L|__Rn___|__Rd___|_H_Off_|1|S|H|1|_L_Off_| imm offset
-         */
-
-        var rn = (int)(instruction >> 16) & 0xF;
-        var baseAddress = rn == 15
-            ? Registers.ProgramCounter + 4
-            : Registers[rn];
-        var rd = (int)(instruction >> 12) & 0xF;
-        var opCode = (instruction >> 5) & 0b11;
-        var isLoad = BitUtils.IsBitSet(instruction, 20);
-        var isWriteback = BitUtils.IsBitSet(instruction, 21);
-        var immediate = BitUtils.IsBitSet(instruction, 22);
-        var isUp = BitUtils.IsBitSet(instruction, 23);
-        var isPreIndex = BitUtils.IsBitSet(instruction, 24);
-
-        var immOffset = ((instruction >> 4) & 0xF0) | (instruction & 0x0F);
-        var rm = (int)instruction & 0x0F;
-        var offset = immediate ? immOffset : Registers[rm];
-
-        var updatedAddress = isUp
-            ? baseAddress + offset
-            : baseAddress - offset;
-        var effectiveAddress = isPreIndex
-            ? updatedAddress
-            : baseAddress;
-
-        uint loadedValue = 0;
-        if (isLoad)
-        {
-            switch (opCode)
-            {
-                case 0b00: //reserved for swp
-                    throw new NotSupportedException("opcode 0b00 should be reserved for a SWP instruction");
-                case 0b01: //unsigned halfword
-                    loadedValue = bus.Read16(effectiveAddress);
-                    loadedValue = BitOperations.RotateRight(loadedValue, (int)((effectiveAddress & 1u) * 8));
-
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
-                    break;
-                case 0b10: //signed byte
-                    loadedValue = (uint)(sbyte)bus.Read8(effectiveAddress);
-
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N cycle
-                    break;
-                case 0b11: //signed halfword
-                    var rawHalfword = bus.Read16(effectiveAddress);
-                    if ((effectiveAddress & 1) != 0)
-                    {
-                        loadedValue = (uint)BitUtils.SignExtend((rawHalfword >> 8) & 0xff, 8);
-                        break;
-                    }
-                    loadedValue = (uint)BitUtils.SignExtend(rawHalfword, 16);
-
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
-                    break;
-                default:
-                    throw new NotSupportedException("not a possible opcode for this singed/halfword data transfer");
-            }
-
-            if (rd == 15)
-            {
-                Registers.ProgramCounter = loadedValue & ~3u;
-            }
-        }
-        else //store
-        {
-            if (opCode != 0b01)
-            {
-                throw new NotSupportedException("Only STRH is supported for halfword/signed store");
-            }
-
-            uint value = rd == 15
-                ? Registers.ProgramCounter + 4
-                : Registers[rd];
-            bus.Write16(effectiveAddress, (ushort)value);
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N cycle
-        }
-
-        if (isPreIndex && isWriteback || !isPreIndex)
-        {
-            Registers[rn] = updatedAddress;
-        }
-
-        if (isLoad)
-        {
-            Registers[rd] = loadedValue;
-
-            _cycles++; //I cycle
-            if (rd == 15)
-            {
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N cycle
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
-            }
-        }
-
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: isLoad); //LDR S , STR N
-    }
-
-    private void ExecuteMrs(uint instruction)
-    {
-        /*
-          |..3 ..................2 ..................1 ..................0|
-          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-          |_Cond__|0_0_0_1_0|P|0_0_1_1_1_1|__Rd___|0_0_0_0_0_0_0_0_0_0_0_0| MRS reg
-         */
-
-        var pSource = BitUtils.IsBitSet(instruction, 22);
-        var rd = (int)(instruction >> 12) & 0xF;
-        var statusReg = pSource ? Registers.GetSpsr(Cpsr.Mode).ToUInt32() : Cpsr.ToUInt32();
-
-        Registers[rd] = statusReg;
-
-        //1S cycle
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
-    }
-
-    private void ExecuteMsr(uint instruction)
-    {
-        /*
-          |..3 ..................2 ..................1 ..................0|
-          |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-          |_Cond__|0_0_0_1_0|P|1_0|F|0_0|C|1_1_1_1|0_0_0_0_0_0_0_0|__Rm___| MSR reg
-          |_Cond__|0_0|I|1_0|P|1_0|F|0_0|C|1_1_1_1|_Shift_|___Immediate___| MSR imm
-         */
-
-        var useSpsr = BitUtils.IsBitSet(instruction, 22);
-        var immediate = BitUtils.IsBitSet(instruction, 25);
-        var flagBits = BitUtils.IsBitSet(instruction, 19);
-        var controlBits = BitUtils.IsBitSet(instruction, 16);
-
-        var rm = (int)instruction & 0xF;
-        var source = immediate
-            ? DecodeImmediateOperand(instruction, out _)
-            : Registers[rm];
-
-        var oldPsr = useSpsr
-            ? Registers.GetSpsr(Cpsr.Mode).ToUInt32()
-            : Cpsr.ToUInt32();
-
-        uint newPsr = flagBits switch
-        {
-            true when controlBits => source,
-            true => (oldPsr & 0x0FFFFFFFu) | (source & 0xF0000000u),
-            false when controlBits => (oldPsr & 0xFFFFFF00u) | (source & 0xFFu),
-            _ => oldPsr
-        };
-
-        var status = ProgramStatusRegister.FromUInt32(newPsr);
-        if (useSpsr)
-        {
-            Registers.SetSpsr(Cpsr.Mode, status);
-        }
-        else
-        {
-            Cpsr = status;
-        }
-
-        //1S cycle
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private uint DecodeImmediateOperand(uint instruction, out bool carryOut)
@@ -982,7 +487,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         var immediate = instruction & 0xFF;
         var rotate = (int)((instruction >> 8) & 0xF) * 2;
         var result = BitUtils.RotateRight(immediate, rotate);
-        carryOut = rotate == 0 ? Cpsr.Carry : BitUtils.IsBitSet(result, 31);
+        carryOut = rotate == 0 ? Registers.Cpsr.Carry : BitUtils.IsBitSet(result, 31);
         return result;
     }
 
@@ -1016,20 +521,20 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     private bool ConditionPassed(Condition condition) =>
         condition switch
         {
-            Condition.Eq => Cpsr.Zero,
-            Condition.Ne => !Cpsr.Zero,
-            Condition.Cs => Cpsr.Carry,
-            Condition.Cc => !Cpsr.Carry,
-            Condition.Mi => Cpsr.Negative,
-            Condition.Pl => !Cpsr.Negative,
-            Condition.Vs => Cpsr.Overflow,
-            Condition.Vc => !Cpsr.Overflow,
-            Condition.Hi => Cpsr is { Carry: true, Zero: false },
-            Condition.Ls => !Cpsr.Carry || Cpsr.Zero,
-            Condition.Ge => Cpsr.Negative == Cpsr.Overflow,
-            Condition.Lt => Cpsr.Negative != Cpsr.Overflow,
-            Condition.Gt => !Cpsr.Zero && Cpsr.Negative == Cpsr.Overflow,
-            Condition.Le => Cpsr.Zero || Cpsr.Negative != Cpsr.Overflow,
+            Condition.Eq => Registers.Cpsr.Zero,
+            Condition.Ne => !Registers.Cpsr.Zero,
+            Condition.Cs => Registers.Cpsr.Carry,
+            Condition.Cc => !Registers.Cpsr.Carry,
+            Condition.Mi => Registers.Cpsr.Negative,
+            Condition.Pl => !Registers.Cpsr.Negative,
+            Condition.Vs => Registers.Cpsr.Overflow,
+            Condition.Vc => !Registers.Cpsr.Overflow,
+            Condition.Hi => Registers.Cpsr is { Carry: true, Zero: false },
+            Condition.Ls => !Registers.Cpsr.Carry || Registers.Cpsr.Zero,
+            Condition.Ge => Registers.Cpsr.Negative == Registers.Cpsr.Overflow,
+            Condition.Lt => Registers.Cpsr.Negative != Registers.Cpsr.Overflow,
+            Condition.Gt => !Registers.Cpsr.Zero && Registers.Cpsr.Negative == Registers.Cpsr.Overflow,
+            Condition.Le => Registers.Cpsr.Zero || Registers.Cpsr.Negative != Registers.Cpsr.Overflow,
             Condition.Al => true, _ => false
         };
 
@@ -1037,58 +542,59 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     {
         var nextInstructionAddress = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x18;
-        Registers.SetSpsr(CpuMode.Irq, Cpsr);
-        Cpsr = new ProgramStatusRegister
+        Registers.SetSpsr(CpuMode.Irq, Registers.Cpsr);
+        Registers.Cpsr = new ProgramStatusRegister
         {
             Mode = CpuMode.Irq,
             IrqDisable = true,
             ThumbState = false,
-            Negative = Cpsr.Negative,
-            Zero = Cpsr.Zero,
-            Carry = Cpsr.Carry,
-            Overflow = Cpsr.Overflow
+            Negative = Registers.Cpsr.Negative,
+            Zero = Registers.Cpsr.Zero,
+            Carry = Registers.Cpsr.Carry,
+            Overflow = Registers.Cpsr.Overflow
         };
+        //TODO reg mode
         Registers[14] = nextInstructionAddress + 4u;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateNz(uint result)
     {
-        Cpsr.Negative = (result & 0x80000000) != 0;
-        Cpsr.Zero = result == 0;
+        Registers.Cpsr.Negative = (result & 0x80000000) != 0;
+        Registers.Cpsr.Zero = result == 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetCarry(bool carry) =>
-        Cpsr.Carry = carry;
+        Registers.Cpsr.Carry = carry;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetOverflow(bool overflow) =>
-        Cpsr.Overflow = overflow;
+        Registers.Cpsr.Overflow = overflow;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNegative(bool negative) =>
-        Cpsr.Negative = negative;
+        Registers.Cpsr.Negative = negative;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetZero(bool zero) =>
-        Cpsr.Zero = zero;
+        Registers.Cpsr.Zero = zero;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateArithmeticFlags(uint left, uint right, uint result, bool subtraction)
     {
-        Cpsr.Negative = (result & 0x80000000) != 0;
-        Cpsr.Zero = result == 0;
+        Registers.Cpsr.Negative = (result & 0x80000000) != 0;
+        Registers.Cpsr.Zero = result == 0;
 
         if (subtraction)
         {
-            Cpsr.Carry = left >= right;
-            Cpsr.Overflow = ((left ^ right) & (left ^ result) & 0x80000000) != 0;
+            Registers.Cpsr.Carry = left >= right;
+            Registers.Cpsr.Overflow = ((left ^ right) & (left ^ result) & 0x80000000) != 0;
         }
         else
         {
-            Cpsr.Carry = result < left || result < right;
-            Cpsr.Overflow = (~(left ^ right) & (left ^ result) & 0x80000000) != 0;
+            Registers.Cpsr.Carry = result < left || result < right;
+            Registers.Cpsr.Overflow = (~(left ^ right) & (left ^ result) & 0x80000000) != 0;
         }
     }
 
@@ -1097,7 +603,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         switch (amount)
         {
             case 0:
-                carryOut = Cpsr.Carry;
+                carryOut = Registers.Cpsr.Carry;
                 return value;
             case >= 32:
                 //last bit shifted out if == 32 otherwise always no carry out
@@ -1114,7 +620,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         switch (amount)
         {
             case 0 when registerShift:
-                carryOut = Cpsr.Carry;
+                carryOut = Registers.Cpsr.Carry;
                 return value;
             case 0:
                 carryOut = BitUtils.IsBitSet(value, 31);
@@ -1137,7 +643,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
                 carryOut = BitUtils.IsBitSet(value, 31);
                 return carryOut ? 0xFFFFFFFF : 0;
             case 0:
-                carryOut = Cpsr.Carry;
+                carryOut = Registers.Cpsr.Carry;
                 return value;
             default:
                 carryOut = ((value >> (amount - 1)) & 1U) != 0;
@@ -1151,13 +657,13 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             carryOut = BitUtils.IsBitSet(value, 0);
             var rotated = BitUtils.RotateRight(value, 1);
-            rotated = BitUtils.SetBit(rotated, 31, Cpsr.Carry);
+            rotated = BitUtils.SetBit(rotated, 31, Registers.Cpsr.Carry);
             return rotated;
         }
 
         var result = BitUtils.RotateRight(value, amount);
         carryOut = amount == 0 ?
-            Cpsr.Carry : //when rs == 0 carry remains unchanged
+            Registers.Cpsr.Carry : //when rs == 0 carry remains unchanged
             BitUtils.IsBitSet(result, 31);
         return result;
     }

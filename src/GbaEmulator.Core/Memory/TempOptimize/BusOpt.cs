@@ -1,11 +1,9 @@
 using System.Buffers.Binary;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using GbaEmulator.Core.Bios;
-using GbaEmulator.Core.Memory;
 using GbaCartridge = GbaEmulator.Core.Cartridge.Cartridge;
 
-namespace GbaEmulator.Core.Cpu;
+namespace GbaEmulator.Core.Memory;
 
 public sealed class BusOpt(GbaMemory memory)
 {
@@ -29,8 +27,6 @@ public sealed class BusOpt(GbaMemory memory)
             MemoryRegion.Unused => 0,
             MemoryRegion.Io => memory.Io.ReadIo32Aligned(aligned),
             _ => BinaryPrimitives.ReadUInt32LittleEndian(buffer)
-            //_ => (uint)((buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) |
-             //           buffer[0])
         };
 
         return aligned != address
@@ -75,10 +71,6 @@ public sealed class BusOpt(GbaMemory memory)
                 break;
             default:
                 BinaryPrimitives.WriteUInt32LittleEndian(buffer, value);
-                //buffer[3] = (byte)(value >> 24);
-                //buffer[2] = (byte)(value >> 16);
-                //buffer[1] = (byte)(value >> 8);
-                //buffer[0] = (byte)value;
                 break;
         }
     }

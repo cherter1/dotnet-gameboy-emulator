@@ -28,7 +28,7 @@ public sealed partial class Arm7Tdmi
                 result = (uint)(sourceValue << offset);
                 if (offset != 0)
                 {
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 32 - offset));
+                    Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, 32 - offset);
                 }
 
                 break;
@@ -36,12 +36,12 @@ public sealed partial class Arm7Tdmi
                 if (offset == 0)
                 {
                     result = 0;
-                    SetCarry(BitUtils.IsBitSet((uint)sourceValue, 31));
+                    Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, 31);
                     break;
                 }
 
                 result = (uint)(sourceValue >>> offset);
-                SetCarry(BitUtils.IsBitSet((uint)sourceValue, offset - 1));
+                Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, offset - 1);
 
                 break;
             case 0b10: //ASR
@@ -49,12 +49,12 @@ public sealed partial class Arm7Tdmi
                 {
                     var carryOut = BitUtils.IsBitSet((uint)sourceValue, 31);
                     result = carryOut ? 0xFFFFFFFF : 0;
-                    SetCarry(carryOut);
+                    Registers.Cpsr.Carry = carryOut;
                     break;
                 }
 
                 result = (uint)(sourceValue >> offset);
-                SetCarry(BitUtils.IsBitSet((uint)sourceValue, offset - 1));
+                Registers.Cpsr.Carry = BitUtils.IsBitSet((uint)sourceValue, offset - 1);
 
                 break;
             default:
@@ -154,7 +154,7 @@ public sealed partial class Arm7Tdmi
         var rs = (instruction >> 3) & 0b111;
         var opCode = (instruction >> 6) & 0xF;
 
-        var cy = Cpsr.Carry ? 1u : 0u;
+        var cy = Registers.Cpsr.Carry ? 1u : 0u;
         uint result;
         switch (opCode)
         {
@@ -173,7 +173,7 @@ public sealed partial class Arm7Tdmi
             case 0b0010: //LSL
                 var shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.ShiftLeft(Registers[rd], shiftAmount, out bool carryOut);
-                SetCarry(carryOut);
+                Registers.Cpsr.Carry = carryOut;
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -182,7 +182,7 @@ public sealed partial class Arm7Tdmi
             case 0b0011: //LSR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.ShiftRightLogical(Registers[rd], shiftAmount, true, out carryOut);
-                SetCarry(carryOut);
+                Registers.Cpsr.Carry = carryOut;
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -191,7 +191,7 @@ public sealed partial class Arm7Tdmi
             case 0b0100: //ASR
                 shiftAmount = (int)(Registers[rs] & 0xFF);
                 result = this.ShiftRightArithmetic(Registers[rd], shiftAmount, true, out carryOut);
-                SetCarry(carryOut);
+                Registers.Cpsr.Carry = carryOut;
                 UpdateNz(result);
                 Registers[rd] = result;
 
@@ -201,7 +201,7 @@ public sealed partial class Arm7Tdmi
                 var wide = (ulong)Registers[rd] + Registers[rs] + cy;
                 result = (uint)wide;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: false);
-                SetCarry(wide >> 32 != 0);
+                Registers.Cpsr.Carry = wide >> 32 != 0;
                 Registers[rd] = result;
 
                 break;
@@ -209,7 +209,7 @@ public sealed partial class Arm7Tdmi
                 var longResult = (ulong)Registers[rd] - Registers[rs] + cy - 1u;
                 result = (uint)longResult;
                 UpdateArithmeticFlags(Registers[rd], Registers[rs], result, subtraction: true);
-                SetCarry((long)longResult >= 0);
+                Registers.Cpsr.Carry = (long)longResult >= 0;
                 Registers[rd] = result;
 
                 break;
@@ -219,7 +219,7 @@ public sealed partial class Arm7Tdmi
                 UpdateNz(result);
                 if (shiftAmount != 0)
                 {
-                    SetCarry(carryOut);
+                    Registers.Cpsr.Carry = carryOut;
                 }
                 Registers[rd] = result;
 
@@ -257,7 +257,7 @@ public sealed partial class Arm7Tdmi
                 result = multiplierOperand * Registers[rs];
                 Registers[rd] = result;
                 UpdateNz(result);
-                SetCarry(false);
+                Registers.Cpsr.Carry = false;
 
                 _cycles += GetMultiplierArrayCycles(multiplierOperand, false); //mI cycles
                 break;
@@ -330,7 +330,7 @@ public sealed partial class Arm7Tdmi
                 var target = source;
                 var setThumb = (target & 1) != 0;
 
-                Cpsr.ThumbState = (target & 1) != 0;
+                Registers.Cpsr.ThumbState = (target & 1) != 0;
 
                 //32 bit align if entering arm else 16 bit aligned
                 target &= setThumb ? ~1u : ~3u;
@@ -791,11 +791,12 @@ public sealed partial class Arm7Tdmi
         var comment = instruction & 0xFF;
         Console.WriteLine("THUMB SWI Enter: comment = " + comment.ToString("X8"));
 
-        Registers.SetSpsr(CpuMode.Supervisor, Cpsr);
+        Registers.SetSpsr(CpuMode.Supervisor, Registers.Cpsr);
 
-        Cpsr.Mode = CpuMode.Supervisor;
-        Cpsr.IrqDisable = true;
-        Cpsr.ThumbState = false;
+        //todo mode
+        Registers.Cpsr.Mode = CpuMode.Supervisor;
+        Registers.Cpsr.IrqDisable = true;
+        Registers.Cpsr.ThumbState = false;
 
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8

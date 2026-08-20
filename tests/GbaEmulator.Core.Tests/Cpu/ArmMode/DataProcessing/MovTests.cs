@@ -30,10 +30,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0x1FFEu, cpu.Registers[0]);
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
     }
 
     [Theory]
@@ -61,10 +61,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
-        Assert.Equal(expectedCarry, cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.Equal(expectedCarry, cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -90,10 +90,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -119,10 +119,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0x0200000cu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Theory]
@@ -149,10 +149,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
-        Assert.Equal(expectedCarry, cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.Equal(expectedCarry, cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -175,10 +175,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0xFFFFFFFF, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Theory]
@@ -205,10 +205,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0x80000fff, cpu.Registers[0]);
-        Assert.Equal(initialCarry, cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.Equal(initialCarry, cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Theory]
@@ -234,10 +234,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0xffffffff, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -261,10 +261,10 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0x891a2b3c, cpu.Registers[0]);
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -290,9 +290,9 @@ public sealed class MovTests
 
         //Assert
         Assert.Equal(0x091a2b38u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 }

@@ -6,15 +6,6 @@ namespace GbaEmulator.Core.Tests.Cpu.ThumbMode;
 
 public sealed class Format12LoadAddress
 {
-    /*
-      2000000:       a000            add     r0, pc, #0      @ (adr r0, 2000004 <_start+0x4>)
-      2000002:       a101            add     r1, pc, #4      @ (adr r1, 2000008 <_start+0x8>)
-      2000004:       a7ff            add     r7, pc, #1020   @ (adr r7, 2000404 <_start+0x404>)
-      2000006:       a800            add     r0, sp, #0
-      2000008:       aa01            add     r2, sp, #4
-      200000a:       adff            add     r5, sp, #1020   @ 0x3fc 
-     */
-    
     [Fact]
     public void ADD_PcWithZeroOffset_FlagsUnchangedAndR0HoldsVisiblePc()
     {
@@ -38,10 +29,10 @@ public sealed class Format12LoadAddress
         //Assert
         Assert.Equal(0x02000004u, cpu.Registers[0]);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]

@@ -33,10 +33,10 @@ public sealed class AdcSbcRscTests
 
         //Assert
         Assert.Equal(0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -59,10 +59,10 @@ public sealed class AdcSbcRscTests
 
         //Assert
         Assert.Equal(0x7ffffffeu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -85,9 +85,9 @@ public sealed class AdcSbcRscTests
 
         //Assert
         Assert.Equal(0x7ffffffeu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 }
