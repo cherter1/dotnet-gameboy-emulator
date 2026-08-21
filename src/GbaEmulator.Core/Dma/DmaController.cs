@@ -25,7 +25,6 @@ public sealed class DmaController
             }
 
             var index = Array.IndexOf(_channels, channel);
-            Console.WriteLine($"Writing Dma {index}");
             var destIncType = (channel.Control >> 5) & 0b11;
             var sourceIncType = (channel.Control >> 7) & 0b11;
             var repeat = ((channel.Control >> 9) & 1) == 1;
@@ -34,6 +33,8 @@ public sealed class DmaController
             var dest = channel.DestinationAddress;
             var source = channel.SourceAddress;
             var unitSize = is32BitCopy ? 4u : 2u;
+            //Console.WriteLine($"Writing Dma {index}, type: {timingType}");
+            //Console.WriteLine($"control: 0x{channel.Control:x4}, src: 0x{source:x8}, dest: 0x{dest:x8}, unitSize: {unitSize}, count: {channel.Count}");
 
             for (int i = 0; i < channel.Count; i++)
             {
@@ -68,9 +69,9 @@ public sealed class DmaController
 
             channel.SourceAddress = source;
             channel.DestinationAddress = dest;
-            if (!repeat)
+            if (!repeat || timingType == DmaTimingType.Immediately)
             {
-                channel.Control = (ushort)(channel.Control & ~0x8000);
+                channel.Control &= 0x7fff;
             }
 
             if ((channel.Control >> 14 & 1) != 1)

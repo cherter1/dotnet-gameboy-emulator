@@ -398,7 +398,7 @@ public sealed class IoRegisters
                 _interruptController.UpdateServiceIrq();
                 break;
             case 0x04000202:
-                REG_IF &= (ushort)~value;
+                REG_IF = (ushort)(REG_IF & ~value);
                 _interruptController.UpdateServiceIrq();
                 break;
             case 0x04000208:
