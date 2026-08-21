@@ -16,25 +16,6 @@ public sealed class TimerController
         _interrupts = interrupts;
     }
 
-    public void Step(int cycles)
-    {
-        //var tm0Counter = _memory.Io.REG_TM0D_COUNTER;
-        //_channel0.Step(cycles, _memory.Io.REG_TM0CNT, ref tm0Counter, _memory.Io.REG_TM0D_RELOAD, _interrupts);
-        //_memory.Io.REG_TM0D_COUNTER = tm0Counter;
-
-        //var tm1Counter = _memory.Io.REG_TM1D_COUNTER;
-        //_channel1.Step(cycles, _memory.Io.REG_TM1CNT, ref tm1Counter, _memory.Io.REG_TM1D_RELOAD, _interrupts);
-        //_memory.Io.REG_TM1D_COUNTER = tm1Counter;
-
-        //var tm2Counter = _memory.Io.REG_TM2D_COUNTER;
-        //_channel2.Step(cycles, _memory.Io.REG_TM2CNT, ref tm2Counter, _memory.Io.REG_TM2D_RELOAD, _interrupts);
-        //_memory.Io.REG_TM2D_COUNTER = tm2Counter;
-
-        //var tm3Counter = _memory.Io.REG_TM3D_COUNTER;
-        //_channel3.Step(cycles, _memory.Io.REG_TM3CNT, ref tm3Counter, _memory.Io.REG_TM3D_RELOAD, _interrupts);
-        //_memory.Io.REG_TM3D_COUNTER = tm3Counter;
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Advance(int cycles)
     {

@@ -50,7 +50,7 @@ public sealed class GbaMachine
     {
         var memory = new GbaMemory();
         var interrupts = new InterruptController(memory);
-        var keypad = new KeypadState(memory);
+        var keypad = new KeypadState(memory, interrupts);
         var timers = new TimerController(interrupts);
         memory.Io.ConnectTimerController(timers);
         memory.Io.ConnectInterruptController(interrupts);
@@ -94,7 +94,6 @@ public sealed class GbaMachine
             dmaWatch.Stop();
 
             timerWatch.Start();
-            //Timers.Step(instructionCycles);
             Timers.Advance(instructionCycles);
             timerWatch.Stop();
 
@@ -105,10 +104,10 @@ public sealed class GbaMachine
             consumed += instructionCycles;
             iterations += 1;
         }
-        //Console.WriteLine($"{iterations} iterations completed");
-        //Console.WriteLine($"{cpuWatch.ElapsedMilliseconds} ms in CPU");
-        //Console.WriteLine($"{dmaWatch.ElapsedMilliseconds} ms in DMA");
-        //Console.WriteLine($"{timerWatch.ElapsedMilliseconds} ms in timers");
-        //Console.WriteLine($"{ppuWatch.ElapsedMilliseconds} ms in ppu");
+        Console.WriteLine($"{iterations} iterations completed");
+        Console.WriteLine($"{cpuWatch.ElapsedMilliseconds} ms in CPU");
+        Console.WriteLine($"{dmaWatch.ElapsedMilliseconds} ms in DMA");
+        Console.WriteLine($"{timerWatch.ElapsedMilliseconds} ms in timers");
+        Console.WriteLine($"{ppuWatch.ElapsedMilliseconds} ms in ppu");
     }
 }

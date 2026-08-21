@@ -1,4 +1,5 @@
 using GbaEmulator.Core.Input;
+using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Tests.Memory;
@@ -18,7 +19,9 @@ public sealed class GbaBusTests
     public void KeypadRegister_UsesActiveLowBits()
     {
         GbaMemory memory = new();
-        var keypad = new KeypadState(memory);
+        InterruptController interrupts = new(memory);
+
+        var keypad = new KeypadState(memory, interrupts);
         var bus = new GbaBus(memory);
         keypad.SetPressed(GbaButton.A, true);
 

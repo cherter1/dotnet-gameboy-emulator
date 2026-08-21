@@ -68,7 +68,10 @@ public sealed class DmaController
 
             channel.SourceAddress = source;
             channel.DestinationAddress = dest;
-            channel.Control = (ushort)(channel.Control & ~0x8000);
+            if (!repeat)
+            {
+                channel.Control = (ushort)(channel.Control & ~0x8000);
+            }
 
             if ((channel.Control >> 14 & 1) != 1)
             {
