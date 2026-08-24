@@ -50,6 +50,23 @@ internal sealed class DmaChannel(GbaMemory memory, int index)
         set => SetChannelControl(value);
     }
 
+    public uint SourceInternal { get; set; }
+    public uint DestinationInternal { get; set; }
+    public uint LengthInternal { get; set; }
+    public bool Enabled { get; set; }
+
+    public void Enable()
+    {
+        if (!Enabled)
+        {
+            SourceInternal = SourceAddress; //source
+            DestinationInternal = DestinationAddress; //dest
+            LengthInternal = Count; //length
+        }
+
+        Enabled = true;
+    }
+
     private uint ResolveChannelSource()
     {
         return index switch

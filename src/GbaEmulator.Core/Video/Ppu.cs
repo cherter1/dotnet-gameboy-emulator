@@ -208,7 +208,7 @@ public sealed class Ppu
                 Console.WriteLine("RENDER MODE 5");
                 break;
             default:
-                Console.WriteLine("BACKDROP RENDER");
+                //Console.WriteLine("BACKDROP RENDER");
                 //should only be used when forceBlank bit is set in DisplayControl register
                 var backDropColor = ReadBgPaletteColor(0); //backdrop color is set by zero index of palette
                 FrameBuffer.FillScanline(scanLine, backDropColor); // 0xffffff00); //tmep yellow color for testing

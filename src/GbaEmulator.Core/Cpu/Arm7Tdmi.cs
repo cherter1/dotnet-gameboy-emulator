@@ -37,6 +37,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
         {
             if (!Registers.Cpsr.IrqDisable && interrupts.ServiceIrq)
             {
+                //Console.WriteLine("Exception Entered");
                 EnterIrqException();
                 return 4;
             }
@@ -83,6 +84,7 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             if (Registers.ProgramCounter == 0x08000a0c)
             {
                 var x = 1;
+                Console.WriteLine("aoc hit");
             }
 
             if (Registers.ProgramCounter == 0x081e3bf2)
@@ -91,6 +93,11 @@ public sealed partial class Arm7Tdmi(GbaBus bus, InterruptController interrupts)
             }
 
             if (Registers.ProgramCounter == 0x08000a78)
+            {
+                var x = 1;
+            }
+
+            if (Registers.ProgramCounter == 0x081dd82a)
             {
                 var x = 1;
             }

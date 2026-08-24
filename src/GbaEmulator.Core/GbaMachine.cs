@@ -55,6 +55,7 @@ public sealed class GbaMachine
         memory.Io.ConnectTimerController(timers);
         memory.Io.ConnectInterruptController(interrupts);
         var dma = new DmaController(interrupts, memory);
+        memory.Io.ConnectDmaController(dma);
         var ppu = new Ppu(interrupts, dma, memory);
         var bus = new GbaBus(memory);
         var cpu = new Arm7Tdmi(bus, interrupts);
@@ -64,8 +65,62 @@ public sealed class GbaMachine
             : null;
 
         bus.LoadCartridge(cartridge);
-        bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
+        string[] saveStrings =
+        [
+            "NONSENSE_NOVALIDSAVEMATCHING_NONSENSE",
+            "EEPROM_",
+            "SRAM_",
+            "FLASH_",
+            "FLASH512_",
+            "FLASH1M_"
+        ];
+        int matchedIndex = 0;
+        for (int i = 0; i < saveStrings.Length; i++)
+        {
+            char[] chars = saveStrings[i].ToCharArray();
+            int matchLength = 0;
+            for (int j = 0; j < cartridge.RomData.Length; j++)
+            {
+                if (cartridge.RomData[j] == chars[matchLength])
+                {
+                    matchLength++;
+                    if (matchLength >= chars.Length)
+                    {
+                        matchedIndex = i;
+                        Console.WriteLine($"{j:x8}");
+                        goto breakLoop;
+                    }
+                }
+                else
+                {
+                    matchLength = 0;
+                }
+            }
+        }
+        breakLoop:
+        switch (matchedIndex)
+        {
+            case 0:
+                Console.WriteLine("nothing matched");
+                break;
+            case 1:
+                Console.WriteLine("EEPROM matched");
+                break;
+            case 2:
+                Console.WriteLine("SRAM matched");
+                break;
+            case 3:
+                Console.WriteLine("FLASH matched");
+                break;
+            case 4:
+                Console.WriteLine("FLASH512 matched");
+                break;
+            case 5:
+                Console.WriteLine("FLASH1M matched");
+                break;
+        }
 
+        bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
         var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, false);
         machine.Reset();
         return machine;

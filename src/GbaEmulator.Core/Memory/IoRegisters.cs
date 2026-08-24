@@ -1,3 +1,4 @@
+using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Timers;
 
@@ -296,6 +297,14 @@ public sealed class IoRegisters
                 REG_DMA0CNT_H = value;
                 if ((value & 0x8000) != 0)
                 {
+                    _dma.Channels[0].Enable();
+                }
+                else
+                {
+                    _dma.Channels[0].Enabled = false;
+                }
+                if ((value & 0x8000) != 0)
+                {
                     //RunDmas(DmaTimingType.Immediately, bus);
                 }
                 break;
@@ -316,6 +325,14 @@ public sealed class IoRegisters
                 break;
             case 0x040000C6:
                 REG_DMA1CNT_H = value;
+                if ((value & 0x8000) != 0)
+                {
+                    _dma.Channels[1].Enable();
+                }
+                else
+                {
+                    _dma.Channels[1].Enabled = false;
+                }
                 if ((value & 0x8000) != 0)
                 {
                     //RunDmas(DmaTimingType.Immediately, bus);
@@ -340,6 +357,14 @@ public sealed class IoRegisters
                 REG_DMA2CNT_H = value;
                 if ((value & 0x8000) != 0)
                 {
+                    _dma.Channels[2].Enable();
+                }
+                else
+                {
+                    _dma.Channels[2].Enabled = false;
+                }
+                if ((value & 0x8000) != 0)
+                {
                     //RunDmas(DmaTimingType.Immediately, bus);
                 }
                 break;
@@ -356,10 +381,18 @@ public sealed class IoRegisters
                 REG_DMA3DAD = (REG_DMA3DAD & 0x0000FFFFu) | (uint)(value << 16);
                 break;
             case 0x040000DC:
-                REG_DMA3CNT_L = value == 0 ? (ushort)0x4000 : value;
+                REG_DMA3CNT_L = value;
                 break;
             case 0x040000DE:
                 REG_DMA3CNT_H = value;
+                if ((value & 0x8000) != 0)
+                {
+                    _dma.Channels[3].Enable();
+                }
+                else
+                {
+                    _dma.Channels[3].Enabled = false;
+                }
                 if ((value & 0x8000) != 0)
                 {
                     //RunDmas(DmaTimingType.Immediately, bus);
@@ -390,6 +423,54 @@ public sealed class IoRegisters
                 break;
             case 0x0400010E:
                 _timerController.WriteControl(3, value);
+                break;
+            #endregion
+            #region Serial Communication (1)
+            case 0x04000120:
+                REG_SCD0 = value;
+                break;
+            case 0x04000122:
+                REG_SCD1 = value;
+                break;
+            case 0x04000124:
+                REG_SCD2 = value;
+                break;
+            case 0x04000126:
+                REG_SCD3 = value;
+                break;
+            case 0x04000128:
+                REG_SCCNT_L = value;
+                break;
+            case 0x0400012a:
+                REG_SCCNT_H = value;
+                break;
+            #endregion
+            #region Keypad
+            case 0x04000132:
+                REG_KEYCNT = value;
+                break;
+            #endregion
+            #region Serial Communication (2)
+            case 0x04000134:
+                REG_RCNT = value;
+                break;
+            case 0x04000140:
+                REG_JOYCNT = value;
+                break;
+            case 0x04000150:
+                REG_JOY_RECV = value; //shift later
+                break;
+            case 0x04000152:
+                REG_JOY_RECV = value; //shift later
+                break;
+            case 0x04000154:
+                REG_JOY_TRANS = value; //shift later
+                break;
+            case 0x04000156:
+                REG_JOY_TRANS = value; //shift later
+                break;
+            case 0x04000158:
+                REG_JOYSTAT = value; //shift later
                 break;
             #endregion
             #region Interrupts
@@ -528,9 +609,26 @@ public sealed class IoRegisters
             0x0400010C => _timerController.ReadCounter(3),
             0x0400010E => _timerController.ReadControl(3),
             #endregion
+            #region Serial Communication (1)
+            0x04000120 => REG_SCD0,
+            0x04000122 => REG_SCD1,
+            0x04000124 => REG_SCD2,
+            0x04000126 => REG_SCD3,
+            0x04000128 => REG_SCCNT_L,
+            0x0400012a => REG_SCCNT_H,
+            #endregion
             #region Keypad
             0x04000130 => REG_KEYINPUT,
             0x04000132 => REG_KEYCNT,
+            #endregion
+            #region Serial Communication (2)
+            0x04000134 => REG_RCNT,
+            0x04000140 => REG_JOYCNT,
+            0x04000150 => (ushort)REG_JOY_RECV, //shift later
+            0x04000152 => (ushort)REG_JOY_RECV, //shift later
+            0x04000154 => (ushort)REG_JOY_TRANS, //shift later
+            0x04000156 => (ushort)REG_JOY_TRANS, //shift later
+            0x04000158 => REG_JOYSTAT,
             #endregion
             #region Interrupts
             0x04000200 => REG_IE,
@@ -798,6 +896,12 @@ public sealed class IoRegisters
 
     #region Dma
 
+    private DmaController _dma = null!;
+    public void ConnectDmaController(DmaController dmaController)
+    {
+        _dma = dmaController;
+    }
+
     /// <summary>
     /// 0x040000B0
     /// </summary>
@@ -874,6 +978,31 @@ public sealed class IoRegisters
     #endregion
 
     #region Serial Communication (1)
+
+    /// <summary>
+    /// 0x04000120
+    /// </summary>
+    public ushort REG_SCD0 { get; set; }
+    /// <summary>
+    /// 0x04000122
+    /// </summary>
+    public ushort REG_SCD1 { get; set; }
+    /// <summary>
+    /// 0x04000124
+    /// </summary>
+    public ushort REG_SCD2 { get; set; }
+    /// <summary>
+    /// 0x04000126
+    /// </summary>
+    public ushort REG_SCD3 { get; set; }
+    /// <summary>
+    /// 0x04000128
+    /// </summary>
+    public ushort REG_SCCNT_L { get; set; }
+    /// <summary>
+    /// 0x0400012a
+    /// </summary>
+    public ushort REG_SCCNT_H { get; set; }
     #endregion
 
     #region Keypad
@@ -889,6 +1018,27 @@ public sealed class IoRegisters
     #endregion
 
     #region Serial Communication (2)
+
+    /// <summary>
+    /// 0x04000134
+    /// </summary>
+    public ushort REG_RCNT { get; set; }
+    /// <summary>
+    /// 0x04000140
+    /// </summary>
+    public ushort REG_JOYCNT { get; set; }
+    /// <summary>
+    /// 0x04000150
+    /// </summary>
+    public uint REG_JOY_RECV { get; set; }
+    /// <summary>
+    /// 0x04000154
+    /// </summary>
+    public uint REG_JOY_TRANS { get; set; }
+    /// <summary>
+    /// 0x04000158
+    /// </summary>
+    public ushort REG_JOYSTAT { get; set; }
     #endregion
 
     #region Interrupts
