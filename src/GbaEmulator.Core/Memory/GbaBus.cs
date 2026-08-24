@@ -175,7 +175,7 @@ public sealed class GbaBus(GbaMemory memory)
             0x08 or 0x09 => GetGamePakRomCycles(waitState: 0, width, sequential),
             0x0A or 0x0B => GetGamePakRomCycles(waitState: 1, width, sequential),
             0x0C or 0x0D => GetGamePakRomCycles(waitState: 2, width, sequential),
-            0x0E or 0x0F => 1, //SRAM
+            0x0E or 0x0F => GetSramCycles(width), //SRAM
             _ => 1
         };
     }
@@ -208,6 +208,18 @@ public sealed class GbaBus(GbaMemory memory)
             AccessWidth.Byte => initial,
             AccessWidth.Halfword => initial,
             AccessWidth.Word => initial + second,
+            _ => throw new ArgumentOutOfRangeException(nameof(width))
+        };
+    }
+
+    public int GetSramCycles(AccessWidth width)
+    {
+        var cycles = DecodeFirstAccess(memory.Io.REG_WAITCNT & 0b11);
+        return width switch
+        {
+            AccessWidth.Byte => cycles,
+            AccessWidth.Halfword => cycles * 2,
+            AccessWidth.Word => cycles * 4,
             _ => throw new ArgumentOutOfRangeException(nameof(width))
         };
     }
