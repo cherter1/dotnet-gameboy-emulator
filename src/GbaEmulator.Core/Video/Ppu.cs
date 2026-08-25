@@ -260,12 +260,6 @@ public sealed class Ppu
             var tileY = bgYStartOffset >> 3; // div 8 to count tiles from offset
             var pixelYInTile = bgYStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
 
-            Console.WriteLine(y);
-            Console.WriteLine($"{displayControl:x4}");
-            if (y == 0 && displayControl == 0x5840)
-            {
-                var x = 1;
-            }
             bgScanlineInfo[i * 7] = tileDataStartOffset;
             bgScanlineInfo[(i * 7) + 1] = tileMapStartOffset;
             bgScanlineInfo[(i * 7) + 2] = xTiles;
