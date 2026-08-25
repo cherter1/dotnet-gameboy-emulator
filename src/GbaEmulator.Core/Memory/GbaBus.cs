@@ -53,6 +53,7 @@ public sealed class GbaBus(GbaMemory memory)
         {
             MemoryRegion.Unused => 0,
             MemoryRegion.Io => memory.Io.ReadIo8(address),
+            MemoryRegion.Sram => memory.Flash.Read8(address),
             _ => buffer[0]
         };
     }
@@ -102,6 +103,9 @@ public sealed class GbaBus(GbaMemory memory)
                 return;
             case MemoryRegion.Io:
                 memory.Io.WriteIo8(address, value);
+                break;
+            case MemoryRegion.Sram:
+                memory.Flash.Write8(address, value);
                 break;
             default:
                 buffer[0] = value;
