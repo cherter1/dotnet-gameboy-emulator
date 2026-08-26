@@ -483,6 +483,11 @@ public sealed class Ppu
                 break;
             }
 
+            int topMostObjColor = 1;
+            string topMostObjMode = "semi transparent";
+            int topmostBgColor = 1;
+            string blendMode = "alpha blending";
+
             if (pixelSet)
             {
                 continue;
@@ -490,6 +495,33 @@ public sealed class Ppu
 
             var backDropColor = ReadBgPaletteColor(0);
             FrameBuffer.SetPixel(x, y, backDropColor);
+        }
+    }
+
+    private void ApplyBlendingEffects()
+    {
+        int topMostPixelColor = 1;
+        //index into BLDCNT of where the top most pixel came from
+        // 0 = bg0, 1 = bg1, 2 = bg2, 3 = bg3, 4 = obj, 5 = backdrop
+        int targetOneControlIndex = 0;
+
+        var blendingForTargetEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, targetOneControlIndex);
+        if (!blendingForTargetEnabled)
+        {
+            return; //top pixel not enabled as target don't blend
+        }
+
+        var blendMode = (_memory.Io.REG_BLDCNT >> 6) & 0b11; //bits 6-7 blend mode
+        switch (blendMode)
+        {
+            case 0b00: //blending off
+                break;
+            case 0b01: //alpha blending
+                break;
+            case 0b10: //brightness increase
+                break;
+            case 0b11: //brightness decrease
+                break;
         }
     }
 
