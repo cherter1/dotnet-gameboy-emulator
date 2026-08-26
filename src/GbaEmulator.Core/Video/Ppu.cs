@@ -483,11 +483,6 @@ public sealed class Ppu
                 break;
             }
 
-            int topMostObjColor = 1;
-            string topMostObjMode = "semi transparent";
-            int topmostBgColor = 1;
-            string blendMode = "alpha blending";
-
             if (pixelSet)
             {
                 continue;
@@ -500,23 +495,47 @@ public sealed class Ppu
 
     private void ApplyBlendingEffects()
     {
-        int topMostPixelColor = 1;
-        //index into BLDCNT of where the top most pixel came from
-        // 0 = bg0, 1 = bg1, 2 = bg2, 3 = bg3, 4 = obj, 5 = backdrop
-        int targetOneControlIndex = 0;
-
-        var blendingForTargetEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, targetOneControlIndex);
-        if (!blendingForTargetEnabled)
+        var blendMode = (_memory.Io.REG_BLDCNT >> 6) & 0b11; //bits 6-7 blend mode
+        if (blendMode == 0b00)
         {
-            return; //top pixel not enabled as target don't blend
+            //no blending effects applied when mode is zero
+            return;
         }
 
-        var blendMode = (_memory.Io.REG_BLDCNT >> 6) & 0b11; //bits 6-7 blend mode
+        //index into BLDCNT of where the top most pixel came from
+        // 0 = bg0, 1 = bg1, 2 = bg2, 3 = bg3, 4 = obj, 5 = backdrop
+        int topMostPixelTargetOneControlIndex = 0;
+        int topMostPixelBgr555Color = 1;
+        int spriteMode = 0; // 1 would be semi transparent if its a sprite
+
+        //index into BLDCNT of where the top most pixel came from
+        // 8 = bg0, 9 = bg1, 10 = bg2, 11 = bg3, 12 = obj, 13 = backdrop
+        int nextTopMostPixelTargetTwoConrolIndex = 8;
+        int nextTopMostPixelBgr555Color = 1;
+
+        if (topMostPixelTargetOneControlIndex == 4 && spriteMode == 1)
+        {
+            //if the top most pixel is a semi-transparent sprite that will be handled elseware
+            //will always use alpha blending with this as source
+            return;
+        }
+
+        var blendingForTargetOneEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, topMostPixelTargetOneControlIndex);
+        if (!blendingForTargetOneEnabled)
+        {
+            //top is not enabled as target1 dont blend
+            return;
+        }
+
         switch (blendMode)
         {
-            case 0b00: //blending off
-                break;
             case 0b01: //alpha blending
+                var blendingForTargetTwoEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, topMostPixelTargetOneControlIndex);
+                if (!blendingForTargetTwoEnabled)
+                {
+                    //nextTop not enabled as target2 don't blend
+                    return;
+                }
                 break;
             case 0b10: //brightness increase
                 break;
