@@ -4,6 +4,7 @@ using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Memory;
 using GbaEmulator.Core.Video.Backgrounds;
+using GbaEmulator.Core.Video.SpecialEffects;
 using GbaEmulator.Core.Video.Sprites;
 
 namespace GbaEmulator.Core.Video;
@@ -218,9 +219,8 @@ public sealed class Ppu
 
     private void RenderMode0(int y)
     {
-        Span<byte> vram = _memory.Vram.AsSpan();
+        ReadOnlySpan<byte> vram = _memory.Vram.AsSpan();
         var displayControl = _memory.Io.REG_DISPCNT;
-        var blendControl = _memory.Io.REG_BLDCNT;
 
         ReadOnlySpan<ushort> bgControls =
         [
@@ -241,7 +241,6 @@ public sealed class Ppu
         Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
 
         Span<int> bgScanlineInfo = stackalloc int[7 * (activeBgs.Length + 1)];
-        //foreach (var bgIdx in activeBgs)
         for (int i = 0; i < activeBgs.Length; i++)
         {
             var bgIdx = activeBgs[i];
@@ -281,72 +280,45 @@ public sealed class Ppu
 
         for (var x = 0; x < ScreenWidth; x++)
         {
-            var pixelSet = false;
-            int priorityLine = 4;
-            //foreach (var bgIdx in activeBgs)
+            ushort topPixelBgrColor = 0x8000;
+            BlendTargetOneType topColorSource = BlendTargetOneType.Backdrop;
+            ushort nextTopPixelBgrColor = 0x8000;
+            BlendTargetTwoType nextTopColorSource = BlendTargetTwoType.Backdrop;
+
+            int topPriorityLine = 4; //top pixel priority line
+            int priorityLine = 4; //priority Of the next TopPixel default 4 so by default anything has higher priority
             for (int i = 0; i < activeBgs.Length; i++)
             {
                 var bgIdx = activeBgs[i];
-                var tileMapStartOffset = bgScanlineInfo[(i * 7) + 1];
-                var bgXStartOffset = x + hofsTable[bgIdx];
-                if (bgScanlineInfo[(i * 7) + 2] > 32 && ((bgXStartOffset >> 8) & 1) != 0) // startOffset greater than pixels per map or SE length across AND xTiles > 32, if its 32 mirror the single X SE
-                {
-                    tileMapStartOffset += 0x800; //move startOffset to next SE(map) start offset
-                }
-                bgXStartOffset &= 0xff;
-
-                var tileX = bgXStartOffset >> 3; // div 8 to count tiles from offset
-                var pixelXInTile = bgXStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
-
-                var tileMapIndex = (bgScanlineInfo[(i * 7) + 4] * 32) + tileX; //tileY * 32 + tileX
-                var tileMapEntryOffset = tileMapStartOffset + tileMapIndex * 2; //tileMapStartOffset + mapIndex * mapEntrySize
-                var tileMapEntry = ReadVram16(vram, tileMapEntryOffset);
-
-                var pixelYInTile = bgScanlineInfo[(i * 7) + 5];
-                var hFlip = (tileMapEntry & 0x0400) != 0;
-                var vFlip = (tileMapEntry & 0x0800) != 0;
-                if (hFlip) pixelXInTile = 7 - pixelXInTile;
-                if (vFlip) pixelYInTile = 7 - pixelYInTile;
-
-                int paletteIndex;
-                if (bgScanlineInfo[(i * 7) + 6] == 1) //8bpp mode
-                {
-                    var tileIndex = tileMapEntry & 0x03ff;
-                    var currentTileOffset = bgScanlineInfo[(i * 7)] + tileIndex * 0x40; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
-                    var currentPixelOffset = currentTileOffset + (pixelYInTile * 8) + pixelXInTile;
-                    paletteIndex = vram[currentPixelOffset];
-                }
-                else //4bpp mode
-                {
-                    var tileIndex = tileMapEntry & 0x03ff;
-                    var currentTileOffset = bgScanlineInfo[(i * 7)] + tileIndex * 0x20; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
-                    var currentPixelOffset = currentTileOffset + (pixelYInTile * 4) + (pixelXInTile >> 1); //YPixel * 4 bc 2 pixels per byte in 8pixel row XPixel /2 for same reason
-                    paletteIndex = (pixelXInTile & 1) == 0 // mod by 2 if even Index take bits 0-3 else take bits 4-7
-                        ? vram[currentPixelOffset] & 0xf
-                        : vram[currentPixelOffset] >> 4;
-                    paletteIndex += (tileMapEntry >> 12) * 16; // add palette bank start offset
-                }
+                var paletteIndex = RenderTextBackground(ref vram, x, hofsTable[bgIdx],
+                    tileMapStartOffset: bgScanlineInfo[(i * 7) + 1],
+                    xTiles: bgScanlineInfo[(i * 7) + 2],
+                    tileY: bgScanlineInfo[(i * 7) + 4],
+                    pixelYInTile: bgScanlineInfo[(i * 7) + 5],
+                    isSinglePalette: bgScanlineInfo[(i * 7) + 6] == 1,
+                    tileDataStartOffset: bgScanlineInfo[i * 7]);
 
                 if ((paletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                 {
-                    //transparent
-                    //var backDropColor = ReadBgPaletteColor(0);
-                    //FrameBuffer.SetPixel(x, y, backDropColor);
                     continue;
                 }
 
-                if ((blendControl & 0xc0) != 0) //if Special effect is not None
+                var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
+                if (topPixelBgrColor == 0x8000)
                 {
-                    //do blending
+                    topPixelBgrColor = bgrColor;
+                    topColorSource = (BlendTargetOneType)bgIdx;
+                    topPriorityLine = bgControls[bgIdx] & 0b11;
+                    continue;
                 }
 
-                var argbColor = ReadBgPaletteColor(paletteIndex);
-                FrameBuffer.SetPixel(x, y, argbColor);
-                pixelSet = true;
+                nextTopPixelBgrColor = bgrColor;
+                nextTopColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
                 priorityLine = bgControls[bgIdx] & 0b11;
                 break;
             }
 
+            int spriteMode = 0;
             foreach (var sprite in enabledSprites)
             {
                 int xCoord = sprite.XCoord;
@@ -361,7 +333,7 @@ public sealed class Ppu
                     var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
                     if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority > priorityLine)
                     {
-                        continue; //sprite not in x range or lower priority than previously drawn pixel
+                        continue; //sprite not in x range or lower priority than nextTopPixel
                     }
 
                     int relativeX = spriteXPos - canvasWidth / 2;
@@ -414,14 +386,23 @@ public sealed class Ppu
                         continue; // dont draw if zero index, pixel should be transparent
                     }
 
-                    if (sprite.Mode == 1) //semi-transparent
-                    {
-                        //temp not doing
-                    }
                     var sourceObjPixelColor = ReadObjPaletteColor(sourceObjPaletteIndex + (16 * sprite.PaletteNumber));
-                    var sourceFinalSpritePixelColor = ConvertBgr555ToArgb(sourceObjPixelColor);
-                    FrameBuffer.SetPixel(x, y, sourceFinalSpritePixelColor);
-                    pixelSet = true;
+                    if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
+                    {
+                        //make sprite pixel top and next top gets set to previous top
+                        var tempCol = topPixelBgrColor;
+                        var tempSource = (uint)topColorSource;
+
+                        topPixelBgrColor = sourceObjPixelColor;
+                        topColorSource = BlendTargetOneType.Obj;
+                        spriteMode = sprite.Mode;
+
+                        nextTopPixelBgrColor = tempCol;
+                        nextTopColorSource = (BlendTargetTwoType)(tempSource << 8);
+                        break;
+                    }
+                    nextTopPixelBgrColor = sourceObjPixelColor;
+                    nextTopColorSource = BlendTargetTwoType.Obj;
                     break;
                 }
 
@@ -451,117 +432,132 @@ public sealed class Ppu
                     continue; // dont draw if zero index, pixel should be transparent
                 }
                 var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
-                if (sprite.Mode == 1) //semi-transparent
+
+                if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
                 {
-                    if ((blendControl & 0xc0) == 0x40) //additive
-                    {
-                        //temp - get last pixel non-transparent
-                        /*
-                        ushort pixel = 0b0000000_11111_11111;
-                        var redB = pixel & 0x1f;
-                        var greenB = (pixel >> 5) & 0x1f;
-                        var blueB = (pixel >> 10) & 0x1f;
+                    //make sprite pixel top and next top gets set to previous top
+                    var tempCol = topPixelBgrColor;
+                    var tempSource = (uint)topColorSource;
 
-                        float coefA = (float)(blendAlpha & 0x1f) / 16;
-                        float coefB = (float)((blendAlpha >> 8) & 0x1f) / 16;
+                    topPixelBgrColor = objPixelColor;
+                    topColorSource = BlendTargetOneType.Obj;
+                    spriteMode = sprite.Mode;
 
-                        //blend
-                        var redA = objPixelColor & 0x1f;
-                        var greenA = (objPixelColor >> 5) & 0x1f;
-                        var blueA = (objPixelColor >> 10) & 0x1f;
-
-                        var red = Math.Min(31, (redA * coefA) + (redB * coefB));
-                        var green = Math.Min(31, (greenA * coefA) + (greenB * coefB));
-                        var blue = Math.Min(31, (blueA * coefA) + (blueB * coefB));
-                        objPixelColor = (ushort)((uint)red | ((uint)green << 5) | ((uint)blue << 10));
-                    */
-                    }
+                    nextTopPixelBgrColor = tempCol;
+                    nextTopColorSource = (BlendTargetTwoType)(tempSource << 8);
+                    break;
                 }
-                var finalSpritePixelColor = ConvertBgr555ToArgb(objPixelColor);
-                FrameBuffer.SetPixel(x, y, finalSpritePixelColor);
-                pixelSet = true;
+
+                nextTopPixelBgrColor = objPixelColor;
+                nextTopColorSource = BlendTargetTwoType.Obj;
                 break;
             }
 
-            if (pixelSet)
+            if (nextTopPixelBgrColor == 0x8000)
             {
-                continue;
+                nextTopPixelBgrColor = ReadPalette16(0);
+                if (topPixelBgrColor == 0x8000)
+                {
+                    topPixelBgrColor = ReadPalette16(0);
+                }
             }
 
-            var backDropColor = ReadBgPaletteColor(0);
-            FrameBuffer.SetPixel(x, y, backDropColor);
+            if (topColorSource == BlendTargetOneType.Obj && spriteMode == 1)
+            {
+                //will always use alpha blending with this as source regardless of BLDCNT
+                var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)nextTopColorSource) == (ushort)nextTopColorSource;
+                if (t2BlendingEnabled)
+                {
+                    topPixelBgrColor = SpecialEffectsHelper.AlphaBlendPixels(topPixelBgrColor, nextTopPixelBgrColor, _memory.Io.REG_BLDALPHA);
+                }
+            }
+            else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+            {
+                topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+            }
+
+            var finalColor = ConvertBgr555ToArgb(topPixelBgrColor);
+            FrameBuffer.SetPixel(x, y, finalColor);
         }
     }
 
-    private void ApplyBlendingEffects()
+    private static int RenderTextBackground(ref ReadOnlySpan<byte> vram, int x, ushort hofs, int tileMapStartOffset,
+        int xTiles, int tileY, int pixelYInTile, bool isSinglePalette, int tileDataStartOffset)
     {
-        var blendMode = (_memory.Io.REG_BLDCNT >> 6) & 0b11; //bits 6-7 blend mode
-        if (blendMode == 0b00)
+        var bgXStartOffset = x + hofs;
+        if (xTiles > 32 && ((bgXStartOffset >> 8) & 1) != 0) // startOffset greater than pixels per map or SE length across AND xTiles > 32, if its 32 mirror the single X SE
         {
-            //no blending effects applied when mode is zero
-            return;
+            tileMapStartOffset += 0x800; //move startOffset to next SE(map) start offset
+        }
+        bgXStartOffset &= 0xff;
+
+        var tileX = bgXStartOffset >> 3; // div 8 to count tiles from offset
+        var pixelXInTile = bgXStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
+
+        var tileMapIndex = tileY * 32 + tileX; //tileY * 32 + tileX
+        var tileMapEntryOffset = tileMapStartOffset + tileMapIndex * 2; //tileMapStartOffset + mapIndex * mapEntrySize
+        var tileMapEntry = ReadVram16(vram, tileMapEntryOffset);
+
+        var hFlip = (tileMapEntry & 0x0400) != 0;
+        var vFlip = (tileMapEntry & 0x0800) != 0;
+        if (hFlip) pixelXInTile = 7 - pixelXInTile;
+        if (vFlip) pixelYInTile = 7 - pixelYInTile;
+
+        int paletteIndex;
+        if (isSinglePalette) //8bpp mode
+        {
+            var tileIndex = tileMapEntry & 0x03ff;
+            var currentTileOffset = tileDataStartOffset + tileIndex * 0x40; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
+            var currentPixelOffset = currentTileOffset + (pixelYInTile * 8) + pixelXInTile;
+            paletteIndex = vram[currentPixelOffset];
+        }
+        else //4bpp mode
+        {
+            var tileIndex = tileMapEntry & 0x03ff;
+            var currentTileOffset = tileDataStartOffset + tileIndex * 0x20; //tileDataStartOffset + (tileIndex * sizeof Tile(bytes))
+            var currentPixelOffset = currentTileOffset + (pixelYInTile * 4) + (pixelXInTile >> 1); //YPixel * 4 bc 2 pixels per byte in 8pixel row XPixel /2 for same reason
+            paletteIndex = (pixelXInTile & 1) == 0 // mod by 2 if even Index take bits 0-3 else take bits 4-7
+                ? vram[currentPixelOffset] & 0xf
+                : vram[currentPixelOffset] >> 4;
+            paletteIndex += (tileMapEntry >> 12) * 16; // add palette bank start offset
         }
 
-        //index into BLDCNT of where the top most pixel came from
-        // 0 = bg0, 1 = bg1, 2 = bg2, 3 = bg3, 4 = obj, 5 = backdrop
-        int t1ControlIndex = 0;
-        ushort t1PixelBgr555Color = 1;
-        int spriteMode = 0; // 1 would be semi transparent if its a sprite
+        return paletteIndex;
+    }
 
-        //index into BLDCNT of where the top most pixel came from
-        // 8 = bg0, 9 = bg1, 10 = bg2, 11 = bg3, 12 = obj, 13 = backdrop
-        int t2ControlIndex = 8;
-        ushort t2PixelBgr555Color = 1;
+    private ushort ApplyBlendingEffects(ushort t1PixelBgr555Color, BlendTargetOneType t1ControlBit, ushort t2PixelBgr555Color, BlendTargetTwoType t2ControlBit)
+    {
+        var blendControl = _memory.Io.REG_BLDCNT;
+        var blendMode = (blendControl >> 6) & 0b11; //bits 6-7 blend mode
 
-        if (t1ControlIndex == 4 && spriteMode == 1)
-        {
-            //if the top most pixel is a semi-transparent sprite that will be handled elseware
-            //will always use alpha blending with this as source
-            return;
-        }
-
-        var t1BlendingEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, t1ControlIndex);
+        var t1BlendingEnabled = (blendControl & (ushort)t1ControlBit) == (ushort)t1ControlBit;
         if (!t1BlendingEnabled)
         {
-            //top is not enabled as target1 dont blend
-            return;
+            //top is not enabled as target1 don't blend
+            return t1PixelBgr555Color;
         }
-
-        var t1Red = t1PixelBgr555Color & 0x1f;
-        var t1Green = (t1PixelBgr555Color >> 5) & 0x1f;
-        var t1Blue = (t1PixelBgr555Color >> 10) & 0x1f;
 
         ushort finalColor = 1;
         switch (blendMode)
         {
             case 0b01: //alpha blending
-                var t2BlendingEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, t2ControlIndex);
+                var t2BlendingEnabled = (blendControl & (ushort)t2ControlBit) == (ushort)t2ControlBit;
                 if (!t2BlendingEnabled)
                 {
                     //nextTop not enabled as target2 don't blend
-                    return;
+                    return t1PixelBgr555Color;
                 }
                 finalColor = SpecialEffectsHelper.AlphaBlendPixels(t1PixelBgr555Color, t2PixelBgr555Color, _memory.Io.REG_BLDALPHA);
                 break;
             case 0b10: //brightness increase
-                var coEfY = _memory.Io.REG_BLDY & 0x1f;
-
-                var redInc = t1Red + (31 - t1Red) * coEfY;
-                var blueInc = t1Blue + (31 - t1Blue) * coEfY;
-                var greenInc = t1Green + (31 - t1Green) * coEfY;
-
-                finalColor = (ushort)((uint)redInc | ((uint)greenInc << 5) | ((uint)blueInc << 10));
+                finalColor = SpecialEffectsHelper.LightenBlend(t1PixelBgr555Color, _memory.Io.REG_BLDY);
                 break;
             case 0b11: //brightness decrease
-                var coEf = _memory.Io.REG_BLDY & 0x1f;
-
-                var redDec = t1Red + (31 - t1Red) * coEf;
-                var blueDec = t1Blue + (31 - t1Blue) * coEf;
-                var greenDec = t1Green + (31 - t1Green) * coEf;
-
-                finalColor = (ushort)((uint)redDec | ((uint)greenDec << 5) | ((uint)blueDec << 10));
+                finalColor = SpecialEffectsHelper.DarkenBlend(t1PixelBgr555Color, _memory.Io.REG_BLDY);
                 break;
         }
+
+        return finalColor;
     }
 
     public void RenderMode1(int y)
