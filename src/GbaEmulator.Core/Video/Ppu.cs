@@ -504,42 +504,62 @@ public sealed class Ppu
 
         //index into BLDCNT of where the top most pixel came from
         // 0 = bg0, 1 = bg1, 2 = bg2, 3 = bg3, 4 = obj, 5 = backdrop
-        int topMostPixelTargetOneControlIndex = 0;
-        int topMostPixelBgr555Color = 1;
+        int t1ControlIndex = 0;
+        ushort t1PixelBgr555Color = 1;
         int spriteMode = 0; // 1 would be semi transparent if its a sprite
 
         //index into BLDCNT of where the top most pixel came from
         // 8 = bg0, 9 = bg1, 10 = bg2, 11 = bg3, 12 = obj, 13 = backdrop
-        int nextTopMostPixelTargetTwoConrolIndex = 8;
-        int nextTopMostPixelBgr555Color = 1;
+        int t2ControlIndex = 8;
+        ushort t2PixelBgr555Color = 1;
 
-        if (topMostPixelTargetOneControlIndex == 4 && spriteMode == 1)
+        if (t1ControlIndex == 4 && spriteMode == 1)
         {
             //if the top most pixel is a semi-transparent sprite that will be handled elseware
             //will always use alpha blending with this as source
             return;
         }
 
-        var blendingForTargetOneEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, topMostPixelTargetOneControlIndex);
-        if (!blendingForTargetOneEnabled)
+        var t1BlendingEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, t1ControlIndex);
+        if (!t1BlendingEnabled)
         {
             //top is not enabled as target1 dont blend
             return;
         }
 
+        var t1Red = t1PixelBgr555Color & 0x1f;
+        var t1Green = (t1PixelBgr555Color >> 5) & 0x1f;
+        var t1Blue = (t1PixelBgr555Color >> 10) & 0x1f;
+
+        ushort finalColor = 1;
         switch (blendMode)
         {
             case 0b01: //alpha blending
-                var blendingForTargetTwoEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, topMostPixelTargetOneControlIndex);
-                if (!blendingForTargetTwoEnabled)
+                var t2BlendingEnabled = BitUtils.IsBitSet(_memory.Io.REG_BLDCNT, t2ControlIndex);
+                if (!t2BlendingEnabled)
                 {
                     //nextTop not enabled as target2 don't blend
                     return;
                 }
+                finalColor = SpecialEffectsHelper.AlphaBlendPixels(t1PixelBgr555Color, t2PixelBgr555Color, _memory.Io.REG_BLDALPHA);
                 break;
             case 0b10: //brightness increase
+                var coEfY = _memory.Io.REG_BLDY & 0x1f;
+
+                var redInc = t1Red + (31 - t1Red) * coEfY;
+                var blueInc = t1Blue + (31 - t1Blue) * coEfY;
+                var greenInc = t1Green + (31 - t1Green) * coEfY;
+
+                finalColor = (ushort)((uint)redInc | ((uint)greenInc << 5) | ((uint)blueInc << 10));
                 break;
             case 0b11: //brightness decrease
+                var coEf = _memory.Io.REG_BLDY & 0x1f;
+
+                var redDec = t1Red + (31 - t1Red) * coEf;
+                var blueDec = t1Blue + (31 - t1Blue) * coEf;
+                var greenDec = t1Green + (31 - t1Green) * coEf;
+
+                finalColor = (ushort)((uint)redDec | ((uint)greenDec << 5) | ((uint)blueDec << 10));
                 break;
         }
     }
