@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using GbaEmulator.App.Hosting;
@@ -72,6 +73,9 @@ public partial class MainWindow
 
         _machine.RunFrame();
         _machine.FrameBuffer.CopyToBgra32(_pixelBytes);
+        //var bitmap = BitmapSource.Create(240, 160, 96, 96, PixelFormats.Bgra32, null, _pixelBytes, 240 * 4);
+        //bitmap.Freeze();
+        //FrameImage.Source = bitmap;
         _bitmap.WritePixels(
             _frameRect,
             _pixelBytes,

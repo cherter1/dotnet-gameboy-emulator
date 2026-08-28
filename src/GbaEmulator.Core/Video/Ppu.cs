@@ -219,6 +219,12 @@ public sealed class Ppu
 
     private void RenderMode0(int y)
     {
+        if (y == 160)
+        {
+            var red = ConvertBgr555ToArgb(0x1f);
+            FrameBuffer.FillScanline(160, red);
+            return;
+        }
         ReadOnlySpan<byte> vram = _memory.Vram.AsSpan();
         var displayControl = _memory.Io.REG_DISPCNT;
 
@@ -391,7 +397,6 @@ public sealed class Ppu
         var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
         if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority > priorityLine)
         {
-            //continue; //sprite not in x range or lower priority than nextTopPixel
             return 0; //sprite not in x range or lower priority than nextTopPixel
         }
 
@@ -403,7 +408,6 @@ public sealed class Ppu
 
         if ((uint)sourceX >= (uint)(sprite.NumXTiles * 8) || (uint)sourceY >= (uint)(sprite.YTiles * 8))
         {
-            //continue; //transformed coordinate is outsize the sprite graphics
             return 0; //transformed coordinate is outsize the sprite graphics
         }
 

@@ -41,7 +41,7 @@ public sealed class FrameBuffer
             destination[offset] = (byte)(color & 0xFF);
             destination[offset + 1] = (byte)((color >> 8) & 0xFF);
             destination[offset + 2] = (byte)((color >> 16) & 0xFF);
-            destination[offset + 3] = (byte)((color >> 24) & 0xFF);
+            destination[offset + 3] = 0xff; //(byte)((color >> 24) & 0xFF);
         }
     }
 }
