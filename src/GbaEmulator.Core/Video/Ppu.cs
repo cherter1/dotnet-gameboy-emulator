@@ -290,7 +290,7 @@ public sealed class Ppu
             for (int i = 0; i < activeBgs.Length; i++)
             {
                 var bgIdx = activeBgs[i];
-                var paletteIndex = RenderTextBackground(ref vram, x, hofsTable[bgIdx],
+                var paletteIndex = RenderTiledBackground(ref vram, x, hofsTable[bgIdx],
                     tileMapStartOffset: bgScanlineInfo[(i * 7) + 1],
                     xTiles: bgScanlineInfo[(i * 7) + 2],
                     tileY: bgScanlineInfo[(i * 7) + 4],
@@ -307,7 +307,7 @@ public sealed class Ppu
                 if (topPixelBgrColor == 0x8000)
                 {
                     topPixelBgrColor = bgrColor;
-                    topColorSource = (BlendTargetOneType)bgIdx;
+                    topColorSource = (BlendTargetOneType)(1 << bgIdx);
                     topPriorityLine = bgControls[bgIdx] & 0b11;
                     continue;
                 }
@@ -321,118 +321,16 @@ public sealed class Ppu
             int spriteMode = 0;
             foreach (var sprite in enabledSprites)
             {
-                int xCoord = sprite.XCoord;
-                if (xCoord >= 256)
-                {
-                    xCoord -= 512; //X wrapping, Sign extend the 9-bit of x pos
-                }
-                var spriteXPos = x - xCoord;
+                int objPaletteIndex = sprite.IsRotational
+                    ? RenderAffineSprite(ref vram, x, priorityLine, displayControl, sprite)
+                    : RenderRegularSprite(ref vram, x, priorityLine, sprite);
 
-                if (sprite.IsRotational) //TODO: make this less gross
-                {
-                    var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
-                    if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority > priorityLine)
-                    {
-                        continue; //sprite not in x range or lower priority than nextTopPixel
-                    }
-
-                    int relativeX = spriteXPos - canvasWidth / 2;
-                    int relativeY = sprite.YPixelOffset; //for now YPixelOffset is relativeY for rotational sprites
-
-                    int sourceX = ((sprite.Pa * relativeX + sprite.Pb * relativeY) >> 8) + (sprite.NumXTiles * 8) / 2;
-                    int sourceY = ((sprite.Pc * relativeX + sprite.Pd * relativeY) >> 8) + (sprite.YTiles * 8) / 2;
-
-                    if ((uint)sourceX >= (uint)(sprite.NumXTiles * 8) || (uint)sourceY >= (uint)(sprite.YTiles * 8))
-                    {
-                        continue; //transformed coordinate is outsize the sprite graphics
-                    }
-
-                    var sourceXTileNumber = sourceX >> 3; //div 8
-                    var sourceXPixelNumber = sourceX & 7; //mod 8
-                    var sourceYTileNumber = sourceY >> 3; //div 8
-                    var sourceYPixelNumber = sourceY & 7; //mod 8
-
-                    var yPixelOffset = sourceYPixelNumber * 4; //mul 4(4bppMode) for pixel inside tile offset
-                    var startTileNumber = sprite.ScanlineStartMapTileNumber; //for now ScanlineStartMapTileNumber is attr2 tileNumber for rotationalSprites
-                    var twoDMatrixSize = 32;
-
-                    if (sprite.IsSinglePalette)
-                    {
-                        startTileNumber /= 2;
-                        yPixelOffset *= 2; //mul 2 (8 total bc already mul 4 above) in 8bpp mode because each byte is a pixel
-                        twoDMatrixSize = 16;
-                    }
-
-                    int scanlineStartMapTileNumber;
-                    if ((displayControl & 0x40) == 0x40) //bit 6 set then 1d char mapping
-                    {
-                        scanlineStartMapTileNumber = startTileNumber + (sourceYTileNumber * sprite.NumXTiles);
-                    }
-                    else //bit 6 clear 2d character mapping
-                    {
-                        scanlineStartMapTileNumber = startTileNumber + (sourceYTileNumber * twoDMatrixSize);
-                    }
-
-                    var sourceMapTileNumber = scanlineStartMapTileNumber + sourceXTileNumber;
-                    var sourceTileOffset = 0x10000 + (sourceMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
-                    var sourcePixOffset = sourceTileOffset + yPixelOffset + (sourceXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
-                    var sourceObjPaletteIndex = sprite.IsSinglePalette
-                        ? vram[sourcePixOffset]
-                        : (sourceXPixelNumber & 1) == 0
-                            ? vram[sourcePixOffset] & 0xf
-                            : vram[sourcePixOffset] >> 4;
-                    if ((sourceObjPaletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
-                    {
-                        continue;
-                    }
-
-                    var sourceObjPixelColor = ReadObjPaletteColor(sourceObjPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
-                    if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
-                    {
-                        //make sprite pixel top and next top gets set to previous top
-                        var tempCol = topPixelBgrColor;
-                        var tempSource = (uint)topColorSource;
-
-                        topPixelBgrColor = sourceObjPixelColor;
-                        topColorSource = BlendTargetOneType.Obj;
-                        spriteMode = sprite.Mode;
-
-                        nextTopPixelBgrColor = tempCol;
-                        nextTopColorSource = (BlendTargetTwoType)(tempSource << 8);
-                        break;
-                    }
-                    nextTopPixelBgrColor = sourceObjPixelColor;
-                    nextTopColorSource = BlendTargetTwoType.Obj;
-                    break;
-                }
-
-                bool objXRange = (uint)spriteXPos < (uint)(sprite.NumXTiles * 8);
-                if (!objXRange || sprite.Priority > priorityLine)
-                {
-                    continue;
-                }
-
-                var currentXTileNumber = spriteXPos >> 3; //divide 8
-                var currentXPixelNumber = spriteXPos & 7; // mod 8
-                if (sprite.HFlip)
-                {
-                    currentXTileNumber = (sprite.NumXTiles - 1) - currentXTileNumber;
-                    currentXPixelNumber = 7 - currentXPixelNumber;
-                }
-                var currentMapTileNumber = sprite.ScanlineStartMapTileNumber + currentXTileNumber;
-                var currentTileOffset = 0x10000 + (currentMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
-                var currentPixOffset = currentTileOffset + sprite.YPixelOffset + (currentXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
-                var objPaletteIndex = sprite.IsSinglePalette
-                    ? vram[currentPixOffset]
-                    : (currentXPixelNumber & 1) == 0
-                        ? vram[currentPixOffset] & 0xf
-                        : vram[currentPixOffset] >> 4;
                 if ((objPaletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                 {
                     continue;
                 }
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
 
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
                 if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
                 {
                     //make sprite pixel top and next top gets set to previous top
@@ -481,7 +379,106 @@ public sealed class Ppu
         }
     }
 
-    private static int RenderTextBackground(ref ReadOnlySpan<byte> vram, int x, ushort hofs, int tileMapStartOffset,
+    private static int RenderAffineSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ushort displayControl, ScanlineSpriteInfo sprite)
+    {
+        int xCoord = sprite.XCoord;
+        if (xCoord >= 256)
+        {
+            xCoord -= 512; //X wrapping, Sign extend the 9-bit of x pos
+        }
+        var spriteXPos = x - xCoord;
+
+        var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
+        if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority > priorityLine)
+        {
+            //continue; //sprite not in x range or lower priority than nextTopPixel
+            return 0; //sprite not in x range or lower priority than nextTopPixel
+        }
+
+        int relativeX = spriteXPos - canvasWidth / 2;
+        int relativeY = sprite.YPixelOffset; //for now YPixelOffset is relativeY for rotational sprites
+
+        int sourceX = ((sprite.Pa * relativeX + sprite.Pb * relativeY) >> 8) + (sprite.NumXTiles * 8) / 2;
+        int sourceY = ((sprite.Pc * relativeX + sprite.Pd * relativeY) >> 8) + (sprite.YTiles * 8) / 2;
+
+        if ((uint)sourceX >= (uint)(sprite.NumXTiles * 8) || (uint)sourceY >= (uint)(sprite.YTiles * 8))
+        {
+            //continue; //transformed coordinate is outsize the sprite graphics
+            return 0; //transformed coordinate is outsize the sprite graphics
+        }
+
+        var sourceXTileNumber = sourceX >> 3; //div 8
+        var sourceXPixelNumber = sourceX & 7; //mod 8
+        var sourceYTileNumber = sourceY >> 3; //div 8
+        var sourceYPixelNumber = sourceY & 7; //mod 8
+
+        var yPixelOffset = sourceYPixelNumber * 4; //mul 4(4bppMode) for pixel inside tile offset
+        var startTileNumber = sprite.ScanlineStartMapTileNumber; //for now ScanlineStartMapTileNumber is attr2 tileNumber for rotationalSprites
+        var twoDMatrixSize = 32;
+
+        if (sprite.IsSinglePalette)
+        {
+            startTileNumber /= 2;
+            yPixelOffset *= 2; //mul 2 (8 total bc already mul 4 above) in 8bpp mode because each byte is a pixel
+            twoDMatrixSize = 16;
+        }
+
+        int scanlineStartMapTileNumber;
+        if ((displayControl & 0x40) == 0x40) //bit 6 set then 1d char mapping
+        {
+            scanlineStartMapTileNumber = startTileNumber + (sourceYTileNumber * sprite.NumXTiles);
+        }
+        else //bit 6 clear 2d character mapping
+        {
+            scanlineStartMapTileNumber = startTileNumber + (sourceYTileNumber * twoDMatrixSize);
+        }
+
+        var sourceMapTileNumber = scanlineStartMapTileNumber + sourceXTileNumber;
+        var sourceTileOffset = 0x10000 + (sourceMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
+        var sourcePixOffset = sourceTileOffset + yPixelOffset + (sourceXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
+        var sourceObjPaletteIndex = sprite.IsSinglePalette
+            ? vram[sourcePixOffset]
+            : (sourceXPixelNumber & 1) == 0
+                ? vram[sourcePixOffset] & 0xf
+                : vram[sourcePixOffset] >> 4;
+        return sourceObjPaletteIndex;
+    }
+
+    private static int RenderRegularSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ScanlineSpriteInfo sprite)
+    {
+        int xCoord = sprite.XCoord;
+        if (xCoord >= 256)
+        {
+            xCoord -= 512; //X wrapping, Sign extend the 9-bit of x pos
+        }
+        var spriteXPos = x - xCoord;
+
+        bool objXRange = (uint)spriteXPos < (uint)(sprite.NumXTiles * 8);
+        if (!objXRange || sprite.Priority > priorityLine)
+        {
+            return 0;
+        }
+
+        var currentXTileNumber = spriteXPos >> 3; //divide 8
+        var currentXPixelNumber = spriteXPos & 7; // mod 8
+        if (sprite.HFlip)
+        {
+            currentXTileNumber = (sprite.NumXTiles - 1) - currentXTileNumber;
+            currentXPixelNumber = 7 - currentXPixelNumber;
+        }
+        var currentMapTileNumber = sprite.ScanlineStartMapTileNumber + currentXTileNumber;
+        var currentTileOffset = 0x10000 + (currentMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
+        var currentPixOffset = currentTileOffset + sprite.YPixelOffset + (currentXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
+        var objPaletteIndex = sprite.IsSinglePalette
+            ? vram[currentPixOffset]
+            : (currentXPixelNumber & 1) == 0
+                ? vram[currentPixOffset] & 0xf
+                : vram[currentPixOffset] >> 4;
+
+        return objPaletteIndex;
+    }
+
+    private static int RenderTiledBackground(ref ReadOnlySpan<byte> vram, int x, ushort hofs, int tileMapStartOffset,
         int xTiles, int tileY, int pixelYInTile, bool isSinglePalette, int tileDataStartOffset)
     {
         var bgXStartOffset = x + hofs;

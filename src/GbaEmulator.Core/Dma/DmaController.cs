@@ -48,8 +48,8 @@ public sealed class DmaController
             var originalLength = channel.LengthInternal;
             var unitSize = is32BitCopy ? 4u : 2u;
 
-            Console.WriteLine($"Writing Dma {index}, type: {timingType}");
-            Console.WriteLine($"control: 0x{channel.Control:x4}, src: 0x{channel.SourceInternal:x8}, dest: 0x{channel.DestinationInternal:x8}, unitSize: {unitSize}, count: {channel.LengthInternal}");
+            //Console.WriteLine($"Writing Dma {index}, type: {timingType}");
+            //Console.WriteLine($"control: 0x{channel.Control:x4}, src: 0x{channel.SourceInternal:x8}, dest: 0x{channel.DestinationInternal:x8}, unitSize: {unitSize}, count: {channel.LengthInternal}");
 
             for (; channel.LengthInternal > 0; channel.LengthInternal--)
             {
