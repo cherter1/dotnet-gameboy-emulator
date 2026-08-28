@@ -381,12 +381,12 @@ public sealed class Ppu
                         : (sourceXPixelNumber & 1) == 0
                             ? vram[sourcePixOffset] & 0xf
                             : vram[sourcePixOffset] >> 4;
-                    if (sourceObjPaletteIndex == 0)
+                    if ((sourceObjPaletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                     {
-                        continue; // dont draw if zero index, pixel should be transparent
+                        continue;
                     }
 
-                    var sourceObjPixelColor = ReadObjPaletteColor(sourceObjPaletteIndex + (16 * sprite.PaletteNumber));
+                    var sourceObjPixelColor = ReadObjPaletteColor(sourceObjPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
                     if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
                     {
                         //make sprite pixel top and next top gets set to previous top
@@ -427,9 +427,9 @@ public sealed class Ppu
                     : (currentXPixelNumber & 1) == 0
                         ? vram[currentPixOffset] & 0xf
                         : vram[currentPixOffset] >> 4;
-                if (objPaletteIndex == 0)
+                if ((objPaletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                 {
-                    continue; // dont draw if zero index, pixel should be transparent
+                    continue;
                 }
                 var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
 
