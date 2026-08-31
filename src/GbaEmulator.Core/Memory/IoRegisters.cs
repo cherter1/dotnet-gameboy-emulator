@@ -194,7 +194,7 @@ public sealed class IoRegisters
                 REG_BLDALPHA = value;
                 break;
             case 0x04000054:
-                REG_BLDY = 1;
+                REG_BLDY = value;
                 break;
             #endregion
             #region Sound

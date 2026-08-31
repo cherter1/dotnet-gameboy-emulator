@@ -219,14 +219,45 @@ public sealed class Ppu
 
     private void RenderMode0(int y)
     {
-        if (y == 160)
-        {
-            var red = ConvertBgr555ToArgb(0x1f);
-            FrameBuffer.FillScanline(160, red);
-            return;
-        }
         ReadOnlySpan<byte> vram = _memory.Vram.AsSpan();
         var displayControl = _memory.Io.REG_DISPCNT;
+
+        var win0Enabled = BitUtils.IsBitSet(displayControl, 13);
+        var win1Enabled = BitUtils.IsBitSet(displayControl, 14);
+        var objWinEnabled = BitUtils.IsBitSet(displayControl, 15);
+        if (win0Enabled)
+        {
+            var x2 = (_memory.Io.REG_WIN0H & 0xff) + 1; //bits 0-7 plus 1 x2 rightMost
+            var x1 = _memory.Io.REG_WIN0H >> 8; //bits 8-15 x1 leftMost
+            if (x2 > 240 || x1 > x2)
+            {
+                x2 = 240;
+            }
+
+            var y2 = (_memory.Io.REG_WIN0V & 0xff) + 1; //bits 0-7 plus 1 y2 bottomMost
+            var y1 = _memory.Io.REG_WIN0V >> 8; //bits 8-15 y1 topMost
+            if (y2 > 160 || y1 > y2)
+            {
+                y2 = 160;
+            }
+        }
+
+        if (win1Enabled)
+        {
+            var x2 = (_memory.Io.REG_WIN0H & 0xff) + 1; //bits 0-7 plus 1 x2 rightMost
+            var x1 = _memory.Io.REG_WIN0H >> 8; //bits 8-15 x1 leftMost
+            if (x2 > 240 || x1 > x2)
+            {
+                x2 = 240;
+            }
+
+            var y2 = (_memory.Io.REG_WIN0V & 0xff) + 1; //bits 0-7 plus 1 y2 bottomMost
+            var y1 = _memory.Io.REG_WIN0V >> 8; //bits 8-15 y1 topMost
+            if (y2 > 160 || y1 > y2)
+            {
+                y2 = 160;
+            }
+        }
 
         ReadOnlySpan<ushort> bgControls =
         [
@@ -296,7 +327,7 @@ public sealed class Ppu
             for (int i = 0; i < activeBgs.Length; i++)
             {
                 var bgIdx = activeBgs[i];
-                var paletteIndex = RenderTiledBackground(ref vram, x, hofsTable[bgIdx],
+                var paletteIndex = RenderTiledTextBackground(ref vram, x, hofsTable[bgIdx],
                     tileMapStartOffset: bgScanlineInfo[(i * 7) + 1],
                     xTiles: bgScanlineInfo[(i * 7) + 2],
                     tileY: bgScanlineInfo[(i * 7) + 4],
@@ -310,6 +341,12 @@ public sealed class Ppu
                 }
 
                 var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
+
+                if (win0Enabled)
+                {
+                    //AND in window region
+                    var win0BgDisplay = (_memory.Io.REG_WININ & (1 << bgIdx)) == (1 << bgIdx);
+                }
                 if (topPixelBgrColor == 0x8000)
                 {
                     topPixelBgrColor = bgrColor;
@@ -373,6 +410,13 @@ public sealed class Ppu
                 if (t2BlendingEnabled)
                 {
                     topPixelBgrColor = SpecialEffectsHelper.AlphaBlendPixels(topPixelBgrColor, nextTopPixelBgrColor, _memory.Io.REG_BLDALPHA);
+                }
+                else
+                {
+                    if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    {
+                        topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+                    }
                 }
             }
             else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
@@ -482,7 +526,7 @@ public sealed class Ppu
         return objPaletteIndex;
     }
 
-    private static int RenderTiledBackground(ref ReadOnlySpan<byte> vram, int x, ushort hofs, int tileMapStartOffset,
+    private static int RenderTiledTextBackground(ref ReadOnlySpan<byte> vram, int x, ushort hofs, int tileMapStartOffset,
         int xTiles, int tileY, int pixelYInTile, bool isSinglePalette, int tileDataStartOffset)
     {
         var bgXStartOffset = x + hofs;
@@ -581,24 +625,17 @@ public sealed class Ppu
             _internalBg3Y = BitUtils.SignExtend((int)_memory.Io.REG_BG3Y, 28);
         }
 
-        var vram = _memory.Vram.AsSpan();
-        var blendControl = _memory.Io.REG_BLDCNT;
-        var blendAlpha = _memory.Io.REG_BLDALPHA;
+        ReadOnlySpan<byte> vram = _memory.Vram.AsSpan();
 
         var displayControl = _memory.Io.REG_DISPCNT;
 
         var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
         var bg3Enabled = BitUtils.IsBitSet(displayControl, 11);
-        var objEnable = BitUtils.IsBitSet(displayControl, 12);
-        if (!bg2Enabled && !bg3Enabled && !objEnable)
-        {
-            return;
-        }
 
         var bg2Control = _memory.Io.REG_BG2CNT;
         var bg3Control = _memory.Io.REG_BG3CNT;
 
-        ReadOnlySpan<ushort> bgControls = [_memory.Io.REG_BG2CNT, _memory.Io.REG_BG3CNT];
+        ReadOnlySpan<ushort> bgControls = [bg2Control, bg3Control];
         Span<int> fixedSourceXTable = [_internalBg2X, _internalBg3X];
         Span<int> fixedSourceYTable = [_internalBg2Y, _internalBg3Y];
         ReadOnlySpan<ushort> bgPaTable = [_memory.Io.REG_BG2PA, _memory.Io.REG_BG3PA];
@@ -655,202 +692,106 @@ public sealed class Ppu
 
         for (int x = 0; x < ScreenWidth; x++)
         {
-            var pixelSet = false;
-            int priorityLine = 4;
+            ushort topPixelBgrColor = 0x8000;
+            BlendTargetOneType topColorSource = BlendTargetOneType.Backdrop;
+            ushort nextTopPixelBgrColor = 0x8000;
+            BlendTargetTwoType nextTopColorSource = BlendTargetTwoType.Backdrop;
+
+            int topPriorityLine = 4; //top pixel priority line
+            int priorityLine = 4; //priority Of the next TopPixel default 4 so by default anything has higher priority
             foreach (var bgIdx in activeBgs)
             {
-                ref readonly var bgControl = ref bgControls[bgIdx - 2];
-                ref var sourceXFixed = ref fixedSourceXTable[bgIdx - 2];
-                ref var sourceYFixed = ref fixedSourceYTable[bgIdx - 2];
+                //Mode 2 bgs are always 8bpp aka singlePaletteMode
+                var bgControl = bgControls[bgIdx - 2];
+                var paletteIndex = RenderAffineTiledBackground(ref vram, ref fixedSourceXTable[bgIdx - 2],
+                    ref fixedSourceYTable[bgIdx - 2], bgControl, (short)bgPaTable[bgIdx - 2],
+                    (short)bgPcTable[bgIdx - 2], bgSizeTable[bgIdx - 2]);
 
-                int sourceX = sourceXFixed >> 8; // div 256
-                int sourceY = sourceYFixed >> 8; // div 256
-
-                sourceXFixed += (short)bgPaTable[bgIdx - 2];
-                sourceYFixed += (short)bgPcTable[bgIdx - 2];
-
-                var wrapAround = BitUtils.IsBitSet(bgControl, 13);
-                var backgroundSize = bgSizeTable[bgIdx - 2];
-                if (wrapAround)
-                {
-                    sourceX &= backgroundSize - 1; //mod by bgSize
-                    sourceY &= backgroundSize - 1; //mod by bgSize
-                }
-                else if ((uint)sourceX >= (uint)backgroundSize ||
-                         (uint)sourceY >= (uint)backgroundSize)
-                {
-                    continue;
-                }
-                // calc pixel color with sourceX and sourceY
-                var charBaseBlock = (bgControl >> 2) & 0b11; //bgXcnt bits 2-3
-                var charDataStartOffset = charBaseBlock * 0x4000;
-                var screenBaseBlock = (bgControl >> 8) & 0x1F; //bgXcnt bits 8-12
-                var tileMapStartOffset = screenBaseBlock * 0x800;
-
-                //tileMapIndex = tileY * tilesPerRow + xTile
-                var tileMapIndex = ((sourceY >> 3) * (backgroundSize >> 3)) + (sourceX >> 3);
-                var tileNumber = vram[tileMapStartOffset + tileMapIndex];
-
-                var currentTileStartOffset = charDataStartOffset + tileNumber * 0x40; //tile size 0x40 bc mode2 is forced 8bpp for bgs
-                var yPixel = sourceY & 7; //mod 8
-                var xPixel = sourceX & 7; //mod 8
-
-                var paletteIndex = vram[currentTileStartOffset + yPixel * 8 + xPixel];
                 if (paletteIndex == 0) //transparent
                 {
                     continue;
                 }
-                var color = ReadBgPaletteColor(paletteIndex);
-                FrameBuffer.SetPixel(x, y, color);
-                priorityLine = bgControl & 0b11;
-                pixelSet = true;
+
+                var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
+                if (topPixelBgrColor == 0x8000)
+                {
+                    topPixelBgrColor = bgrColor;
+                    topColorSource = (BlendTargetOneType)(1 << bgIdx);
+                    topPriorityLine = bgControls[bgIdx - 2] & 0b11;
+                    continue;
+                }
+
+                nextTopPixelBgrColor = bgrColor;
+                nextTopColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
+                priorityLine = bgControls[bgIdx - 2] & 0b11;
                 break;
             }
 
+            int spriteMode = 0;
             foreach (var sprite in enabledSprites)
             {
-                int xCoord = sprite.XCoord;
-                if (xCoord >= 256)
-                {
-                    xCoord -= 512; //X wrapping, Sign extend the 9-bit of x pos
-                }
-                var spriteXPos = x - xCoord;
+                int objPaletteIndex = sprite.IsRotational
+                    ? RenderAffineSprite(ref vram, x, priorityLine, displayControl, sprite)
+                    : RenderRegularSprite(ref vram, x, priorityLine, sprite);
 
-                if (sprite.IsRotational) //TODO: make this less gross
-                {
-                    var canvasWidth = sprite.HFlip ? (sprite.NumXTiles * 8) * 2 : sprite.NumXTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
-                    if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority >= priorityLine)
-                    {
-                        continue; //sprite not in x range or lower priority than previously drawn pixel
-                    }
-
-                    int relativeX = spriteXPos - canvasWidth / 2;
-                    int relativeY = sprite.YPixelOffset; //for now YPixelOffset is relativeY for rotational sprites
-
-                    int sourceX = ((sprite.Pa * relativeX + sprite.Pb * relativeY) >> 8) + (sprite.NumXTiles * 8) / 2;
-                    int sourceY = ((sprite.Pc * relativeX + sprite.Pd * relativeY) >> 8) + (sprite.YTiles * 8) / 2;
-
-                    if ((uint)sourceX >= (uint)(sprite.NumXTiles * 8) || (uint)sourceY >= (uint)(sprite.YTiles * 8))
-                    {
-                        continue; //transformed coordinate is outsize the sprite graphics
-                    }
-
-                    var sourceXTileNumber = sourceX >> 3; //div 8
-                    var sourceXPixelNumber = sourceX & 7; //mod 8
-                    var sourceYTileNumber = sourceY >> 3; //div 8
-                    var sourceYPixelNumber = sourceY & 7; //mod 8
-
-                    var yPixelOffset = sourceYPixelNumber * 4; //mul 4(4bppMode) for pixel inside tile offset
-                    var startTileNumber = sprite.ScanlineStartMapTileNumber; //for now ScanlineStartMapTileNumber is attr2 tileNumber for rotationalSprites
-                    var twoDMatrixSize = 32;
-
-                    if (sprite.IsSinglePalette)
-                    {
-                        startTileNumber /= 2;
-                        yPixelOffset *= 2; //mul 2 (8 total bc already mul 4 above) in 8bpp mode because each byte is a pixel
-                        twoDMatrixSize = 16;
-                    }
-
-                    int scanlineStartMapTileNumber;
-                    if ((displayControl & 0x40) == 0x40) //bit 6 set then 1d char mapping
-                    {
-                        scanlineStartMapTileNumber = startTileNumber + (sourceYTileNumber * sprite.NumXTiles);
-                    }
-                    else //bit 6 clear 2d character mapping
-                    {
-                        scanlineStartMapTileNumber = startTileNumber + (sourceYTileNumber * twoDMatrixSize);
-                    }
-
-                    var sourceMapTileNumber = scanlineStartMapTileNumber + sourceXTileNumber;
-                    var sourceTileOffset = 0x10000 + (sourceMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
-                    var sourcePixOffset = sourceTileOffset + yPixelOffset + (sourceXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
-                    var sourceObjPaletteIndex = sprite.IsSinglePalette
-                        ? vram[sourcePixOffset]
-                        : (sourceXPixelNumber & 1) == 0
-                            ? vram[sourcePixOffset] & 0xf
-                            : vram[sourcePixOffset] >> 4;
-                    if (sourceObjPaletteIndex == 0)
-                    {
-                        continue; // dont draw if zero index, pixel should be transparent
-                    }
-
-                    if (sprite.Mode == 1) //semi-transparent
-                    {
-                        //temp not doing
-                    }
-                    var sourceObjPixelColor = ReadObjPaletteColor(sourceObjPaletteIndex + (16 * sprite.PaletteNumber));
-                    var sourceFinalSpritePixelColor = ConvertBgr555ToArgb(sourceObjPixelColor);
-                    FrameBuffer.SetPixel(x, y, sourceFinalSpritePixelColor);
-                    pixelSet = true;
-                    break;
-                }
-
-                bool objXRange = (uint)spriteXPos < (uint)(sprite.NumXTiles * 8);
-                if (!objXRange || sprite.Priority >= priorityLine)
+                if ((objPaletteIndex & 0xf) == 0) //mod 16 cuz if zero index of any palette color is transparent
                 {
                     continue;
                 }
 
-                var currentXTileNumber = spriteXPos >> 3; //divide 8
-                var currentXPixelNumber = spriteXPos & 7; // mod 8
-                if (sprite.HFlip)
-                {
-                    currentXTileNumber = (sprite.NumXTiles - 1) - currentXTileNumber;
-                    currentXPixelNumber = 7 - currentXPixelNumber;
-                }
-                var currentMapTileNumber = sprite.ScanlineStartMapTileNumber + currentXTileNumber;
-                var currentTileOffset = 0x10000 + (currentMapTileNumber * (sprite.IsSinglePalette ? 0x40 : 0x20));
-                var currentPixOffset = currentTileOffset + sprite.YPixelOffset + (currentXPixelNumber >> (sprite.IsSinglePalette ? 0 : 1)); //divide x by 2 if 4bpp
-                var objPaletteIndex = sprite.IsSinglePalette
-                    ? vram[currentPixOffset]
-                    : (currentXPixelNumber & 1) == 0
-                        ? vram[currentPixOffset] & 0xf
-                        : vram[currentPixOffset] >> 4;
-                if (objPaletteIndex == 0)
-                {
-                    continue; // dont draw if zero index, pixel should be transparent
-                }
-
                 var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
-                if (sprite.Mode == 1) //semi-transparent
+                if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
                 {
-                    if ((blendControl & 0xc0) == 0x40) //additive
-                    {
-                        //temp - get last pixel non-transparent
-                        /*
-                        ushort pixel = 0b0011111_11111_11111;
-                        var redB = pixel & 0x1f;
-                        var greenB = (pixel >> 5) & 0x1f;
-                        var blueB = (pixel >> 10) & 0x1f;
+                    //make sprite pixel top and next top gets set to previous top
+                    var tempCol = topPixelBgrColor;
+                    var tempSource = (uint)topColorSource;
 
-                        float coefA = (float)(blendAlpha & 0x1f) / 16;
-                        float coefB = (float)((blendAlpha >> 8) & 0x1f) / 16;
+                    topPixelBgrColor = objPixelColor;
+                    topColorSource = BlendTargetOneType.Obj;
+                    spriteMode = sprite.Mode;
 
-                        //blend
-                        var redA = objPixelColor & 0x1f;
-                        var greenA = (objPixelColor >> 5) & 0x1f;
-                        var blueA = (objPixelColor >> 10) & 0x1f;
-
-                        var red = Math.Min(31, (redA * coefA) + (redB * coefB));
-                        var green = Math.Min(31, (greenA * coefA) + (greenB * coefB));
-                        var blue = Math.Min(31, (blueA * coefA) + (blueB * coefB));
-                        objPixelColor = (ushort)((uint)red | ((uint)green << 5) | ((uint)blue << 10));
-                    */
-                    }
+                    nextTopPixelBgrColor = tempCol;
+                    nextTopColorSource = (BlendTargetTwoType)(tempSource << 8);
+                    break;
                 }
-                var finalSpritePixelColor = ConvertBgr555ToArgb(objPixelColor);
-                FrameBuffer.SetPixel(x, y, finalSpritePixelColor);
-                pixelSet = true;
+
+                nextTopPixelBgrColor = objPixelColor;
+                nextTopColorSource = BlendTargetTwoType.Obj;
                 break;
             }
 
-            if (pixelSet)
+            if (nextTopPixelBgrColor == 0x8000)
             {
-                continue;
+                nextTopPixelBgrColor = ReadPalette16(0);
+                if (topPixelBgrColor == 0x8000)
+                {
+                    topPixelBgrColor = ReadPalette16(0);
+                }
             }
 
-            var backdropColor = ReadBgPaletteColor(0);
-            FrameBuffer.SetPixel(x, y, backdropColor);
+            if (topColorSource == BlendTargetOneType.Obj && spriteMode == 1)
+            {
+                //will always use alpha blending with this as source regardless of BLDCNT
+                var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)nextTopColorSource) == (ushort)nextTopColorSource;
+                if (t2BlendingEnabled)
+                {
+                    topPixelBgrColor = SpecialEffectsHelper.AlphaBlendPixels(topPixelBgrColor, nextTopPixelBgrColor, _memory.Io.REG_BLDALPHA);
+                }
+                else
+                {
+                    if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    {
+                        topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+                    }
+                }
+            }
+            else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+            {
+                topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+            }
+
+            var finalColor = ConvertBgr555ToArgb(topPixelBgrColor);
+            FrameBuffer.SetPixel(x, y, finalColor);
         }
 
         if (bg2Enabled)
@@ -867,6 +808,51 @@ public sealed class Ppu
         _internalBg3X += (short)_memory.Io.REG_BG3PB;
         _internalBg3Y += (short)_memory.Io.REG_BG3PD;
 
+    }
+
+    private static int RenderAffineTiledBackground(ref ReadOnlySpan<byte> vram, ref int sourceXFixed, ref int sourceYFixed, ushort bgControl, short pa, short pc, int backgroundSize)
+    {
+        //ref readonly var bgControl = ref bgControls[bgIdx - 2];
+        //ref var sourceXFixed = ref fixedSourceXTable[bgIdx - 2];
+        //ref var sourceYFixed = ref fixedSourceYTable[bgIdx - 2];
+
+        int sourceX = sourceXFixed >> 8; // div 256
+        int sourceY = sourceYFixed >> 8; // div 256
+
+        //sourceXFixed += (short)bgPaTable[bgIdx - 2];
+        sourceXFixed += pa;
+        //sourceYFixed += (short)bgPcTable[bgIdx - 2];
+        sourceYFixed += pc;
+
+        var wrapAround = BitUtils.IsBitSet(bgControl, 13);
+        //var backgroundSize = bgSizeTable[bgIdx - 2];
+        if (wrapAround)
+        {
+            sourceX &= backgroundSize - 1; //mod by bgSize
+            sourceY &= backgroundSize - 1; //mod by bgSize
+        }
+        else if ((uint)sourceX >= (uint)backgroundSize ||
+                 (uint)sourceY >= (uint)backgroundSize)
+        {
+            //continue;
+            return 0;
+        }
+        // calc pixel color with sourceX and sourceY
+        var charBaseBlock = (bgControl >> 2) & 0b11; //bgXcnt bits 2-3
+        var charDataStartOffset = charBaseBlock * 0x4000;
+        var screenBaseBlock = (bgControl >> 8) & 0x1F; //bgXcnt bits 8-12
+        var tileMapStartOffset = screenBaseBlock * 0x800;
+
+        //tileMapIndex = tileY * tilesPerRow + xTile
+        var tileMapIndex = ((sourceY >> 3) * (backgroundSize >> 3)) + (sourceX >> 3);
+        var tileNumber = vram[tileMapStartOffset + tileMapIndex];
+
+        var currentTileStartOffset = charDataStartOffset + tileNumber * 0x40; //tile size 0x40 bc mode2 is forced 8bpp for bgs
+        var yPixel = sourceY & 7; //mod 8
+        var xPixel = sourceX & 7; //mod 8
+
+        var paletteIndex = vram[currentTileStartOffset + yPixel * 8 + xPixel];
+        return paletteIndex;
     }
 
     private int SpriteStuff_TempName(int y, Span<ScanlineSpriteInfo> sprites)
