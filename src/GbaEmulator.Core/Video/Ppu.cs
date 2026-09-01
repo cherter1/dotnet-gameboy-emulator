@@ -225,37 +225,47 @@ public sealed class Ppu
         var win0Enabled = BitUtils.IsBitSet(displayControl, 13);
         var win1Enabled = BitUtils.IsBitSet(displayControl, 14);
         var objWinEnabled = BitUtils.IsBitSet(displayControl, 15);
+        var windowingEnabled = win0Enabled || win1Enabled || objWinEnabled;
+
+        int win0x1 = 0;
+        int win0x2 = 0;
+        int win0y1 = 0;
+        int win0y2 = 0;;
         if (win0Enabled)
         {
-            var x2 = (_memory.Io.REG_WIN0H & 0xff) + 1; //bits 0-7 plus 1 x2 rightMost
-            var x1 = _memory.Io.REG_WIN0H >> 8; //bits 8-15 x1 leftMost
-            if (x2 > 240 || x1 > x2)
+            win0x2 = (_memory.Io.REG_WIN0H & 0xff) + 1; //bits 0-7 plus 1 x2 rightMost
+            win0x1 = _memory.Io.REG_WIN0H >> 8; //bits 8-15 x1 leftMost
+            if (win0x2 > 240 || win0x1 > win0x2)
             {
-                x2 = 240;
+                win0x2 = 240;
             }
 
-            var y2 = (_memory.Io.REG_WIN0V & 0xff) + 1; //bits 0-7 plus 1 y2 bottomMost
-            var y1 = _memory.Io.REG_WIN0V >> 8; //bits 8-15 y1 topMost
-            if (y2 > 160 || y1 > y2)
+            win0y2 = (_memory.Io.REG_WIN0V & 0xff) + 1; //bits 0-7 plus 1 y2 bottomMost
+            win0y1 = _memory.Io.REG_WIN0V >> 8; //bits 8-15 y1 topMost
+            if (win0y2 > 160 || win0y1 > win0y2)
             {
-                y2 = 160;
+                win0y2 = 160;
             }
         }
 
+        int win1x1 = 0;
+        int win1x2 = 0;
+        int win1y1 = 0;
+        int win1y2 = 0;
         if (win1Enabled)
         {
-            var x2 = (_memory.Io.REG_WIN0H & 0xff) + 1; //bits 0-7 plus 1 x2 rightMost
-            var x1 = _memory.Io.REG_WIN0H >> 8; //bits 8-15 x1 leftMost
-            if (x2 > 240 || x1 > x2)
+            win1x2 = (_memory.Io.REG_WIN0H & 0xff) + 1; //bits 0-7 plus 1 x2 rightMost
+            win1x1 = _memory.Io.REG_WIN0H >> 8; //bits 8-15 x1 leftMost
+            if (win1x2 > 240 || win1x1 > win1x2)
             {
-                x2 = 240;
+                win1x2 = 240;
             }
 
-            var y2 = (_memory.Io.REG_WIN0V & 0xff) + 1; //bits 0-7 plus 1 y2 bottomMost
-            var y1 = _memory.Io.REG_WIN0V >> 8; //bits 8-15 y1 topMost
-            if (y2 > 160 || y1 > y2)
+            win1y2 = (_memory.Io.REG_WIN0V & 0xff) + 1; //bits 0-7 plus 1 y2 bottomMost
+            win1y1 = _memory.Io.REG_WIN0V >> 8; //bits 8-15 y1 topMost
+            if (win1y2 > 160 || win1y1 > win1y2)
             {
-                y2 = 160;
+                win1y2 = 160;
             }
         }
 
@@ -342,11 +352,84 @@ public sealed class Ppu
 
                 var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
 
-                if (win0Enabled)
+                if (windowingEnabled)
                 {
-                    //AND in window region
-                    var win0BgDisplay = (_memory.Io.REG_WININ & (1 << bgIdx)) == (1 << bgIdx);
+                    var inWin0 = (y >= win0y1 && y <= win0y2) && (x >= win0x1 && x <= win0x2);
+                    var inWin1 = (y >= win1y1 && y <= win1y2) && (x >= win1x1 && x <= win1x2);
+                    if (win0Enabled)
+                    {
+                        if (inWin0)
+                        {
+                            var win0BgDisplay = (_memory.Io.REG_WININ & (1 << bgIdx)) != 0;
+                            if (win0BgDisplay)
+                            {
+                                var win0SpecialEffectsEnabled = (_memory.Io.REG_WININ & 0x20) != 0;
+                                if (win0SpecialEffectsEnabled)
+                                {
+                                    //Display special effects
+                                }
+                                //Display
+                            }
+                            else
+                            {
+                                //break/continue
+                            }
+                        }
+                        else
+                        {
+                            //check next window
+                        }
+                    }
+                    else if (win1Enabled)
+                    {
+                        if (inWin1)
+                        {
+                            var win1BgDisplay = (_memory.Io.REG_WININ & (1 << (bgIdx + 8))) != 0;
+                            if (win1BgDisplay)
+                            {
+                                var win1SpecialEffectsEnabled = (_memory.Io.REG_WININ & 0x2000) != 0;
+                                if (win1SpecialEffectsEnabled)
+                                {
+                                    //Display special effects
+                                }
+                                //Display
+                            }
+                            else
+                            {
+                                //break/continue
+                            }
+                        }
+                        else
+                        {
+                            //check next window
+                        }
+                    }
+                    else if (objWinEnabled)
+                    {
+                        //later
+                        var objWinBgDisplay = (_memory.Io.REG_WINOUT & 0x100) != 0;
+
+                        var objWinSpecialEffectsEnabled = (_memory.Io.REG_WINOUT & 0x2000) != 0;
+                    }
+                    else //if bg display Outside Window Enabled
+                    {
+                        var displayOutsideWin = (_memory.Io.REG_WINOUT & 1) != 0;
+                        if (displayOutsideWin)
+                        {
+                            var outsideWinSpecialEffectsEnabled = (_memory.Io.REG_WINOUT & 0x20) != 0;
+                            if (outsideWinSpecialEffectsEnabled)
+                            {
+                                //Display special effects
+                            }
+                            //Display
+                        }
+                        else
+                        {
+                            //break/continue
+                        }
+                    }
                 }
+
                 if (topPixelBgrColor == 0x8000)
                 {
                     topPixelBgrColor = bgrColor;
