@@ -327,6 +327,23 @@ public sealed class Ppu
 
         for (var x = 0; x < ScreenWidth; x++)
         {
+            var winMask = 0b111111;
+            if (windowingEnabled)
+            {
+                var winOutMask = _memory.Io.REG_WINOUT & 0x3f;
+                if (win0Enabled) // and in range
+                {
+                    var win0Mask = _memory.Io.REG_WININ & 0x3f;
+                }
+                else if (win1Enabled) // and in range
+                {
+                    var win1Mask = (_memory.Io.REG_WININ >> 8) & 0x3f;
+                }
+                else if (objWinEnabled) // and in range
+                {
+                    var objWinMask = (_memory.Io.REG_WINOUT >> 8) & 0x3f;
+                }
+            }
             ushort topPixelBgrColor = 0x8000;
             BlendTargetOneType topColorSource = BlendTargetOneType.Backdrop;
             ushort nextTopPixelBgrColor = 0x8000;
