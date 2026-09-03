@@ -719,7 +719,128 @@ public sealed class Ppu
 
     public void RenderMode1(int y)
     {
-        Console.WriteLine("RENDER MODE 1");
+        //bg 0 txt, bg 1 txt, bg 2 aff
+        if (y == 0)
+        {
+            _internalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
+            _internalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 28);
+        }
+
+        var displayControl = _memory.Io.REG_DISPCNT;
+        var inWin0YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 0, y, displayControl,
+            _memory.Io.REG_WIN0H,
+            _memory.Io.REG_WIN0V,
+            out byte win0StartX,
+            out uint win0XThreshold);
+        var inWin1YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 1, y, displayControl,
+            _memory.Io.REG_WIN0H,
+            _memory.Io.REG_WIN0V,
+            out byte win1StartX,
+            out uint win1XThreshold);
+
+        var objWinEnabled = (displayControl & 0x8000) != 0; //bit 15 for objWindow enabled
+        if (objWinEnabled) _objectWindowMask.AsSpan().Clear(); //clear previous scanlines objWin mask
+
+        var spriteCount = 0;
+        Span<ScanlineSpriteInfo> sprites = stackalloc ScanlineSpriteInfo[128];
+        if ((displayControl & 0x1000) != 0) //bit 12 set means sprites enabled
+        {
+            spriteCount = SpriteStuff_TempName(y, sprites);
+        }
+
+        Span<ScanlineSpriteInfo> enabledSprites = stackalloc ScanlineSpriteInfo[spriteCount];
+        SortSpriteIndicesByPriority(sprites[..spriteCount], enabledSprites);
+
+        ReadOnlySpan<byte> vram = _memory.Vram.AsSpan();
+        for (int x = 0; x < ScreenWidth; x++)
+        {
+            var winMask = 0b111111;
+            if ((displayControl & 0xe000) != 0) //bits 15-13 are window enable bits
+            {
+                winMask = _memory.Io.REG_WINOUT & 0x3f;
+                if (inWin0YRange && (uint)(x - win0StartX) < win0XThreshold)
+                {
+                    winMask = _memory.Io.REG_WININ & 0x3f;
+                }
+                else if (inWin1YRange && (uint)(x - win1StartX) < win1XThreshold)
+                {
+                    winMask = (_memory.Io.REG_WININ >> 8) & 0x3f;
+                }
+                else if (objWinEnabled && _objectWindowMask[x] != 0)
+                {
+                    winMask = (_memory.Io.REG_WINOUT >> 8) & 0x3f;
+                }
+            }
+            ushort hiBgrColor, loBgrColor = hiBgrColor = 0x8000;
+            BlendTargetOneType hiColorSource = BlendTargetOneType.Backdrop;
+            BlendTargetTwoType loColorSource = BlendTargetTwoType.Backdrop;
+            int hiPriorityLine, loPriorityLine = hiPriorityLine = 4;
+            //render
+            int spriteMode = 0;
+            foreach (var sprite in enabledSprites)
+            {
+                if ((winMask & 0x10) == 0) //bit 4 of winMask is to display objects
+                {
+                    continue;
+                }
+
+                int objPaletteIndex = sprite.IsRotational
+                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, sprite)
+                    : RenderRegularSprite(ref vram, x, loPriorityLine, sprite);
+
+                if (objPaletteIndex == 0) continue; //if transparent dont draw
+
+                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
+                if (sprite.Priority <= hiPriorityLine) //if sprite has higher priority than current top pixel
+                {
+                    //make sprite pixel top and next top gets set to previous top
+                    (loBgrColor, loColorSource) = (hiBgrColor, hiColorSource.ToBlendTargetTwoType());
+                    (hiBgrColor, hiColorSource) = (objPixelColor, BlendTargetOneType.Obj);
+                    spriteMode = sprite.Mode;
+                    break;
+                }
+
+                loBgrColor = objPixelColor;
+                loColorSource = BlendTargetTwoType.Obj;
+                break;
+            }
+
+            if (loBgrColor == 0x8000)
+            {
+                loBgrColor = ReadPalette16(0);
+                if (hiBgrColor == 0x8000)
+                {
+                    hiBgrColor = loBgrColor;
+                }
+            }
+
+            if ((winMask & 0x20) != 0) //if window mask bit 5 set then window's special effects enabled
+            {
+                if (hiColorSource == BlendTargetOneType.Obj && spriteMode == 1)
+                {
+                    //will always use alpha blending with this as source regardless of BLDCNT
+                    var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)loColorSource) != 0;
+                    if (t2BlendingEnabled)
+                    {
+                        hiBgrColor = SpecialEffectsHelper.AlphaBlendPixels(hiBgrColor, loBgrColor, _memory.Io.REG_BLDALPHA);
+                    }
+                    else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    {
+                        hiBgrColor = ApplyBlendingEffects(hiBgrColor, hiColorSource, loBgrColor, loColorSource);
+                    }
+                }
+                else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                {
+                    hiBgrColor = ApplyBlendingEffects(hiBgrColor, hiColorSource, loBgrColor, loColorSource);
+                }
+            }
+
+            var finalColor = ConvertBgr555ToArgb(hiBgrColor);
+            FrameBuffer.SetPixel(x, y, finalColor);
+        }
+
+        _internalBg2X += (short)_memory.Io.REG_BG2PB;
+        _internalBg2Y += (short)_memory.Io.REG_BG2PD;
     }
 
     private int _internalBg2X;
@@ -874,6 +995,10 @@ public sealed class Ppu
             {
                 if ((winMask & (1 << bgIdx)) == 0) //if not set to display in window continue
                 {
+                    ref var sourceXFixed = ref fixedSourceXTable[bgIdx - 2];
+                    ref var sourceYFixed = ref fixedSourceYTable[bgIdx - 2];
+                    sourceXFixed += (short)bgPaTable[bgIdx - 2];
+                    sourceYFixed += (short)bgPcTable[bgIdx - 2];
                     continue;
                 }
 
@@ -994,25 +1119,17 @@ public sealed class Ppu
 
         _internalBg3X += (short)_memory.Io.REG_BG3PB;
         _internalBg3Y += (short)_memory.Io.REG_BG3PD;
-
     }
 
     private static int RenderAffineTiledBackground(ref ReadOnlySpan<byte> vram, ref int sourceXFixed, ref int sourceYFixed, ushort bgControl, short pa, short pc, int backgroundSize)
     {
-        //ref readonly var bgControl = ref bgControls[bgIdx - 2];
-        //ref var sourceXFixed = ref fixedSourceXTable[bgIdx - 2];
-        //ref var sourceYFixed = ref fixedSourceYTable[bgIdx - 2];
-
         int sourceX = sourceXFixed >> 8; // div 256
         int sourceY = sourceYFixed >> 8; // div 256
 
-        //sourceXFixed += (short)bgPaTable[bgIdx - 2];
         sourceXFixed += pa;
-        //sourceYFixed += (short)bgPcTable[bgIdx - 2];
         sourceYFixed += pc;
 
         var wrapAround = BitUtils.IsBitSet(bgControl, 13);
-        //var backgroundSize = bgSizeTable[bgIdx - 2];
         if (wrapAround)
         {
             sourceX &= backgroundSize - 1; //mod by bgSize
@@ -1021,7 +1138,6 @@ public sealed class Ppu
         else if ((uint)sourceX >= (uint)backgroundSize ||
                  (uint)sourceY >= (uint)backgroundSize)
         {
-            //continue;
             return 0;
         }
         // calc pixel color with sourceX and sourceY
@@ -1047,9 +1163,6 @@ public sealed class Ppu
         int count = 0;
         var oam = _memory.Oam.AsSpan();
 
-        //int maxCyclesPerLine = 1210; //1210 only for dispcnt bit5 == 0, if bit5 set max cycles becomes 954
-        //int objRenderingCyclesUsed = 0;
-        //int priorityLine = 0xff;
         for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset += 8) //loop runs for sprites 0-127
         {
             var attr0Value = ReadOam16(oam, oamAttrOffset);
@@ -1074,11 +1187,10 @@ public sealed class Ppu
 
                 var affshapeSize = (attr0.ObjShape << 2) | affattr1.ObjSize; //low two bits attr1 size
                 SpriteHelpers.GetSpriteSizeTiles(affshapeSize, out int affxTiles, out int affyTiles);
-                //int spriteCanvasWidth = affxTiles * 8;
+
                 int spriteCanvasHeight = affyTiles * 8;
                 if (doubleSized)
                 {
-                    //spriteCanvasWidth *= 2;
                     spriteCanvasHeight *= 2;
                 }
 

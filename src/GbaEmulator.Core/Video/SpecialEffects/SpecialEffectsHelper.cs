@@ -52,4 +52,25 @@ public static class SpecialEffectsHelper
 
         return (ushort)((uint)redDec | ((uint)greenDec << 5) | ((uint)blueDec << 10));
     }
+
+    public static bool TryGetWindowRange(int windowNum, int y, ushort displayControl, ushort winH, ushort winV, out byte winStartX, out uint winXThreshold)
+    {
+        int windowEnabledMask = windowNum == 0 ? 0x2000 : 0x4000;
+        if ((displayControl & windowEnabledMask) == 0)
+        {
+            winStartX = 0;
+            winXThreshold = 0;
+            return false;
+        }
+
+        byte winEndX = (byte)(winH & 0xff); //bits 0-7 x2 rightMost
+        winStartX = (byte)(winH >> 8); //bits 8-15 x1 leftMost
+
+        winXThreshold = (uint)(winEndX - winStartX);
+
+        byte winEndY = (byte)(winV & 0xff); //bits 0-7 y2 bottomMost
+        byte winStartY = (byte)(winV >> 8); //bits 8-15 y1 topMost
+
+        return (uint)(y - winStartY) < (uint)(winEndY - winStartY);
+    }
 }
