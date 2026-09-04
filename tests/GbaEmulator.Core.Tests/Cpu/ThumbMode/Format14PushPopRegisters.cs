@@ -36,10 +36,10 @@ public sealed class Format14PushPopRegisters
         Assert.Equal(0x22222222u, bus.Read32(0x03007ff8));
         Assert.Equal(0x33333333u, bus.Read32(0x03007ffc));
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -126,10 +126,10 @@ public sealed class Format14PushPopRegisters
         Assert.Equal(0x55555555u, cpu.Registers[5]);
         Assert.Equal(0x66666666u, cpu.Registers[6]);
 
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public sealed class Format14PushPopRegisters
         Assert.Equal(0x03008000u, cpu.Registers.StackPointer);
         Assert.Equal(0x02000100u, cpu.Registers.ProgramCounter);
 
-        Assert.True(cpu.Cpsr.ThumbState);
+        Assert.True(cpu.Registers.Cpsr.ThumbState);
     }
 
     [Fact]
@@ -187,6 +187,6 @@ public sealed class Format14PushPopRegisters
         Assert.Equal(0x66666666u, cpu.Registers[6]);
         Assert.Equal(0x77777777u, cpu.Registers[7]);
 
-        Assert.True(cpu.Cpsr.ThumbState);
+        Assert.True(cpu.Registers.Cpsr.ThumbState);
     }
 }

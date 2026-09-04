@@ -12,17 +12,15 @@ public sealed class BlockDataTransferTests
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
 
-        cpu.Registers[4] = 0x02000100;
-        cpu.Registers[0] = 0x11111111;
-        cpu.Registers[1] = 0x22222222;
-        cpu.Registers[2] = 0x33333333;
-
         // 0x02000000: stmia r4!, {r0-r2}
         bus.Write32(0x02000000, 0xE8A40007);
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers[4] = 0x02000100;
+        cpu.Registers[0] = 0x11111111;
+        cpu.Registers[1] = 0x22222222;
+        cpu.Registers[2] = 0x33333333;
 
         //Act
         cpu.Step();
@@ -44,14 +42,12 @@ public sealed class BlockDataTransferTests
         bus.Write32(0x02000104, 0x22222222u);
         bus.Write32(0x02000108, 0x33333333u);
 
-        cpu.Registers[4] = 0x02000100;
-
         // 0x02000000: ldmia r4!, {r0-r2}
         bus.Write32(0x02000000, 0xE8B40007);
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers[4] = 0x02000100;
 
         //Act
         cpu.Step();

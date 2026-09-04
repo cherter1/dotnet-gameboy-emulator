@@ -36,10 +36,10 @@ public sealed class Format15MultipleLoadStore
         Assert.Equal(0xccccdddd, bus.Read32(0x02000014));
         Assert.Equal(0xeeeeffff, bus.Read32(0x02000018));
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -121,10 +121,10 @@ public sealed class Format15MultipleLoadStore
         Assert.Equal(0xccccddddu, cpu.Registers[3]);
         Assert.Equal(0xeeeeffffu, cpu.Registers[7]);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]

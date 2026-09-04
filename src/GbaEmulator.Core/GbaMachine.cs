@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GbaEmulator.Core.Bios;
 using GbaEmulator.Core.Cpu;
 using GbaEmulator.Core.Dma;
@@ -47,12 +48,16 @@ public sealed class GbaMachine
 
     public static GbaMachine Create(GbaMachineOptions options)
     {
-        var interrupts = new InterruptController();
-        var keypad = new KeypadState();
+        var memory = new GbaMemory();
+        var interrupts = new InterruptController(memory);
+        var keypad = new KeypadState(memory, interrupts);
         var timers = new TimerController(interrupts);
-        var dma = new DmaController(interrupts);
-        var ppu = new Ppu(interrupts, dma);
-        var bus = new GbaBus(interrupts, timers, dma, ppu, keypad);
+        memory.Io.ConnectTimerController(timers);
+        memory.Io.ConnectInterruptController(interrupts);
+        var dma = new DmaController(interrupts, memory);
+        memory.Io.ConnectDmaController(dma);
+        var ppu = new Ppu(interrupts, dma, memory);
+        var bus = new GbaBus(memory);
         var cpu = new Arm7Tdmi(bus, interrupts);
 
         var cartridge = options.RomPath is { Length: > 0 } romPath && File.Exists(romPath)
@@ -60,26 +65,104 @@ public sealed class GbaMachine
             : null;
 
         bus.LoadCartridge(cartridge);
-        bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
+        string[] saveStrings =
+        [
+            "NONSENSE_NOVALIDSAVEMATCHING_NONSENSE",
+            "EEPROM_",
+            "SRAM_",
+            "FLASH_",
+            "FLASH512_",
+            "FLASH1M_"
+        ];
+        int matchedIndex = 0;
+        for (int i = 0; i < saveStrings.Length; i++)
+        {
+            char[] chars = saveStrings[i].ToCharArray();
+            int matchLength = 0;
+            for (int j = 0; j < cartridge.RomData.Length; j++)
+            {
+                if (cartridge.RomData[j] == chars[matchLength])
+                {
+                    matchLength++;
+                    if (matchLength >= chars.Length)
+                    {
+                        matchedIndex = i;
+                        Console.WriteLine($"{j:x8}");
+                        goto breakLoop;
+                    }
+                }
+                else
+                {
+                    matchLength = 0;
+                }
+            }
+        }
+        breakLoop:
+        switch (matchedIndex)
+        {
+            case 0:
+                Console.WriteLine("nothing matched");
+                break;
+            case 1:
+                Console.WriteLine("EEPROM matched");
+                break;
+            case 2:
+                Console.WriteLine("SRAM matched");
+                break;
+            case 3:
+                Console.WriteLine("FLASH matched");
+                break;
+            case 4:
+                Console.WriteLine("FLASH512 matched");
+                break;
+            case 5:
+                Console.WriteLine("FLASH1M matched");
+                break;
+        }
 
-        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, true); // options.SkipBios);
+        bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
+        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, false);
         machine.Reset();
         return machine;
     }
 
-    public void Reset() => Cpu.Reset(_skipBios);
+    private void Reset() => Cpu.Reset(_skipBios);
 
     public void RunFrame() => RunCycles(Ppu.CyclesPerFrame);
 
-    public void RunCycles(int cycles)
+    private void RunCycles(int cycles)
     {
+        var iterations = 0;
         var consumed = 0;
+        var cpuWatch = new Stopwatch();
+        var dmaWatch = new Stopwatch();
+        var timerWatch = new Stopwatch();
+        var ppuWatch = new Stopwatch();
         while (consumed < cycles)
         {
+            cpuWatch.Start();
             var instructionCycles = Cpu.Step();
-            Timers.Step(instructionCycles);
+            cpuWatch.Stop();
+
+            dmaWatch.Start();
+            Dma.RunDmas(DmaTimingType.Immediately, Bus);
+            dmaWatch.Stop();
+
+            timerWatch.Start();
+            Timers.Advance(instructionCycles);
+            timerWatch.Stop();
+
+            ppuWatch.Start();
             Ppu.Step(instructionCycles, Bus);
+            ppuWatch.Stop();
+
             consumed += instructionCycles;
+            iterations += 1;
         }
+        Console.WriteLine($"{iterations} iterations completed");
+        Console.WriteLine($"{cpuWatch.ElapsedMilliseconds} ms in CPU");
+        Console.WriteLine($"{dmaWatch.ElapsedMilliseconds} ms in DMA");
+        Console.WriteLine($"{timerWatch.ElapsedMilliseconds} ms in timers");
+        Console.WriteLine($"{ppuWatch.ElapsedMilliseconds} ms in ppu");
     }
 }

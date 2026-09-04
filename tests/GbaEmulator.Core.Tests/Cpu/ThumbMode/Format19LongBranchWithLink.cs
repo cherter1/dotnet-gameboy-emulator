@@ -31,10 +31,10 @@ public sealed class Format19LongBranchWithLink
         Assert.Equal(0x02000104u, cpu.Registers.ProgramCounter);
         Assert.Equal(0x02000105u, cpu.Registers.LinkRegister);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]

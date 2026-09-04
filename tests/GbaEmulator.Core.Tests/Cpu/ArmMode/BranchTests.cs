@@ -25,7 +25,7 @@ public sealed class BranchTests
         cpu.Step();
 
         //Assert
-        Assert.True(cpu.Cpsr.ThumbState);
+        Assert.True(cpu.Registers.Cpsr.ThumbState);
         Assert.Equal(0x02000008u, cpu.Registers.ProgramCounter);
     }
 
@@ -48,7 +48,7 @@ public sealed class BranchTests
         cpu.Step();
 
         //Assert
-        Assert.False(cpu.Cpsr.ThumbState);
+        Assert.False(cpu.Registers.Cpsr.ThumbState);
         Assert.Equal(0x02000008u, cpu.Registers.ProgramCounter);
     }
 
@@ -71,7 +71,7 @@ public sealed class BranchTests
         cpu.Step();
 
         //Assert
-        Assert.False(cpu.Cpsr.ThumbState);
+        Assert.False(cpu.Registers.Cpsr.ThumbState);
         Assert.Equal(0x02000008u, cpu.Registers.ProgramCounter);
     }
 

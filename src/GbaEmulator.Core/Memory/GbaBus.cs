@@ -1,195 +1,149 @@
+using System.Buffers.Binary;
+using System.Numerics;
 using GbaEmulator.Core.Bios;
-using GbaEmulator.Core.Cpu;
-using GbaEmulator.Core.Dma;
-using GbaEmulator.Core.Input;
-using GbaEmulator.Core.Interrupts;
-using GbaEmulator.Core.Timers;
-using GbaEmulator.Core.Video;
 using GbaCartridge = GbaEmulator.Core.Cartridge.Cartridge;
 
 namespace GbaEmulator.Core.Memory;
 
-public sealed class GbaBus
+public sealed class GbaBus(GbaMemory memory)
 {
-    public RegisterBank Registers { get; set; }
-    private readonly InterruptController _interrupts;
-    private readonly TimerController _timers;
-    private readonly DmaController _dma;
-    private readonly Ppu _ppu;
-    private readonly KeypadState _keypad;
-
-    private byte[] _bios = new byte[0x4000]; //16KB
-    private readonly byte[] _ewram = new byte[0x40000]; //256KB
-    private readonly byte[] _iwram = new byte[0x8000]; //32KB
-    private readonly byte[] _paletteRam = new byte[0x400]; //1KB
-    private readonly byte[] _vram = new byte[0x18000]; //96KB
-    private readonly byte[] _oam = new byte[0x400]; //1KB
-    private byte[] _rom = [];
-    private readonly byte[] _sram = new byte[0x10000]; //64KB
-
-    public GbaBus(
-        InterruptController interrupts,
-        TimerController timers,
-        DmaController dma,
-        Ppu ppu,
-        KeypadState keypad)
-    {
-        _interrupts = interrupts;
-        _timers = timers;
-        _dma = dma;
-        _ppu = ppu;
-        _keypad = keypad;
-        _ppu.ConnectMemory(_vram, _paletteRam);
-    }
-
     public void LoadBios(BiosImage? bios)
     {
-        _bios = new byte[0x4000];
         if (bios is not null)
         {
-            Array.Copy(bios.Bytes, _bios, Math.Min(_bios.Length, bios.Bytes.Length));
+            Array.Copy(bios.Bytes, memory.Bios, Math.Min(memory.Bios.Length, bios.Bytes.Length));
         }
     }
 
-    public void LoadCartridge(GbaCartridge? cartridge) => _rom = cartridge?.RomData ?? [];
+    public void LoadCartridge(GbaCartridge? cartridge) => memory.Rom = cartridge?.RomData ?? [];
 
-    public byte Read8(uint address, bool called = false)
+    public uint Read32(uint address)
     {
-        if (TryReadIo(address, out var ioValue))
-        {
-            return ioValue;
-        }
+        var aligned = address & 0xfffffffc;
+        var region = ResolveRegion(aligned, 4, out var buffer);
 
-        var region = ResolveRegion(address, out var buffer, out var offset);
-        if (region is MemoryRegion.Unused)
+        uint raw = region switch
         {
-            Console.WriteLine("READ");
-        }
-        if (region == MemoryRegion.Rom && _rom.Length == 0)
-        {
-            return 0xFF;
-        }
+            MemoryRegion.Unused => 0,
+            MemoryRegion.Io => memory.Io.ReadIo32Aligned(aligned),
+            _ => BinaryPrimitives.ReadUInt32LittleEndian(buffer)
+        };
 
-        return buffer[offset];
+        return aligned != address
+            ? BitOperations.RotateRight(raw, (int)((address & 3u) * 8))
+            : raw;
     }
 
     public ushort Read16(uint address)
     {
-        var lo = Read8(address, true);
-        var hi = Read8(address + 1, true);
-        return (ushort)(lo | (hi << 8));
+        address &= ~1u;
+        var region = ResolveRegion(address, 2, out var buffer);
+        return region switch
+        {
+            MemoryRegion.Unused => 0,
+            MemoryRegion.Io => memory.Io.ReadIo16Aligned(address),
+            _ => (ushort)((buffer[1] << 8) | buffer[0])
+        };
     }
 
-    public uint Read32(uint address)
+    public byte Read8(uint address)
     {
-        var b0 = Read8(address, true);
-        var b1 = Read8(address + 1, true);
-        var b2 = Read8(address + 2, true);
-        var b3 = Read8(address + 3, true);
-        return (uint)(b0 | (b1 << 8) | (b2 << 16) | (b3 << 24));
-    }
-
-    public void Write8(uint address, byte value)
-    {
-        if (TryWriteIo(address, value))
+        var region = ResolveRegion(address, 1, out var buffer);
+        return region switch
         {
-            return;
-        }
-
-        var region = ResolveRegion(address, out var buffer, out var offset);
-        if (region is MemoryRegion.Vram)
-        {
-            var x = 1;
-            if (address >= 0x06000000 && address < 0x06000800)
-            {
-                //Console.WriteLine($"Write to vram region addr={address:x8} value={value:x2}");
-            }
-        }
-        if (region is MemoryRegion.Iwram)
-        {
-            if (address >= 0x03003128 && address < 0x030033a8)
-            {
-                if (value != 0x0)
-                {
-                    Console.WriteLine($"writing non zero to textgrid address={address:x8}, value={value:x2}");
-                }
-
-                if (address >= 0x03003188 && address < 0x030031a8)
-                {
-                    //Console.WriteLine(
-                      //  $"suite line write addr={address:X8} " +
-                       // $"off={address - 0x03003128:X3} value={value:X2} char={(value >= 32 && value < 127 ? (char)value : '.')}"); 
-                }
-            }
-        }
-        if (region is MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused)
-        {
-            //throw new Exception("Cannot Write to bios or rom or unused memory");
-            return;
-        }
-
-        if (region is MemoryRegion.Sram && value != 0x0)
-        {
-            var x = 0;
-            //Console.WriteLine("Write to SRAM");
-        }
-
-        buffer[offset] = value;
-    }
-
-    public void Write16(uint address, ushort value)
-    {
-        if (address is >= 0x04000000 and <= 0x040003FE)
-        {
-            WriteIo16(address, value);
-            return;
-        }
-
-        Write8(address, (byte)value);
-        Write8(address + 1, (byte)(value >> 8));
+            MemoryRegion.Unused => 0,
+            MemoryRegion.Io => memory.Io.ReadIo8(address),
+            MemoryRegion.Sram => memory.Flash.Read8(address),
+            _ => buffer[0]
+        };
     }
 
     public void Write32(uint address, uint value)
     {
-        if (address is >= 0x04000000 and <= 0x040003FC)
-        {
-            WriteIo32(address, value);
-            return;
-        }
+        address &= 0xfffffffc;
+        var region = ResolveRegion(address, 4, out var buffer);
 
-        Write8(address, (byte)value);
-        Write8(address + 1, (byte)(value >> 8));
-        Write8(address + 2, (byte)(value >> 16));
-        Write8(address + 3, (byte)(value >> 24));
+        switch (region)
+        {
+            case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
+                return;
+            case MemoryRegion.Io:
+                memory.Io.WriteIo32Aligned(address, value);
+                break;
+            default:
+                BinaryPrimitives.WriteUInt32LittleEndian(buffer, value);
+                break;
+        }
     }
 
-    private MemoryRegion ResolveRegion(uint address, out byte[] buffer, out int offset)
+    public void Write16(uint address, ushort value)
     {
+        address &= ~1u;
+        var region = ResolveRegion(address, 2, out var buffer);
+        switch (region)
+        {
+            case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
+                return;
+            case MemoryRegion.Io:
+                memory.Io.WriteIo16Aligned(address, value);
+                break;
+            default:
+                buffer[1] = (byte)(value >> 8);
+                buffer[0] = (byte)value;
+                break;
+        }
+    }
+
+    public void Write8(uint address, byte value)
+    {
+        var region = ResolveRegion(address, 1, out var buffer);
+        switch (region)
+        {
+            case MemoryRegion.Bios or MemoryRegion.Rom or MemoryRegion.Unused:
+                return;
+            case MemoryRegion.Io:
+                memory.Io.WriteIo8(address, value);
+                break;
+            case MemoryRegion.Sram:
+                memory.Flash.Write8(address, value);
+                break;
+            default:
+                buffer[0] = value;
+                break;
+        }
+    }
+
+    private MemoryRegion ResolveRegion(uint address, int size, out Span<byte> buffer)
+    {
+        int offset;
         switch (address >> 24)
         {
             case 0x00:
-                buffer = _bios;
-                offset = (int)(address % (uint)_bios.Length);
+                offset = (int)(address % (uint)memory.Bios.Length);
+                buffer = memory.Bios.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Bios;
             case 0x02:
-                buffer = _ewram;
-                offset = (int)((address - 0x02000000) % (uint)_ewram.Length);
+                offset = (int)((address - 0x02000000) % (uint)memory.Ewram.Length);
+                buffer = memory.Ewram.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Ewram;
             case 0x03:
-                buffer = _iwram;
-                offset = (int)((address - 0x03000000) % (uint)_iwram.Length);
+                offset = (int)((address - 0x03000000) % (uint)memory.Iwram.Length);
+                buffer = memory.Iwram.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Iwram;
+            case 0x04:
+                buffer = [];
+                return MemoryRegion.Io;
             case 0x05:
-                buffer = _paletteRam;
-                offset = (int)((address - 0x05000000) % (uint)_paletteRam.Length);
+                offset = (int)((address - 0x05000000) % (uint)memory.PaletteRam.Length);
+                buffer = memory.PaletteRam.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.PaletteRam;
             case 0x06:
-                buffer = _vram;
-                offset = (int)((address - 0x06000000) % (uint)_vram.Length);
+                offset = (int)((address - 0x06000000) % (uint)memory.Vram.Length);
+                buffer = memory.Vram.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Vram;
             case 0x07:
-                buffer = _oam;
-                offset = (int)((address - 0x07000000) % (uint)_oam.Length);
+                offset = (int)((address - 0x07000000) % (uint)memory.Oam.Length);
+                buffer = memory.Oam.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Oam;
             case 0x08:
             case 0x09:
@@ -197,95 +151,92 @@ public sealed class GbaBus
             case 0x0B:
             case 0x0C:
             case 0x0D:
-                buffer = _rom;
-                offset = _rom.Length == 0 ? 0 : (int)((address - 0x08000000) % (uint)_rom.Length);
+                offset = memory.Rom.Length == 0 ? 0 : (int)((address - 0x08000000) % (uint)memory.Rom.Length);
+                buffer = memory.Rom.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Rom;
             case 0x0E:
-                buffer = _sram;
-                offset = (int)((address - 0x0E000000) % (uint)_sram.Length);
+                offset = (int)((address - 0x0E000000) % (uint)memory.Sram.Length);
+                buffer = memory.Sram.AsSpan()[offset..(offset + size)];
                 return MemoryRegion.Sram;
             default:
                 buffer = [];
-                offset = 0;
                 Console.WriteLine($"Address Accessed: 0x{address:x8}");
                 return MemoryRegion.Unused;
         }
     }
 
-    private bool TryReadIo(uint address, out byte value)
+    public int GetCpuAccessCycles(uint address, AccessWidth width, bool sequential)
     {
-        if (address is < 0x04000000 or > 0x04FFFFFF)
+        return (int)(address >> 24) switch
         {
-            value = 0;
-            return false;
-        }
-
-        var aligned = address & ~1U;
-        ushort registerValue = aligned switch
-        {
-            >= 0x04000000 and <= 0x0400001e => _ppu.Read16(aligned),
-            >= 0x04000100 and <= 0x0400010E => _timers.Read16(aligned),
-            0x04000130 => _keypad.ReadKeyInput(),
-            0x04000200 or 0x04000202 or 0x04000208 => _interrupts.Read16(aligned),
-            _ => 0
+            0x00 => 1, //BIOS
+            0x02 => width == AccessWidth.Word ? 6 : 3, //EWRAM
+            0x03 => 1, //IWRAM
+            0x04 => 1, //IO
+            0x05 => width == AccessWidth.Word ? 2 : 1, //Palette RAM
+            0x06 => width == AccessWidth.Word ? 2 : 1, //VRAM
+            0x07 => 1, //OAM
+            0x08 or 0x09 => GetGamePakRomCycles(waitState: 0, width, sequential),
+            0x0A or 0x0B => GetGamePakRomCycles(waitState: 1, width, sequential),
+            0x0C or 0x0D => GetGamePakRomCycles(waitState: 2, width, sequential),
+            0x0E or 0x0F => GetSramCycles(width), //SRAM
+            _ => 1
         };
-
-        value = (byte)((registerValue >> ((int)(address & 1) * 8)) & 0xFF);
-        return true;
     }
 
-    private bool TryWriteIo(uint address, byte value)
+    public int GetGamePakRomCycles(int waitState, AccessWidth width, bool sequential)
     {
-        if (address is < 0x04000000 or > 0x040003FF)
+        int first;
+        int second;
+        switch (waitState)
         {
-            return false;
+            case 0:
+                first = DecodeFirstAccess((memory.Io.REG_WAITCNT >> 2) & 0b11);
+                second = ((memory.Io.REG_WAITCNT >> 4) & 1) == 0 ? 2 : 1;
+                break;
+            case 1:
+                first = DecodeFirstAccess((memory.Io.REG_WAITCNT >> 5) & 0b11);
+                second = ((memory.Io.REG_WAITCNT >> 7) & 1) == 0 ? 4 : 1;
+                break;
+            case 2:
+                first = DecodeFirstAccess((memory.Io.REG_WAITCNT >> 8) & 0b11);
+                second = ((memory.Io.REG_WAITCNT >> 10) & 1) == 0 ? 8 : 1;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(waitState));
         }
 
-        if (address is >= 0x04000000 and <= 0x04000006)
+        int initial = sequential ? second : first;
+        return width switch
         {
-            Console.WriteLine("TRYING TO WRITE TO DISPSTAT THINGS");
-        }
-
-        var aligned = address & ~1U;
-        var existing = Read16(aligned);
-        var shift = (int)(address & 1) * 8;
-        var merged = (ushort)((existing & ~(0xFF << shift)) | (value << shift));
-        WriteIo16(aligned, merged);
-        return true;
+            AccessWidth.Byte => initial,
+            AccessWidth.Halfword => initial,
+            AccessWidth.Word => initial + second,
+            _ => throw new ArgumentOutOfRangeException(nameof(width))
+        };
     }
 
-    private void WriteIo16(uint address, ushort value)
+    public int GetSramCycles(AccessWidth width)
     {
-        if (address is >= 0x04000000 and <= 0x04000006)
+        var cycles = DecodeFirstAccess(memory.Io.REG_WAITCNT & 0b11);
+        return width switch
         {
-            Console.WriteLine("TRYING TO WRITE TO DISPSTAT OR DISPCNT or vcount");
-        }
-        switch (address)
-        {
-            case >= 0x04000000 and <= 0x04000054:
-                _ppu.Write16(address, value);
-                break;
-            case >= 0x040000B0 and <= 0x040000DE:
-                _dma.Write16(address, value, this);
-                break;
-            case >= 0x04000100 and <= 0x0400010E:
-                _timers.Write16(address, value);
-                break;
-            case 0x04000200:
-            case 0x04000202:
-            case 0x04000208:
-                _interrupts.Write16(address, value);
-                break;
-        }
+            AccessWidth.Byte => cycles,
+            AccessWidth.Halfword => cycles * 2,
+            AccessWidth.Word => cycles * 4,
+            _ => throw new ArgumentOutOfRangeException(nameof(width))
+        };
     }
 
-    private void WriteIo32(uint address, uint value)
+    private static int DecodeFirstAccess(int value)
     {
-        if (address is >= 0x040000b0 and <= 0x040000de)
+        return value switch
         {
-            Console.WriteLine("writing to dma");
-        }
-        WriteIo16(address, (ushort)value);
-        WriteIo16(address + 2, (ushort)(value >> 16));
+            0 => 4,
+            1 => 3,
+            2 => 2,
+            3 => 8,
+            _ => throw new ArgumentOutOfRangeException(nameof(value)),
+        };
     }
 }

@@ -31,10 +31,10 @@ public sealed class Format10LoadStoreHalfword
         //Assert
         Assert.Equal(0x5678u, bus.Read32(0x02000100));
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public sealed class Format10LoadStoreHalfword
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 0x02000100;
         cpu.SetThumbState(true);
-        bus.Write32(0x0200013e, 0x12345678);
+        bus.Write16(0x0200013e, 0x5678);
 
         //Act
         cpu.Step();

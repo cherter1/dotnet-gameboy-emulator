@@ -6,6 +6,7 @@ public enum MemoryRegion
     Bios,
     Ewram,
     Iwram,
+    Io,
     PaletteRam,
     Vram,
     Oam,
