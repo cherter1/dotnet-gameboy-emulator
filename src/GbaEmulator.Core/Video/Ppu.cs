@@ -192,7 +192,7 @@ public sealed class Ppu
             case 0: //tile/map based text mode
                 RenderMode0(scanLine);
                 break;
-            case 1: //tile/map based text mode
+            case 1: //tile/map based text mode with affine for bg2
                 RenderMode1(scanLine);
                 break;
             case 2: //tile/map based rotation/scaling mode
@@ -279,7 +279,7 @@ public sealed class Ppu
             _memory.Io.REG_BG2VOFS, _memory.Io.REG_BG3VOFS
         ];
         Span<int> bgOutputBuffer = stackalloc int[4];
-        int enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer);
+        int enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer, 0b1111);
         Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
 
         Span<int> bgScanlineInfo = stackalloc int[7 * (activeBgs.Length + 1)];
@@ -292,7 +292,7 @@ public sealed class Ppu
             BackgroundHelpers.GetTextBackgroundSizeTiles(tileMapSize, out var xTiles, out var yTiles);
 
             var bgYStartOffset = y + vofsTable[bgIdx];
-            if (yTiles > 32 && ((bgYStartOffset >> 8) & 1) != 0) // startOffset greater than pixels per map or SE length across AND yTiles > 32, if its 32 mirror the single Y SE
+            if (yTiles > 32 && ((bgYStartOffset >> 8) & 1) != 0) //startOffset greater than pixels per map or SE length across AND yTiles > 32, if its 32 mirror the single Y SE
             {
                 tileMapStartOffset += xTiles > 32 ? 0x1000 : 0x800; //move startOffset to next SE(map) start offset, if xTiles long then add 2 maps if not then only add 1 map length
             }
@@ -362,7 +362,7 @@ public sealed class Ppu
                     xTiles: bgScanlineInfo[(i * 7) + 2],
                     tileY: bgScanlineInfo[(i * 7) + 4],
                     pixelYInTile: bgScanlineInfo[(i * 7) + 5],
-                    isSinglePalette: bgScanlineInfo[(i * 7) + 6] == 1,
+                    isSinglePalette,
                     tileDataStartOffset: bgScanlineInfo[i * 7]);
 
                 if (paletteIndex == 0)
@@ -741,13 +741,25 @@ public sealed class Ppu
         var objWinEnabled = (displayControl & 0x8000) != 0; //bit 15 for objWindow enabled
         if (objWinEnabled) _objectWindowMask.AsSpan().Clear(); //clear previous scanlines objWin mask
 
+        int fixedSourceX = _internalBg2X, fixedSourceY = _internalBg2Y;
+        var bg2Size = BackgroundHelpers.GetRotationalBackgroundSizePixels((_memory.Io.REG_BG2CNT >> 14) & 0b11);
+        ReadOnlySpan<ushort> bgControls = [_memory.Io.REG_BG0CNT, _memory.Io.REG_BG1CNT, _memory.Io.REG_BG2CNT];
+        ReadOnlySpan<ushort> hofsTable = [_memory.Io.REG_BG0HOFS, _memory.Io.REG_BG1HOFS];
+        Span<int> bgOutputBuffer = stackalloc int[4];
+        var enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer, 0b0111);
+        Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
+        ReadOnlySpan<TextBackgroundScanlineInfo> bgScanlineInfos =
+        [
+            new(y, _memory.Io.REG_BG0VOFS, bgControls[0]),
+            new(y, _memory.Io.REG_BG1VOFS, bgControls[1])
+        ];
+
         var spriteCount = 0;
         Span<ScanlineSpriteInfo> sprites = stackalloc ScanlineSpriteInfo[128];
         if ((displayControl & 0x1000) != 0) //bit 12 set means sprites enabled
         {
             spriteCount = SpriteStuff_TempName(y, sprites);
         }
-
         Span<ScanlineSpriteInfo> enabledSprites = stackalloc ScanlineSpriteInfo[spriteCount];
         SortSpriteIndicesByPriority(sprites[..spriteCount], enabledSprites);
 
@@ -775,7 +787,60 @@ public sealed class Ppu
             BlendTargetOneType hiColorSource = BlendTargetOneType.Backdrop;
             BlendTargetTwoType loColorSource = BlendTargetTwoType.Backdrop;
             int hiPriorityLine, loPriorityLine = hiPriorityLine = 4;
-            //render
+
+            foreach (var bgIdx in activeBgs)
+            {
+                if ((winMask & (1 << bgIdx)) == 0) //if not set to display in window continue
+                {
+                    if (bgIdx == 2) //if 2 update fixed Affine Sources
+                    {
+                        fixedSourceX += (short)_memory.Io.REG_BG2PA;
+                        fixedSourceY += (short)_memory.Io.REG_BG2PC;
+                    }
+                    continue;
+                }
+
+                int paletteIndex;
+                bool isSinglePalette = true;
+                if (bgIdx == 2) //bg2 handled differently because its affine in this mode
+                {
+                    //affine
+                    paletteIndex = RenderAffineTiledBackground(ref vram, ref fixedSourceX,
+                        ref fixedSourceY, bgControls[bgIdx], (short)_memory.Io.REG_BG2PA,
+                        (short)_memory.Io.REG_BG2PC, bg2Size);
+                }
+                else
+                {
+                    //text
+                    isSinglePalette = bgScanlineInfos[bgIdx].IsSinglePalette;
+                    paletteIndex = RenderTiledTextBackground(ref vram, x, hofsTable[bgIdx],
+                        bgScanlineInfos[bgIdx].TileMapStartOffset,
+                        bgScanlineInfos[bgIdx].XTiles,
+                        bgScanlineInfos[bgIdx].CurrentYTile,
+                        bgScanlineInfos[bgIdx].PixelYInTile,
+                        isSinglePalette,
+                        bgScanlineInfos[bgIdx].TileDataStartOffset);
+                }
+
+                if (paletteIndex == 0) continue;
+                if (!isSinglePalette && (paletteIndex & 0xf) == 0) continue;  //mod 16 in 4bpp mode to cover all palette transparency
+
+                var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
+
+                if (hiBgrColor == 0x8000)
+                {
+                    hiBgrColor = bgrColor;
+                    hiColorSource = (BlendTargetOneType)(1 << bgIdx);
+                    hiPriorityLine = bgControls[bgIdx] & 0b11;
+                    continue;
+                }
+
+                loBgrColor = bgrColor;
+                loColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
+                loPriorityLine = bgControls[bgIdx] & 0b11;
+                break;
+            }
+
             int spriteMode = 0;
             foreach (var sprite in enabledSprites)
             {
@@ -1398,12 +1463,12 @@ public sealed class Ppu
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int FastSortBackgroundsByPriority(uint displayControl, ReadOnlySpan<ushort> bgControlRegs,
-        Span<int> bgIndexOutput)
+        Span<int> bgIndexOutput, uint validBackgroundMask)
     {
         int count = 0;
         int p0 = 0xff, p1 = 0xff, p2 = 0xff, p3 = 0xff;
 
-        uint enabledMask = (displayControl >> 8) & 0xf;
+        uint enabledMask = ((displayControl >> 8) & 0xf) & validBackgroundMask;
         if ((enabledMask & 1) != 0) p0 = ((bgControlRegs[0] & 0b11) << 2);
         if ((enabledMask & 2) != 0) p1 = ((bgControlRegs[1] & 0b11) << 2) | 1;
         if ((enabledMask & 4) != 0) p2 = ((bgControlRegs[2] & 0b11) << 2) | 2;
