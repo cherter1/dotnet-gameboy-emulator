@@ -132,13 +132,15 @@ public sealed class GbaMachine
 
     private void RunCycles(int cycles)
     {
+        Ppu.FrameReady = false;
         var iterations = 0;
-        var consumed = 0;
+        //var consumed = 0;
         var cpuWatch = new Stopwatch();
         var dmaWatch = new Stopwatch();
         var timerWatch = new Stopwatch();
         var ppuWatch = new Stopwatch();
-        while (consumed < cycles)
+        //while (consumed < cycles)
+        while (!Ppu.FrameReady)
         {
             cpuWatch.Start();
             var instructionCycles = Cpu.Step();
@@ -156,7 +158,7 @@ public sealed class GbaMachine
             Ppu.Step(instructionCycles, Bus);
             ppuWatch.Stop();
 
-            consumed += instructionCycles;
+            //consumed += instructionCycles;
             iterations += 1;
         }
         Console.WriteLine($"{iterations} iterations completed");

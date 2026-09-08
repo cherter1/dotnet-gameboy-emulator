@@ -30,8 +30,8 @@ public static class SpriteHelpers
                 yTiles = 1;
                 break;
             case 0b01_01: //32x8 pixels
-                xTiles = 32;
-                yTiles = 8;
+                xTiles = 4;
+                yTiles = 1;
                 break;
             case 0b01_10: //32x16 pixels
                 xTiles = 4;

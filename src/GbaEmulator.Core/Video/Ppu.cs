@@ -49,7 +49,7 @@ public sealed class Ppu
 
             if (_scanlineCycle != nextBoundary)
             {
-                continue; //continue til hblank start,
+                continue; //continue til hblank start
             }
 
             if (nextBoundary == HBlankStartCycle)
@@ -83,6 +83,7 @@ public sealed class Ppu
         }
     }
 
+    public bool FrameReady { get; set; } = false;
     private void EndScanline(GbaBus bus)
     {
         _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, false); // leave hblank unset bit
@@ -94,6 +95,7 @@ public sealed class Ppu
         if (nextLine == ScanLinesPerFrame)
         {
             nextLine = 0;
+            FrameReady = true;
         }
 
         _memory.Io.REG_VCOUNT = (ushort)nextLine;
@@ -717,9 +719,8 @@ public sealed class Ppu
         return finalColor;
     }
 
-    public void RenderMode1(int y)
+    private void RenderMode1(int y)
     {
-        //bg 0 txt, bg 1 txt, bg 2 aff
         if (y == 0)
         {
             _internalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
@@ -733,8 +734,8 @@ public sealed class Ppu
             out byte win0StartX,
             out uint win0XThreshold);
         var inWin1YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 1, y, displayControl,
-            _memory.Io.REG_WIN0H,
-            _memory.Io.REG_WIN0V,
+            _memory.Io.REG_WIN1H,
+            _memory.Io.REG_WIN1V,
             out byte win1StartX,
             out uint win1XThreshold);
 
@@ -745,7 +746,7 @@ public sealed class Ppu
         var bg2Size = BackgroundHelpers.GetRotationalBackgroundSizePixels((_memory.Io.REG_BG2CNT >> 14) & 0b11);
         ReadOnlySpan<ushort> bgControls = [_memory.Io.REG_BG0CNT, _memory.Io.REG_BG1CNT, _memory.Io.REG_BG2CNT];
         ReadOnlySpan<ushort> hofsTable = [_memory.Io.REG_BG0HOFS, _memory.Io.REG_BG1HOFS];
-        Span<int> bgOutputBuffer = stackalloc int[4];
+        Span<int> bgOutputBuffer = stackalloc int[3];
         var enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer, 0b0111);
         Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
         ReadOnlySpan<TextBackgroundScanlineInfo> bgScanlineInfos =
