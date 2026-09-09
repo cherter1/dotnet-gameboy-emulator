@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace GbaEmulator.Core.Video;
 
@@ -34,14 +35,6 @@ public sealed class FrameBuffer
 
     public void CopyToBgra32(Span<byte> destination)
     {
-        for (var i = 0; i < _pixels.Length; i++)
-        {
-            var color = _pixels[i];
-            var offset = i * 4;
-            destination[offset] = (byte)(color & 0xFF);
-            destination[offset + 1] = (byte)((color >> 8) & 0xFF);
-            destination[offset + 2] = (byte)((color >> 16) & 0xFF);
-            destination[offset + 3] = 0xff; //(byte)((color >> 24) & 0xFF);
-        }
+        MemoryMarshal.AsBytes(Pixels).CopyTo(destination);
     }
 }

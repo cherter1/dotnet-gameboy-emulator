@@ -1,3 +1,4 @@
+using GbaEmulator.Core.Common;
 using GbaEmulator.Core.Dma;
 using GbaEmulator.Core.Interrupts;
 using GbaEmulator.Core.Timers;
@@ -132,15 +133,19 @@ public sealed class IoRegisters
                 break;
             case 0x04000028:
                 REG_BG2X = (REG_BG2X & 0x0FFF0000u) | value; //set low bytes
+                InternalBg2X = BitUtils.SignExtend((int)REG_BG2X, 28);
                 break;
             case 0x0400002A:
                 REG_BG2X = ((REG_BG2X & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
+                InternalBg2X = BitUtils.SignExtend((int)REG_BG2X, 28);
                 break;
             case 0x0400002C:
                 REG_BG2Y = (REG_BG2Y & 0x0FFF0000) | value; //set low bytes
+                InternalBg2Y = BitUtils.SignExtend((int)REG_BG2Y, 28);
                 break;
             case 0x0400002E:
                 REG_BG2Y = ((REG_BG2Y & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
+                InternalBg2Y = BitUtils.SignExtend((int)REG_BG2Y, 28);
                 break;
             case 0x04000030:
                 REG_BG3PA = value;
@@ -156,15 +161,19 @@ public sealed class IoRegisters
                 break;
             case 0x04000038:
                 REG_BG3X = (REG_BG3X & 0x0FFF0000u) | value; //set low bytes
+                InternalBg3X = BitUtils.SignExtend((int)REG_BG3X, 28);
                 break;
             case 0x0400003A:
                 REG_BG3X = ((REG_BG3X & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
+                InternalBg3X = BitUtils.SignExtend((int)REG_BG3X, 28);
                 break;
             case 0x0400003C:
                 REG_BG3Y = (REG_BG3Y & 0x0FFF0000) | value; //set low bytes
+                InternalBg3Y = BitUtils.SignExtend((int)REG_BG3Y, 28);
                 break;
             case 0x0400003E:
                 REG_BG3Y = ((REG_BG3Y & 0xffff) | ((value & 0x0fffu) << 16)); //set high bytes and ignore bit 28-31
+                InternalBg3Y = BitUtils.SignExtend((int)REG_BG3Y, 28);
                 break;
             case 0x04000040:
                 REG_WIN0H = value;
@@ -723,10 +732,12 @@ public sealed class IoRegisters
     /// 0x04000028
     /// </summary>
     public uint REG_BG2X { get; set; }
+    public int InternalBg2X { get; set; }
     /// <summary>
     /// 0x0400002C
     /// </summary>
     public uint REG_BG2Y { get; set; }
+    public int InternalBg2Y { get; set; }
     /// <summary>
     /// 0x04000030
     /// </summary>
@@ -747,10 +758,12 @@ public sealed class IoRegisters
     /// 0x04000038
     /// </summary>
     public uint REG_BG3X { get; set; }
+    public int InternalBg3X { get; set; }
     /// <summary>
     /// 0x0400003C
     /// </summary>
     public uint REG_BG3Y { get; set; }
+    public int InternalBg3Y { get; set; }
     /// <summary>
     /// 0x04000040
     /// </summary>

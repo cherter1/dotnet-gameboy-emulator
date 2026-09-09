@@ -33,7 +33,6 @@ public sealed class Ppu
     public FrameBuffer FrameBuffer { get; }
 
     private int _scanlineCycle;
-    //private bool IsInHBlank => _scanlineCycle >= HBlankStartCycle;
 
     public void Step(int cycles, GbaBus bus)
     {
@@ -83,7 +82,7 @@ public sealed class Ppu
         }
     }
 
-    public bool FrameReady { get; set; } = false;
+    public bool FrameReady { get; set; }
     private void EndScanline(GbaBus bus)
     {
         _memory.Io.REG_DISPSTAT = (ushort)BitUtils.SetBit(_memory.Io.REG_DISPSTAT, 1, false); // leave hblank unset bit
@@ -155,25 +154,6 @@ public sealed class Ppu
         return (ushort)(_memory.PaletteRam[offset] | (_memory.PaletteRam[offset + 1] << 8));
     }
 
-    private byte ReadVram8(int offset)
-    {
-        if (offset < 0 || offset + 1 >= _memory.Vram.Length)
-        {
-            return 0;
-        }
-
-        return _memory.Vram[offset];
-    }
-
-    private ushort ReadVram16(int offset)
-    {
-        if (offset < 0 || offset + 1 >= _memory.Vram.Length)
-        {
-            return 0;
-        }
-        return (ushort)(_memory.Vram[offset] | (_memory.Vram[offset + 1] << 8));
-    }
-
     private uint ReadBgPaletteColor(int paletteIndex)
     {
         var offset = paletteIndex * 2;
@@ -207,14 +187,12 @@ public sealed class Ppu
                 RenderMode4(scanLine);
                 break;
             case 5: //bitmap based mode
-                //render mode 5
-                Console.WriteLine("RENDER MODE 5");
+                RenderMode5(scanLine);
                 break;
             default:
-                //Console.WriteLine("BACKDROP RENDER");
                 //should only be used when forceBlank bit is set in DisplayControl register
                 var backDropColor = ReadBgPaletteColor(0); //backdrop color is set by zero index of palette
-                FrameBuffer.FillScanline(scanLine, backDropColor); // 0xffffff00); //tmep yellow color for testing
+                FrameBuffer.FillScanline(scanLine, backDropColor);
                 break;
         }
     }
@@ -222,49 +200,19 @@ public sealed class Ppu
     private void RenderMode0(int y)
     {
         var displayControl = _memory.Io.REG_DISPCNT;
+        var inWin0YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 0, y, displayControl,
+            _memory.Io.REG_WIN0H,
+            _memory.Io.REG_WIN0V,
+            out byte win0StartX,
+            out uint win0XThreshold);
+        var inWin1YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 1, y, displayControl,
+            _memory.Io.REG_WIN1H,
+            _memory.Io.REG_WIN1V,
+            out byte win1StartX,
+            out uint win1XThreshold);
 
-        var win0Enabled = BitUtils.IsBitSet(displayControl, 13);
-        var win1Enabled = BitUtils.IsBitSet(displayControl, 14);
-        var objWinEnabled = BitUtils.IsBitSet(displayControl, 15);
-        var windowingEnabled = win0Enabled || win1Enabled || objWinEnabled;
-
-        bool inWin0YRange = false;
-        byte win0StartX = 0;
-        uint win0XThreshold = 0;
-        if (win0Enabled)
-        {
-            byte win0EndX = (byte)(_memory.Io.REG_WIN0H & 0xff); //bits 0-7 x2 rightMost
-            win0StartX = (byte)(_memory.Io.REG_WIN0H >> 8); //bits 8-15 x1 leftMost
-
-            win0XThreshold = (uint)(win0EndX - win0StartX);
-
-
-            byte win0EndY = (byte)(_memory.Io.REG_WIN0V & 0xff); //bits 0-7 y2 bottomMost
-            byte win0StartY = (byte)(_memory.Io.REG_WIN0V >> 8); //bits 8-15 y1 topMost
-
-            inWin0YRange = (uint)(y - win0StartY) < (uint)(win0EndY - win0StartY);
-        }
-
-        bool inWin1YRange = false;
-        byte win1StartX = 0;
-        uint win1XThreshold = 0;
-        if (win1Enabled)
-        {
-            byte win1EndX = (byte)(_memory.Io.REG_WIN1H & 0xff); //bits 0-7 x2 rightMost
-            win1StartX = (byte)(_memory.Io.REG_WIN1H >> 8); //bits 8-15 x1 leftMost
-
-            win1XThreshold = (uint)(win1EndX - win1StartX);
-
-            byte win1EndY = (byte)(_memory.Io.REG_WIN1V & 0xff); //bits 0-7 y2 bottomMost
-            byte win1StartY = (byte)(_memory.Io.REG_WIN1V >> 8); //bits 8-15 y1 topMost
-
-            inWin1YRange = (uint)(y - win1StartY) < (uint)(win1EndY - win1StartY);
-        }
-
-        if (objWinEnabled)
-        {
-            _objectWindowMask.AsSpan().Clear();
-        }
+        var objWinEnabled = (displayControl & 0x8000) != 0; //bit 15 for objWindow enabled
+        if (objWinEnabled) _objectWindowMask.AsSpan().Clear(); //clear previous scanLines objWin mask
 
         ReadOnlySpan<ushort> bgControls =
         [
@@ -326,7 +274,7 @@ public sealed class Ppu
         for (var x = 0; x < ScreenWidth; x++)
         {
             var winMask = 0b111111;
-            if (windowingEnabled)
+            if ((displayControl & 0xe000) != 0) //bits 15-13 are window enable bits
             {
                 winMask = _memory.Io.REG_WINOUT & 0x3f;
                 if (inWin0YRange && (uint)(x - win0StartX) < win0XThreshold) //implied from in y range that its enabled see above
@@ -485,7 +433,7 @@ public sealed class Ppu
             return 0; //sprite not in x range or lower priority than nextTopPixel
         }
 
-        int relativeX = spriteXPos - canvasWidth / 2;
+        int relativeX = spriteXPos - canvasWidth / 2; //center x pixel of sprite
         int relativeY = sprite.YPixelOffset; //for now YPixelOffset is relativeY for rotational sprites
 
         int sourceX = ((sprite.Pa * relativeX + sprite.Pb * relativeY) >> 8) + (sprite.NumXTiles * 8) / 2;
@@ -655,7 +603,7 @@ public sealed class Ppu
 
         var tileMapIndex = tileY * 32 + tileX; //tileY * 32 + tileX
         var tileMapEntryOffset = tileMapStartOffset + tileMapIndex * 2; //tileMapStartOffset + mapIndex * mapEntrySize
-        var tileMapEntry = ReadVram16(vram, tileMapEntryOffset);
+        var tileMapEntry = Read16(vram, tileMapEntryOffset);
 
         var hFlip = (tileMapEntry & 0x0400) != 0;
         var vFlip = (tileMapEntry & 0x0800) != 0;
@@ -723,8 +671,8 @@ public sealed class Ppu
     {
         if (y == 0)
         {
-            _internalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
-            _internalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 28);
+            _memory.Io.InternalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
+            _memory.Io.InternalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 28);
         }
 
         var displayControl = _memory.Io.REG_DISPCNT;
@@ -740,9 +688,9 @@ public sealed class Ppu
             out uint win1XThreshold);
 
         var objWinEnabled = (displayControl & 0x8000) != 0; //bit 15 for objWindow enabled
-        if (objWinEnabled) _objectWindowMask.AsSpan().Clear(); //clear previous scanlines objWin mask
+        if (objWinEnabled) _objectWindowMask.AsSpan().Clear(); //clear previous scanLines objWin mask
 
-        int fixedSourceX = _internalBg2X, fixedSourceY = _internalBg2Y;
+        int fixedSourceX = _memory.Io.InternalBg2X, fixedSourceY = _memory.Io.InternalBg2Y;
         var bg2Size = BackgroundHelpers.GetRotationalBackgroundSizePixels((_memory.Io.REG_BG2CNT >> 14) & 0b11);
         ReadOnlySpan<ushort> bgControls = [_memory.Io.REG_BG0CNT, _memory.Io.REG_BG1CNT, _memory.Io.REG_BG2CNT];
         ReadOnlySpan<ushort> hofsTable = [_memory.Io.REG_BG0HOFS, _memory.Io.REG_BG1HOFS];
@@ -905,68 +853,34 @@ public sealed class Ppu
             FrameBuffer.SetPixel(x, y, finalColor);
         }
 
-        _internalBg2X += (short)_memory.Io.REG_BG2PB;
-        _internalBg2Y += (short)_memory.Io.REG_BG2PD;
+        _memory.Io.InternalBg2X += (short)_memory.Io.REG_BG2PB;
+        _memory.Io.InternalBg2Y += (short)_memory.Io.REG_BG2PD;
     }
-
-    private int _internalBg2X;
-    private int _internalBg2Y;
-    private int _internalBg3X;
-    private int _internalBg3Y;
 
     private void RenderMode2(int y)
     {
         if (y == 0)
         {
-            _internalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
-            _internalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 28);
-            _internalBg3X = BitUtils.SignExtend((int)_memory.Io.REG_BG3X, 28);
-            _internalBg3Y = BitUtils.SignExtend((int)_memory.Io.REG_BG3Y, 28);
+            _memory.Io.InternalBg2X = BitUtils.SignExtend((int)_memory.Io.REG_BG2X, 28);
+            _memory.Io.InternalBg2Y = BitUtils.SignExtend((int)_memory.Io.REG_BG2Y, 28);
+            _memory.Io.InternalBg3X = BitUtils.SignExtend((int)_memory.Io.REG_BG3X, 28);
+            _memory.Io.InternalBg3Y = BitUtils.SignExtend((int)_memory.Io.REG_BG3Y, 28);
         }
 
         var displayControl = _memory.Io.REG_DISPCNT;
-        var win0Enabled = BitUtils.IsBitSet(displayControl, 13);
-        var win1Enabled = BitUtils.IsBitSet(displayControl, 14);
-        var objWinEnabled = BitUtils.IsBitSet(displayControl, 15);
-        var windowingEnabled = win0Enabled || win1Enabled || objWinEnabled;
+        var inWin0YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 0, y, displayControl,
+            _memory.Io.REG_WIN0H,
+            _memory.Io.REG_WIN0V,
+            out byte win0StartX,
+            out uint win0XThreshold);
+        var inWin1YRange = SpecialEffectsHelper.TryGetWindowRange(windowNum: 1, y, displayControl,
+            _memory.Io.REG_WIN1H,
+            _memory.Io.REG_WIN1V,
+            out byte win1StartX,
+            out uint win1XThreshold);
 
-        bool inWin0YRange = false;
-        byte win0StartX = 0;
-        uint win0XThreshold = 0;
-        if (win0Enabled)
-        {
-            byte win0EndX = (byte)(_memory.Io.REG_WIN0H & 0xff); //bits 0-7 x2 rightMost
-            win0StartX = (byte)(_memory.Io.REG_WIN0H >> 8); //bits 8-15 x1 leftMost
-
-            win0XThreshold = (uint)(win0EndX - win0StartX);
-
-
-            byte win0EndY = (byte)(_memory.Io.REG_WIN0V & 0xff); //bits 0-7 y2 bottomMost
-            byte win0StartY = (byte)(_memory.Io.REG_WIN0V >> 8); //bits 8-15 y1 topMost
-
-            inWin0YRange = (uint)(y - win0StartY) < (uint)(win0EndY - win0StartY);
-        }
-
-        bool inWin1YRange = false;
-        byte win1StartX = 0;
-        uint win1XThreshold = 0;
-        if (win1Enabled)
-        {
-            byte win1EndX = (byte)(_memory.Io.REG_WIN1H & 0xff); //bits 0-7 x2 rightMost
-            win1StartX = (byte)(_memory.Io.REG_WIN1H >> 8); //bits 8-15 x1 leftMost
-
-            win1XThreshold = (uint)(win1EndX - win1StartX);
-
-            byte win1EndY = (byte)(_memory.Io.REG_WIN1V & 0xff); //bits 0-7 y2 bottomMost
-            byte win1StartY = (byte)(_memory.Io.REG_WIN1V >> 8); //bits 8-15 y1 topMost
-
-            inWin1YRange = (uint)(y - win1StartY) < (uint)(win1EndY - win1StartY);
-        }
-
-        if (objWinEnabled)
-        {
-            _objectWindowMask.AsSpan().Clear();
-        }
+        var objWinEnabled = (displayControl & 0x8000) != 0; //bit 15 for objWindow enabled
+        if (objWinEnabled) _objectWindowMask.AsSpan().Clear(); //clear previous scanLines objWin mask
 
         var bg2Enabled = BitUtils.IsBitSet(displayControl, 10);
         var bg3Enabled = BitUtils.IsBitSet(displayControl, 11);
@@ -975,8 +889,8 @@ public sealed class Ppu
         var bg3Control = _memory.Io.REG_BG3CNT;
 
         ReadOnlySpan<ushort> bgControls = [bg2Control, bg3Control];
-        Span<int> fixedSourceXTable = [_internalBg2X, _internalBg3X];
-        Span<int> fixedSourceYTable = [_internalBg2Y, _internalBg3Y];
+        Span<int> fixedSourceXTable = [_memory.Io.InternalBg2X, _memory.Io.InternalBg3X];
+        Span<int> fixedSourceYTable = [_memory.Io.InternalBg2Y, _memory.Io.InternalBg3Y];
         ReadOnlySpan<ushort> bgPaTable = [_memory.Io.REG_BG2PA, _memory.Io.REG_BG3PA];
         ReadOnlySpan<ushort> bgPcTable = [_memory.Io.REG_BG2PC, _memory.Io.REG_BG3PC];
         ReadOnlySpan<int> bgSizeTable =
@@ -1033,7 +947,7 @@ public sealed class Ppu
         for (int x = 0; x < ScreenWidth; x++)
         {
             var winMask = 0b111111;
-            if (windowingEnabled)
+            if ((displayControl & 0xe000) != 0) //bits 15-13 are window enable bits
             {
                 winMask = _memory.Io.REG_WINOUT & 0x3f;
                 if (inWin0YRange && (uint)(x - win0StartX) < win0XThreshold)
@@ -1049,14 +963,11 @@ public sealed class Ppu
                     winMask = (_memory.Io.REG_WINOUT >> 8) & 0x3f;
                 }
             }
+            ushort hiBgrColor, loBgrColor = hiBgrColor = 0x8000;
+            BlendTargetOneType hiColorSource = BlendTargetOneType.Backdrop;
+            BlendTargetTwoType loColorSource = BlendTargetTwoType.Backdrop;
+            int hiPriorityLine, loPriorityLine = hiPriorityLine = 4; //priority of hi and lo pixel is defaulted to 4 which is always higher than any bg or obj pixel
 
-            ushort topPixelBgrColor = 0x8000;
-            BlendTargetOneType topColorSource = BlendTargetOneType.Backdrop;
-            ushort nextTopPixelBgrColor = 0x8000;
-            BlendTargetTwoType nextTopColorSource = BlendTargetTwoType.Backdrop;
-
-            int topPriorityLine = 4; //top pixel priority line
-            int priorityLine = 4; //priority Of the next TopPixel default 4 so by default anything has higher priority
             foreach (var bgIdx in activeBgs)
             {
                 if ((winMask & (1 << bgIdx)) == 0) //if not set to display in window continue
@@ -1080,17 +991,17 @@ public sealed class Ppu
                 }
 
                 var bgrColor = ReadPalette16(paletteIndex * 2); //paletteInd * 2 bc each paletteEntry is 2bytes
-                if (topPixelBgrColor == 0x8000)
+                if (hiBgrColor == 0x8000)
                 {
-                    topPixelBgrColor = bgrColor;
-                    topColorSource = (BlendTargetOneType)(1 << bgIdx);
-                    topPriorityLine = bgControls[bgIdx - 2] & 0b11;
+                    hiBgrColor = bgrColor;
+                    hiColorSource = (BlendTargetOneType)(1 << bgIdx);
+                    hiPriorityLine = bgControls[bgIdx - 2] & 0b11;
                     continue;
                 }
 
-                nextTopPixelBgrColor = bgrColor;
-                nextTopColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
-                priorityLine = bgControls[bgIdx - 2] & 0b11;
+                loBgrColor = bgrColor;
+                loColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
+                loPriorityLine = bgControls[bgIdx - 2] & 0b11;
                 break;
             }
 
@@ -1103,8 +1014,8 @@ public sealed class Ppu
                 }
 
                 int objPaletteIndex = sprite.IsRotational
-                    ? RenderAffineSprite(ref vram, x, priorityLine, displayControl, sprite)
-                    : RenderRegularSprite(ref vram, x, priorityLine, sprite);
+                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, sprite)
+                    : RenderRegularSprite(ref vram, x, loPriorityLine, sprite);
 
                 if (objPaletteIndex == 0)
                 {
@@ -1112,79 +1023,58 @@ public sealed class Ppu
                 }
 
                 var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.IsSinglePalette ? 0 : sprite.PaletteNumber)));
-                if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
+                if (sprite.Priority <= hiPriorityLine) //if sprite has higher priority than current top pixel
                 {
                     //make sprite pixel top and next top gets set to previous top
-                    var tempCol = topPixelBgrColor;
-                    var tempSource = (uint)topColorSource;
-
-                    topPixelBgrColor = objPixelColor;
-                    topColorSource = BlendTargetOneType.Obj;
+                    (loBgrColor, loColorSource) = (hiBgrColor, hiColorSource.ToBlendTargetTwoType());
+                    (hiBgrColor, hiColorSource) = (objPixelColor, BlendTargetOneType.Obj);
                     spriteMode = sprite.Mode;
-
-                    nextTopPixelBgrColor = tempCol;
-                    nextTopColorSource = (BlendTargetTwoType)(tempSource << 8);
                     break;
                 }
 
-                nextTopPixelBgrColor = objPixelColor;
-                nextTopColorSource = BlendTargetTwoType.Obj;
+                loBgrColor = objPixelColor;
+                loColorSource = BlendTargetTwoType.Obj;
                 break;
             }
 
-            if (nextTopPixelBgrColor == 0x8000)
+            if (loBgrColor == 0x8000)
             {
-                nextTopPixelBgrColor = ReadPalette16(0);
-                if (topPixelBgrColor == 0x8000)
+                loBgrColor = ReadPalette16(0);
+                if (hiBgrColor == 0x8000)
                 {
-                    topPixelBgrColor = ReadPalette16(0);
+                    hiBgrColor = loBgrColor;
                 }
             }
 
-            if ((winMask & 0x20) == 0) //if window mask bit 5 not set then window's special effects disabled
+            if ((winMask & 0x20) != 0) //if window mask bit 5 set then window's special effects enabled
             {
-                goto setColor;
-            }
-
-            if (topColorSource == BlendTargetOneType.Obj && spriteMode == 1)
-            {
-                //will always use alpha blending with this as source regardless of BLDCNT
-                var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)nextTopColorSource) == (ushort)nextTopColorSource;
-                if (t2BlendingEnabled)
+                if (hiColorSource == BlendTargetOneType.Obj && spriteMode == 1)
                 {
-                    topPixelBgrColor = SpecialEffectsHelper.AlphaBlendPixels(topPixelBgrColor, nextTopPixelBgrColor, _memory.Io.REG_BLDALPHA);
-                }
-                else
-                {
-                    if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    //will always use alpha blending with this as source regardless of BLDCNT
+                    var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)loColorSource) == (ushort)loColorSource;
+                    if (t2BlendingEnabled)
                     {
-                        topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+                        hiBgrColor = SpecialEffectsHelper.AlphaBlendPixels(hiBgrColor, loBgrColor, _memory.Io.REG_BLDALPHA);
+                    }
+                    else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    {
+                        hiBgrColor = ApplyBlendingEffects(hiBgrColor, hiColorSource, loBgrColor, loColorSource);
                     }
                 }
-            }
-            else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
-            {
-                topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+                else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                {
+                    hiBgrColor = ApplyBlendingEffects(hiBgrColor, hiColorSource, loBgrColor, loColorSource);
+                }
             }
 
-            setColor:
-            var finalColor = ConvertBgr555ToArgb(topPixelBgrColor);
+            var finalColor = ConvertBgr555ToArgb(hiBgrColor);
             FrameBuffer.SetPixel(x, y, finalColor);
         }
 
-        if (bg2Enabled)
-        {
-            _internalBg2X += (short)_memory.Io.REG_BG2PB;
-            _internalBg2Y += (short)_memory.Io.REG_BG2PD;
-        }
-
-        if (!bg3Enabled)
-        {
-            return;
-        }
-
-        _internalBg3X += (short)_memory.Io.REG_BG3PB;
-        _internalBg3Y += (short)_memory.Io.REG_BG3PD;
+        _memory.Io.InternalBg2X += (short)_memory.Io.REG_BG2PB;
+        _memory.Io.InternalBg2Y += (short)_memory.Io.REG_BG2PD;
+        _memory.Io.InternalBg3X += (short)_memory.Io.REG_BG3PB;
+        _memory.Io.InternalBg3Y += (short)_memory.Io.REG_BG3PD;
     }
 
     private static int RenderAffineTiledBackground(ref ReadOnlySpan<byte> vram, ref int sourceXFixed, ref int sourceYFixed, ushort bgControl, short pa, short pc, int backgroundSize)
@@ -1231,23 +1121,23 @@ public sealed class Ppu
 
         for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset += 8) //loop runs for sprites 0-127
         {
-            var attr0Value = ReadOam16(oam, oamAttrOffset);
+            var attr0Value = Read16(oam, oamAttrOffset);
             var attr0 = new ObjAttribute0(attr0Value);
             var isSinglePalette = attr0.IsSinglePalette; //just here for later so i remember
             if (attr0 is { IsRotationScaling: false, IsDisabled: true })
             {
-                continue; //disabled bit only if not r/s obj otherwise its IsDoubleSize
+                continue; //disabled but only if not r/s obj otherwise its IsDoubleSize
             }
 
-            var attr1Value = ReadOam16(oam, oamAttrOffset + 2);
+            var attr1Value = Read16(oam, oamAttrOffset + 2);
             if (attr0.IsRotationScaling)
             {
                 var rotateParamGroup = (attr1Value >> 9) & 0x1f;
                 var paStartOffset = 0x6 + (rotateParamGroup * 0x20);
-                var pA = (short)ReadOam16(oam, paStartOffset);
-                var pB = (short)ReadOam16(oam, paStartOffset + 8);
-                var pC = (short)ReadOam16(oam, paStartOffset + 16);
-                var pD = (short)ReadOam16(oam, paStartOffset + 24);
+                var pA = (short)Read16(oam, paStartOffset);
+                var pB = (short)Read16(oam, paStartOffset + 8);
+                var pC = (short)Read16(oam, paStartOffset + 16);
+                var pD = (short)Read16(oam, paStartOffset + 24);
                 var doubleSized = attr0.IsDisabled;
                 var affattr1 = new ObjAttribute1(attr1Value);
 
@@ -1273,7 +1163,7 @@ public sealed class Ppu
                 }
 
                 int relativeY = canvasY - spriteCanvasHeight / 2;
-                var affattr2Value = ReadOam16(oam, oamAttrOffset + 4);
+                var affattr2Value = Read16(oam, oamAttrOffset + 4);
                 var affattr2 = new ObjAttribute2(affattr2Value);
                 var rotationalSprite = new ScanlineSpriteInfo(affattr2.TileNumber, isSinglePalette, affattr2.PaletteNumber, relativeY,
                     affattr2.Priority, affxTiles, affattr1.XCoord, attr0.ObjMode, doubleSized, true, pA, pB, pC, pD, affyTiles);
@@ -1309,7 +1199,7 @@ public sealed class Ppu
                 continue;
             }
 
-            var attr2Value = ReadOam16(oam, oamAttrOffset + 4);
+            var attr2Value = Read16(oam, oamAttrOffset + 4);
             var attr2 = new ObjAttribute2(attr2Value);
 
             var currentYTile = spriteYPos >> 3; //div 8
@@ -1320,7 +1210,7 @@ public sealed class Ppu
                 currentYPixel = 7 - currentYPixel;
             }
 
-            var yPixelOffset = currentYPixel * 4; //mod 8 and mul 4(4bppMode) for pixel inside tile offset
+            var yPixelOffset = currentYPixel * 4; //mul 4(4bppMode) for pixel inside tile offset
             var startTileNumber = attr2.TileNumber;
             var twoDMatrixSize = 32;
 
@@ -1391,58 +1281,65 @@ public sealed class Ppu
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ushort ReadOam16(ReadOnlySpan<byte> oam, int offset)
+    private static ushort Read16(ReadOnlySpan<byte> memoryRegion, int offset)
     {
-        return (ushort)((oam[offset + 1] << 8) | oam[offset]);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ushort ReadVram16(ReadOnlySpan<byte> vram, int offset)
-    {
-        return (ushort)((vram[offset + 1] << 8) | vram[offset]);
+        return (ushort)((memoryRegion[offset + 1] << 8) | memoryRegion[offset]);
     }
 
     private void RenderMode3(int y)
     {
-        Console.WriteLine("RENDER MODE 3");
+        var vram = _memory.Vram.AsSpan();
         for (var x = 0; x < ScreenWidth; x++)
         {
             var offset = ((y * ScreenWidth) + x) * 2;
 
-            var bgr555 = ReadVram16(offset);
+            var bgr555 = Read16(vram, offset);
             FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
         }
     }
 
     private void RenderMode4(int y)
     {
-        Console.WriteLine("RENDER MODE 4");
-        var useFrame1 = BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 4);
-        var dispCnt = _memory.Io.REG_DISPCNT;
-        var bg2 = _memory.Io.REG_BG2CNT;
-        var bg2hofs = _memory.Io.REG_BG2HOFS;
-        var bg2vofs = _memory.Io.REG_BG2VOFS;
-        var bg2x = _memory.Io.REG_BG2X;
-        var bg2y = _memory.Io.REG_BG2Y;
-        var bg2pa = _memory.Io.REG_BG2PA;
-        var bg2pb = _memory.Io.REG_BG2PB;
-        var bg2pc = _memory.Io.REG_BG2PC;
-        var bg2pd = _memory.Io.REG_BG2PD;
-
-        if (!BitUtils.IsBitSet(_memory.Io.REG_DISPCNT, 10))
-        {
-            return;
-        }
-
+        var useFrame1 = (_memory.Io.REG_DISPCNT & 0x10) != 0; //bit 4 of displayControl tells which bitmap to use
+        var vram = useFrame1
+            ? _memory.Vram.AsSpan()[0xA000..]
+            : _memory.Vram.AsSpan()[..0xA000];
         for (var x = 0; x < ScreenWidth; x++)
         {
-            var startOffset = !useFrame1 ? 0 : 0xA000;
-            var vramPixelOffset = (y * ScreenWidth) + x + startOffset;
-            var paletteIndex = ReadVram8(vramPixelOffset);
+            var vramPixelOffset = (y * ScreenWidth) + x;
+            var paletteIndex = vram[vramPixelOffset];
 
             var color = ReadBgPaletteColor(paletteIndex);
 
             FrameBuffer.SetPixel(x, y, color);
+        }
+    }
+
+    private void RenderMode5(int y)
+    {
+        if (y > 127) //bitmap is only covering 128 scanLines
+        {
+            var backDropColor = ReadBgPaletteColor(0);
+            FrameBuffer.FillScanline(y, backDropColor);
+            return;
+        }
+
+        var useFrame1 = (_memory.Io.REG_DISPCNT & 0x10) != 0; //bit 4 of displayControl tells which bitmap to use
+        var vram = _memory.Vram.AsSpan();
+        for (int x = 0; x < ScreenWidth; x++)
+        {
+            if (x > 159) //bitmap is only 160 pixels across
+            {
+                var backDropColor = ReadBgPaletteColor(0);
+                FrameBuffer.SetPixel(x, y, backDropColor);
+                continue;
+            }
+
+            var startOffset = !useFrame1 ? 0 : 0xA000;
+            var offset = startOffset + (((y * 160) + x) * 2);
+
+            var bgr555 = Read16(vram, offset);
+            FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
         }
     }
 
@@ -1451,15 +1348,27 @@ public sealed class Ppu
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset + 0x200);
         return bgr555;
-        //return ConvertBgr555ToArgb(bgr555);
     }
 
+    //Array to expand a 5bit color to 8bit
+    private static readonly byte[] Expand5To8 = BuildColorBitExpandTable();
     private static uint ConvertBgr555ToArgb(ushort value)
     {
-        var red = (byte)((value & 0x1F) * 255 / 31);
-        var green = (byte)(((value >> 5) & 0x1F) * 255 / 31);
-        var blue = (byte)(((value >> 10) & 0x1F) * 255 / 31);
+        var red = Expand5To8[value & 0x1F];
+        var green = Expand5To8[(value >> 5) & 0x1F];
+        var blue = Expand5To8[(value >> 10) & 0x1F];
         return 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue;
+    }
+
+    private static byte[] BuildColorBitExpandTable()
+    {
+        var table = new byte[32];
+        for (int i = 0; i < 32; i++)
+        {
+            table[i] = (byte)(i * 255 / 31);
+        }
+
+        return table;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
