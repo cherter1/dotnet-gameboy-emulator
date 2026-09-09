@@ -18,7 +18,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[14] = 0x02000201;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -49,7 +49,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[14] = 0x02000200;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -80,7 +80,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x02000201;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -111,7 +111,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x02000200;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -141,7 +141,7 @@ public sealed class Format5AddCmpMovBxHiRegs
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000102;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -171,7 +171,7 @@ public sealed class Format5AddCmpMovBxHiRegs
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -232,7 +232,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
         cpu.SetCarry(true);
@@ -262,7 +262,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[8] = 0x02000104;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
 
@@ -290,7 +290,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
         cpu.SetZero(true);
@@ -319,7 +319,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[8] = 0x20;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
         cpu.SetNegative(true);

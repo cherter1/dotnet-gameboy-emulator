@@ -20,7 +20,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         // set flags high
         cpu.SetCarry(initialFlagValue);
@@ -52,7 +52,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000001;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -78,7 +78,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -105,7 +105,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x10;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -132,7 +132,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000001;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -158,7 +158,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -185,7 +185,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -211,7 +211,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -237,7 +237,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -263,7 +263,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -290,7 +290,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000001;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -316,7 +316,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -343,7 +343,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0xF0000008;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -369,7 +369,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -395,7 +395,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -421,7 +421,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act

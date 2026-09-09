@@ -17,7 +17,7 @@ public sealed class Format17SoftwareInterrupt
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(true);
         cpu.SetOverflow(true);
         cpu.SetNegative(true);

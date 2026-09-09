@@ -19,7 +19,7 @@ public sealed class Format11SpRelativeLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers[0] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetOverflow(true);
@@ -50,7 +50,7 @@ public sealed class Format11SpRelativeLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers[0] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -72,7 +72,7 @@ public sealed class Format11SpRelativeLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers[7] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -94,7 +94,7 @@ public sealed class Format11SpRelativeLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         bus.Write32(0x03007000, 0x12345678);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -116,7 +116,7 @@ public sealed class Format11SpRelativeLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         bus.Write32(0x03007004, 0x12345678);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -138,7 +138,7 @@ public sealed class Format11SpRelativeLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         bus.Write32(0x030073fc, 0x12345678);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

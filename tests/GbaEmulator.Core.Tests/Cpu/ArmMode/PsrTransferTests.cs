@@ -17,7 +17,7 @@ public sealed class PsrTransferTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -83,7 +83,7 @@ public sealed class PsrTransferTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -107,7 +107,7 @@ public sealed class PsrTransferTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -131,7 +131,7 @@ public sealed class PsrTransferTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();

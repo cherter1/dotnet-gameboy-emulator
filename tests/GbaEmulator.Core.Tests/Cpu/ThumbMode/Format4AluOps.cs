@@ -19,7 +19,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xf0;
         cpu.Registers[1] = 0x0f;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
@@ -49,7 +49,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xff;
         cpu.Registers[1] = 0xf0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
@@ -80,7 +80,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x40000000;
         cpu.Registers[1] = 1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
         cpu.SetZero(true);
@@ -110,7 +110,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x12345678;
         cpu.Registers[1] = 0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetOverflow(true);
         cpu.SetZero(true);
@@ -141,7 +141,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000001;
         cpu.Registers[1] = 1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetZero(true);
         cpu.SetNegative(true);
@@ -171,7 +171,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers[1] = 32;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
 
@@ -200,7 +200,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers[1] = 1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetZero(true);
@@ -230,7 +230,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers[1] = 32;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetZero(true);
 
@@ -259,7 +259,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x40000000;
         cpu.Registers[1] = 32;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetZero(true);
         cpu.SetCarry(true);
@@ -289,7 +289,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
 
@@ -318,7 +318,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 5;
         cpu.Registers[1] = 3;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
 
@@ -347,7 +347,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 5;
         cpu.Registers[1] = 3;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
 
         //Act
@@ -375,7 +375,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000001;
         cpu.Registers[1] = 1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
 
         //Act
@@ -403,7 +403,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 0xf0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
 
@@ -432,7 +432,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetZero(true);
         cpu.SetCarry(true);
@@ -462,7 +462,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
 
         //Act
@@ -490,7 +490,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 3;
         cpu.Registers[1] = 5;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetZero(true);
@@ -520,7 +520,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetNegative(true);
 
@@ -549,7 +549,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 0xf0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetZero(true);
@@ -580,7 +580,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 3;
         cpu.Registers[1] = 7;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetZero(true);
@@ -611,7 +611,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 3;
         cpu.Registers[1] = 0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetNegative(true);
@@ -641,7 +641,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xff;
         cpu.Registers[1] = 0xf0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetNegative(true);
@@ -672,7 +672,7 @@ public sealed class Format4AluOps
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xff;
         cpu.Registers[1] = 0x0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
         cpu.SetCarry(true);
         cpu.SetZero(true);

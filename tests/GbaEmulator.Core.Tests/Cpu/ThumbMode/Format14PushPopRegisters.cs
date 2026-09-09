@@ -21,7 +21,7 @@ public sealed class Format14PushPopRegisters
         cpu.Registers[0] = 0x11111111;
         cpu.Registers[1] = 0x22222222;
         cpu.Registers[3] = 0x33333333;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetOverflow(true);
@@ -55,7 +55,7 @@ public sealed class Format14PushPopRegisters
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[14] = 0x02000101;
         cpu.Registers[13] = 0x03008000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -82,7 +82,7 @@ public sealed class Format14PushPopRegisters
         cpu.Registers[6] = 0x66666666;
         cpu.Registers[7] = 0x77777777;
         cpu.Registers[14] = 0x02000101;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -111,7 +111,7 @@ public sealed class Format14PushPopRegisters
         bus.Write32(0x03007ff4, 0x11111111);
         bus.Write32(0x03007ff8, 0x55555555);
         bus.Write32(0x03007ffc, 0x66666666);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(true);
         cpu.SetCarry(true);
         cpu.SetNegative(true);
@@ -145,7 +145,7 @@ public sealed class Format14PushPopRegisters
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007ffc;
         bus.Write32(0x03007ffc, 0x02000101);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -174,7 +174,7 @@ public sealed class Format14PushPopRegisters
         bus.Write32(0x03007ff4, 0x66666666);
         bus.Write32(0x03007ff8, 0x77777777);
         bus.Write32(0x03007ffc, 0x02000101);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

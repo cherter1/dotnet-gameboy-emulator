@@ -20,7 +20,7 @@ public sealed class Format8LoadStoreSeByteHalfword
         cpu.Registers[0] = 0xffff5678;
         cpu.Registers[1] = 0x02000100;
         cpu.Registers[2] = 4;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetZero(true);
@@ -52,7 +52,7 @@ public sealed class Format8LoadStoreSeByteHalfword
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
         cpu.Registers[2] = 0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000100, 0x8fff);
 
         //Act
@@ -76,7 +76,7 @@ public sealed class Format8LoadStoreSeByteHalfword
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
         cpu.Registers[2] = 4;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000104, 0x80);
 
         //Act
@@ -100,7 +100,7 @@ public sealed class Format8LoadStoreSeByteHalfword
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
         cpu.Registers[2] = 4;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000104, 0x7f);
 
         //Act
@@ -124,7 +124,7 @@ public sealed class Format8LoadStoreSeByteHalfword
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
         cpu.Registers[2] = 0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000100, 0x8000);
 
         //Act
@@ -148,7 +148,7 @@ public sealed class Format8LoadStoreSeByteHalfword
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
         cpu.Registers[2] = 4;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000104, 0x7fff);
 
         //Act

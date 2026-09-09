@@ -32,7 +32,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(zero);
         cpu.SetNegative(negative);
         cpu.SetOverflow(overflow);
@@ -77,7 +77,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(zero);
         cpu.SetNegative(negative);
         cpu.SetOverflow(overflow);
@@ -106,7 +106,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -126,7 +126,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

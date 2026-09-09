@@ -18,7 +18,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x0000000e;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -44,7 +44,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         cpu.SetCarry(true);
         cpu.SetZero(true);
@@ -75,7 +75,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -97,7 +97,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -120,7 +120,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0xffffffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -143,7 +143,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0xfffffffe;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -169,7 +169,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x8;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -195,7 +195,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -221,7 +221,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x10;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -247,7 +247,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x1;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -273,7 +273,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -299,7 +299,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -325,7 +325,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x0;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -352,7 +352,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x3;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -379,7 +379,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -405,7 +405,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000007;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -431,7 +431,7 @@ public sealed class Format2AddSub
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -458,7 +458,7 @@ public sealed class Format2AddSub
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[4] = 0x8c;
         cpu.Registers[2] = 0x50;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetNegative(true);
 
         //Act

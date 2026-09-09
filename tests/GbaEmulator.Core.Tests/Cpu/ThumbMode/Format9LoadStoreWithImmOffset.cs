@@ -19,7 +19,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetZero(true);
@@ -50,7 +50,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -72,7 +72,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -94,7 +94,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000100, 0xffffffff);
 
         //Act
@@ -117,7 +117,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000104, 0xffffffff);
 
         //Act
@@ -140,7 +140,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x0200017c, 0xffffffff);
 
         //Act
@@ -163,7 +163,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x123456AB;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -171,7 +171,7 @@ public sealed class Format9LoadStoreWithImmOffset
         //Assert
         Assert.Equal(0xabu, bus.Read32(0x02000100));
     }
- 
+
     [Fact]
     public void STRB_FiveOffset_ByteStoredAtR1AddressPlus5()
     {
@@ -185,7 +185,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x123456AB;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -207,7 +207,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x123456AB;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -229,7 +229,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write32(0x02000100, 0xffffffab);
 
         //Act
@@ -252,7 +252,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write8(0x02000105, 0xab);
 
         //Act
@@ -275,7 +275,7 @@ public sealed class Format9LoadStoreWithImmOffset
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         bus.Write8(0x0200011f, 0xab);
 
         //Act
