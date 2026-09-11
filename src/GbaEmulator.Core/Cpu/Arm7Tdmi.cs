@@ -183,9 +183,78 @@ private string ArmIns(uint instruction)
         {
             return "MRS";
         }
-        else if (bits7_4 == 0b1001) //and other bits later
+        else if ((bits24_20 & 0b11110) == 0 && bits7_4 == 0b1001)
         {
-            return "Multiply of someKind";
+            return "MUL";
+        }
+        else if ((bits24_20 & 0b11110) == 1 && bits7_4 == 0b1001)
+        {
+            return "MLA";
+        }
+        else if ((bits24_20 & 0b11110) == 0b100 && bits7_4 == 0b1001)
+        {
+            return "UMULL";
+        }
+        else if ((bits24_20 & 0b11110) == 0b101 && bits7_4 == 0b1001)
+        {
+            return "UMLAL";
+        }
+        else if ((bits24_20 & 0b11110) == 0b110 && bits7_4 == 0b1001)
+        {
+            return "SMULL";
+        }
+        else if ((bits24_20 & 0b11110) == 0b111 && bits7_4 == 0b1001)
+        {
+            return "SMLAL";
+        }
+        else if ((bits24_20 & 1) == 1 && bits7_4 == 0b1011)
+        {
+            return "LDRH";
+        }
+        else if ((bits24_20 & 1) == 1 && bits7_4 == 0b1101)
+        {
+            return "LDRSB";
+        }
+        else if ((bits24_20 & 1) == 1 && bits7_4 == 0b1111)
+        {
+            return "LDRSH";
+        }
+        else if ((bits24_20 & 1) == 0 && bits7_4 == 0b1011)
+        {
+            return "STRH";
+        }
+        //do other dp
+        else if (bits24_20 == 0b10001)
+        {
+            return "TST";
+        }
+        else if (bits24_20 == 0b10011)
+        {
+            return "TEQ";
+        }
+        else if (bits24_20 == 0b10101)
+        {
+            return "CMP";
+        }
+        else if (bits24_20 == 0b10111)
+        {
+            return "CMN";
+        }
+        else if ((bits24_20 & 0b11110) == 0b11000)
+        {
+            return "ORR";
+        }
+        else if ((bits24_20 & 0b11110) == 0b11010)
+        {
+            return "MOV";
+        }
+        else if ((bits24_20 & 0b11110) == 0b11100)
+        {
+            return "BIC";
+        }
+        else if ((bits24_20 & 0b11110) == 0b11110)
+        {
+            return "MVN";
         }
     }
 
