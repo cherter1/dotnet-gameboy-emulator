@@ -488,13 +488,12 @@ public sealed partial class CpuOpt
             Registers[rdLo] = (uint)(res & 0xFFFFFFFF);
             Registers[rdHi] = (uint)(res >> 32);
 
-            if (!setFlags)
+            if (setFlags)
             {
-                return;
+                Registers.Cpsr.Negative = ((res >> 32) & 0x80000000) != 0;
+                Registers.Cpsr.Zero = res == 0;
             }
 
-            Registers.Cpsr.Negative = ((res >> 32) & 0x80000000) != 0;
-            Registers.Cpsr.Zero = res == 0;
             bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, false);
         }
         else
@@ -512,13 +511,12 @@ public sealed partial class CpuOpt
             Registers[rdLo] = (uint)(res & 0xFFFFFFFF);
             Registers[rdHi] = (uint)(res >> 32);
 
-            if (!setFlags)
+            if (setFlags)
             {
-                return;
+                Registers.Cpsr.Negative = ((res >> 32) & 0x80000000) != 0;
+                Registers.Cpsr.Zero = res == 0;
             }
 
-            Registers.Cpsr.Negative = ((res >> 32) & 0x80000000) != 0;
-            Registers.Cpsr.Zero = res == 0;
             bitMultiplier += GetMultiplierArrayCycles(multiplierOperand, true);
         }
 

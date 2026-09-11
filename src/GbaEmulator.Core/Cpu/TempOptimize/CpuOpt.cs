@@ -1,3 +1,4 @@
+using System.Data;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using GbaEmulator.Core.Common;
@@ -28,19 +29,15 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         Registers.ProgramCounter = skipBios ? 0x08000000u : 0u;
     }
 
-    public void SetThumbState(bool enabled) =>
-        Registers.Cpsr = ProgramStatusRegister.FromUInt32(BitUtils.SetBit(Registers.Cpsr.ToUInt32(), 5, enabled));
     private int _cycles;
 
     public int Step()
     {
-        try
+        if (!Registers.Cpsr.IrqDisable && interrupts.ServiceIrq)
         {
-            if (!Registers.Cpsr.IrqDisable && interrupts.ServiceIrq)
-            {
-                EnterIrqException();
-                return 4;
-            }
+            EnterIrqException();
+            return 4;
+        }
 
 #if DEBUG
             if (Registers.ProgramCounter % 2 == 1)
@@ -81,26 +78,20 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             }
 #endif
 
-            _cycles = 0;
-            if (Registers.Cpsr.ThumbState)
-            {
-                StepThumb();
-            }
-            else
-            {
-                StepArm();
-            }
-
-            return _cycles;
-        }
-        catch (Exception)
+        _cycles = 0;
+        if (Registers.Cpsr.ThumbState)
         {
-            //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
-            throw;
+            StepThumb();
         }
+        else
+        {
+            StepArm();
+        }
+
+        return _cycles;
     }
 
-#region DEBUG
+    #region DEBUG
     private int ArmBranch = 0;
     private int ArmBlockDataTransfer = 0;
     private int ArmSingleDataTransfer = 0;
@@ -132,7 +123,305 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
     private int ThumbFormat17 = 0;
     private int ThumbFormat18 = 0;
     private int ThumbFormat19 = 0;
-#endregion
+    #endregion
+
+    public readonly static string[] ArmInstructionFetch = GenArmIns();
+    public static string[] GenArmIns()
+    {
+        string[] table = new string[4096];
+        for (uint i = 0; i < 4096; i++)
+        {
+            uint opCode = ((i & 0xFF0) << 16) | ((i & 0xF) << 4);
+            table[i] = ArmIns(opCode);
+        }
+
+        return table;
+    }
+    private static string ArmIns(uint instruction)
+    {
+        var bits27_25 = (instruction >> 25) & 0b111;
+        if (bits27_25 == 0b111)
+        {
+            return "SWI";
+        }
+        else if (bits27_25 == 0b101)
+        {
+            if ((instruction & 0x01000000) == 0) //bit 24
+            {
+                return "B";
+            }
+            else
+            {
+                return "BL";
+            }
+        }
+        else if (bits27_25 == 0b100)
+        {
+            if ((instruction & 0x00100000) == 0)
+            {
+                return "STM";
+            }
+            else
+            {
+                return "LDM";
+            }
+        }
+        else if (bits27_25 == 0b011)
+        {
+            if ((instruction & 0x00100000) == 0) //bit 20
+            {
+                if ((instruction & 0x00400000) == 0) //bit 22
+                {
+                    return "STR";
+                }
+
+                return "STRB";
+            }
+            else
+            {
+                if ((instruction & 0x00400000) == 0) //bit 22
+                {
+                    return "LDR";
+                }
+
+                return "LDRB";
+            }
+        }
+        else if (bits27_25 == 0b010)
+        {
+            if ((instruction & 0x00100000) == 0) //bit 20
+            {
+                if ((instruction & 0x00400000) == 0) //bit 22
+                {
+                    return "STR Imm";
+                }
+
+                return "STRB Imm";
+            }
+            else
+            {
+                if ((instruction & 0x00400000) == 0) //bit 22
+                {
+                    return "LDR Imm";
+                }
+
+                return "LDRB Imm";
+            }
+        }
+        else if (bits27_25 == 0b001)
+        {
+            var bits24_20 = (instruction >> 20) & 0x1f;
+
+            if ((bits24_20 & 0b11011) == 0b10010)
+            {
+                return "MSR Imm";
+            }
+            else if (bits24_20 == 0b10001)
+            {
+                return "TST Imm";
+            }
+            else if (bits24_20 == 0b10011)
+            {
+                return "TEQ Imm";
+            }
+            else if (bits24_20 == 0b10101)
+            {
+                return "CMP Imm";
+            }
+            else if (bits24_20 == 0b10111)
+            {
+                return "CMN Imm";
+            }
+            else if ((bits24_20 >> 1) == 0)
+            {
+                return "AND Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0001)
+            {
+                return "EOR Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0010)
+            {
+                return "SUB Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0011)
+            {
+                return "RSB Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0100)
+            {
+                return "ADD Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0101)
+            {
+                return "ADC Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0110)
+            {
+                return "SBC Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b0111)
+            {
+                return "RSC Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b1100)
+            {
+                return "ORR Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b1101)
+            {
+                return "MOV Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b1110)
+            {
+                return "BIC Imm";
+            }
+            else if ((bits24_20 >> 1) == 0b1111)
+            {
+                return "MVN Imm";
+            }
+        }
+        else
+        {
+/*      bx
+        swp swpb
+        msr reg
+        mrs
+        multiply all
+        halfword signed byte double load stores
+        data proc
+ */
+            var bits24_20 = (instruction >> 20) & 0x1f;
+            var bits7_4 = (instruction >> 4) & 0xf;
+
+            if (bits24_20 == 0b10010 && bits7_4 == 0x1)
+            {
+                return "BX";
+            }
+            else if (bits24_20 == 0b10000 && bits7_4 == 0b1001)
+            {
+                return "SWP";
+            }
+            else if (bits24_20 == 0b10100 && bits7_4 == 0b1001)
+            {
+                return "SWPB";
+            }
+            else if ((bits24_20 & 0b11011) == 0b10010 && bits7_4 == 0) //facade bits later
+            {
+                return "MSR";
+            }
+            else if ((bits24_20 & 0b11011) == 0b10000 && bits7_4 == 0) //facade bits later
+            {
+                return "MRS";
+            }
+            else if ((bits24_20 >> 1) == 0 && bits7_4 == 0b1001)
+            {
+                return "MUL";
+            }
+            else if ((bits24_20 >> 1) == 1 && bits7_4 == 0b1001)
+            {
+                return "MLA";
+            }
+            else if ((bits24_20 >> 1) == 0b100 && bits7_4 == 0b1001)
+            {
+                return "UMULL";
+            }
+            else if ((bits24_20 >> 1) == 0b101 && bits7_4 == 0b1001)
+            {
+                return "UMLAL";
+            }
+            else if ((bits24_20 >> 1) == 0b110 && bits7_4 == 0b1001)
+            {
+                return "SMULL";
+            }
+            else if ((bits24_20 >> 1) == 0b111 && bits7_4 == 0b1001)
+            {
+                return "SMLAL";
+            }
+            else if ((bits24_20 & 1) == 1 && bits7_4 == 0b1011)
+            {
+                return "LDRH";
+            }
+            else if ((bits24_20 & 1) == 1 && bits7_4 == 0b1101)
+            {
+                return "LDRSB";
+            }
+            else if ((bits24_20 & 1) == 1 && bits7_4 == 0b1111)
+            {
+                return "LDRSH";
+            }
+            else if ((bits24_20 & 1) == 0 && bits7_4 == 0b1011)
+            {
+                return "STRH";
+            }
+            else if (bits24_20 == 0b10001)
+            {
+                return "TST";
+            }
+            else if (bits24_20 == 0b10011)
+            {
+                return "TEQ";
+            }
+            else if (bits24_20 == 0b10101)
+            {
+                return "CMP";
+            }
+            else if (bits24_20 == 0b10111)
+            {
+                return "CMN";
+            }
+            else if ((bits24_20 >> 1) == 0)
+            {
+                return "AND";
+            }
+            else if ((bits24_20 >> 1) == 0b0001)
+            {
+                return "EOR";
+            }
+            else if ((bits24_20 >> 1) == 0b0010)
+            {
+                return "SUB";
+            }
+            else if ((bits24_20 >> 1) == 0b0011)
+            {
+                return "RSB";
+            }
+            else if ((bits24_20 >> 1) == 0b0100)
+            {
+                return "ADD";
+            }
+            else if ((bits24_20 >> 1) == 0b0101)
+            {
+                return "ADC";
+            }
+            else if ((bits24_20 >> 1) == 0b0110)
+            {
+                return "SBC";
+            }
+            else if ((bits24_20 >> 1) == 0b0111)
+            {
+                return "RSC";
+            }
+            else if ((bits24_20 >> 1) == 0b1100)
+            {
+                return "ORR";
+            }
+            else if ((bits24_20 >> 1) == 0b1101)
+            {
+                return "MOV";
+            }
+            else if ((bits24_20 >> 1) == 0b1110)
+            {
+                return "BIC";
+            }
+            else if ((bits24_20 >> 1) == 0b1111)
+            {
+                return "MVN";
+            }
+        }
+
+        return "ILL";
+    }
 
     private void StepArm()
     {
@@ -141,27 +430,22 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         var instruction = bus.Read32(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 4;
 
-        var pcBeforeExecute = Registers.ProgramCounter;
-        var decoded = "UNKNOWN";
+        string currIns = "ILL";
+        var condFailed = !ConditionPassed((Condition)(instruction >> 28));//bits 31-28
+        if (!ConditionPassed((Condition)(instruction >> 28))) //bits 31-28
+        {
+            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            return;
+        }
+
         try
         {
-            if (!ConditionPassed((Condition)(instruction >> 28))) //bits 31-28
-            {
-                decoded = $"COND FAILED {(Condition)(instruction >> 28)}";
-                if (instruction == 0x00000000)
-                {
-                    //throw new Exception();
-                }
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
-                return;
-            }
-
             var bits27_25 = (instruction >> 25) & 0b111;
 
             if (bits27_25 == 0b101)
             {
+                currIns = "B BL";
                 // B, BL
-                decoded = BitUtils.IsBitSet(instruction, 24) ? "BL" : "B";
                 ExecuteArmBranch(instruction);
                 ArmBranch++;
                 return;
@@ -169,8 +453,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
             if (bits27_25 == 0b100)
             {
+                currIns = "LDM STM";
                 // LDM, STM
-                decoded = "LDM/STM";
                 ArmBlockDataTransfer++;
                 ExecuteBlockDataTransfer(instruction);
                 return;
@@ -179,8 +463,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
             if ((instruction & 0xc100000) == 0x4100000) //bit 20 set is load
             {
+                currIns = "LDR";
                 // LDR
-                decoded = "LDR";
                 ArmSingleDataTransfer++;
                 ExecuteSingleDataLoad(instruction);
                 return;
@@ -189,8 +473,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0000_0000_0000_0000_0000_0000
             if ((instruction & 0xc100000) == 0x4000000) //bit 20 not set is store
             {
+                currIns = "STR";
                 // STR
-                decoded = "STR";
                 ArmSingleDataTransfer++;
                 ExecuteSingleDataStore(instruction);
                 return;
@@ -198,7 +482,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
             if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
             {
-                decoded = "SWI";
+                currIns = "SWI";
                 ArmSwi++;
                 ExecuteSoftwareInterrupt(instruction);
                 return;
@@ -206,8 +490,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
             if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
             {
+                currIns = "BX";
                 // BX
-                decoded = "BX";
                 ExecuteArmBranchExchange(instruction);
                 ArmBranchExchange++;
                 return;
@@ -219,8 +503,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
                 ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
                 ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
             {
+                currIns = "SWP SWPB";
                 // SWP, SWPB
-                decoded = "SWP/SWPB";
                 ExecuteArmSingleDataSwap(instruction);
                 ArmSingleDataSwap++;
                 return;
@@ -228,7 +512,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
             if ((instruction & 0x0FC000F0) == 0x00000090)
             {
-                decoded = "MULTIPLY";
+                currIns = "mult";
                 this.ExecuteArmMultiply(instruction);
                 ArmMultiply++;
                 return;
@@ -236,7 +520,7 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
             if ((instruction & 0x0F8000F0) == 0x00800090)
             {
-                decoded = "MULTIPLY LONG";
+                currIns = "mult long";
                 this.ExecuteArmMultiplyLong(instruction);
                 ArmMultiplyLong++;
                 return;
@@ -245,8 +529,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0001_0000_0000_0000_1001_0000
             if ((instruction & 0x0E100090) == 0x100090)
             {
+                currIns = "LDRH LDRSB LDRSH";
                 // LDRH, LDRSB, LDRSH
-                decoded = "LDRH, LDRSB, LDRSH";
                 ExecuteHalfwordSignedDataLoad(instruction);
                 ArmHalfwordSignedDataTransfer++;
                 return;
@@ -255,8 +539,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0000_0000_0000_0000_1001_0000
             if ((instruction & 0x0E100090) == 0x90)
             {
+                currIns = "STRH";
                 // STRH
-                decoded = "STRH";
                 ExecuteHalfwordDataStore(instruction);
                 ArmHalfwordSignedDataTransfer++;
                 return;
@@ -264,8 +548,8 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
 
             if ((instruction & 0x0FBF0FFF) == 0x010F0000)
             {
+                currIns = "MRS";
                 //MRS
-                decoded = "MRS";
                 ExecuteMrs(instruction);
                 ArmMrs++;
                 return;
@@ -274,22 +558,28 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             //MSR
             if ((instruction & 0x0DB0F000) == 0x0120F000)
             {
-                decoded = "MSR";
+                currIns = "MSR";
                 ExecuteMsr(instruction);
                 ArmMsr++;
                 return;
             }
 
-            decoded = "DATA PROC";
+            currIns = "data proc";
             ExecuteArmDataProcessing(instruction);
             ArmDataProc++;
         }
         finally
         {
-            //var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
-            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-            //    pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
-            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+            uint decodeBits = ((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF);
+            var newIns = ArmInstructionFetch[decodeBits];
+            if (currIns != newIns)
+            {
+                Console.WriteLine($"instruction: {instruction:x8}");
+                Console.WriteLine($"condition failed: {condFailed}");
+                Console.WriteLine($"current instruction fam: {currIns}");
+                Console.WriteLine($"new instruction fam: {newIns}");
+                throw new DataException();
+            }
         }
     }
 
@@ -299,188 +589,156 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
         var instruction = bus.Read16(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 2;
 
-        var pcBeforeExecute = Registers.ProgramCounter;
-        var decoded = "NONE";
-        try
+        if ((instruction & 0xE000) == 0) //bits 15-13 == 0
         {
-            if ((instruction & 0xE000) == 0) //bits 15-13 == 0
+            if ((instruction >> 11) == 0b11)
             {
-                if ((instruction >> 11) == 0b11)
-                {
-                    //Format 2
-                    decoded = "ADD/SUB f2";
-                    this.ExecuteThumbFormat2(instruction);
-                    ThumbFormat2++;
-                    return;
-                }
-                //format 1
-                decoded = "LSL/LSR/ASR f1";
-                this.ExecuteThumbFormat1(instruction);
-                ThumbFormat1++;
+                //Format 2
+                this.ExecuteThumbFormat2(instruction);
+                ThumbFormat2++;
                 return;
             }
-
-            if ((instruction & 0xE000) == 0x2000) //bits 15-13 == 0b001
-            {
-                //format 3
-                decoded = "MOV/CMP/ADD/SUB f3";
-                this.ExecuteThumbFormat3(instruction);
-                ThumbFormat3++;
-                return;
-            }
-
-            if ((instruction & 0xF800) == 0x4000) //bits 15-11 == 0b01000
-            {
-                if (((instruction >> 10) & 1) == 0)
-                {
-                    //format 4
-                    decoded = "ALU OP f4";
-                    this.ExecuteThumbFormat4(instruction);
-                    ThumbFormat4++;
-                    return;
-                }
-                //format 5
-                decoded = "ADD/CMP/MOV/bx f5";
-                ThumbFormat5++;
-                this.ExecuteThumbFormat5(instruction);
-                return;
-            }
-
-            if ((instruction & 0xF800) == 0x4800) //bits 15-11 == 0b01001
-            {
-                //format 6
-                decoded = "LDR PC f6";
-                this.ExecuteThumbFormat6(instruction);
-                ThumbFormat6++;
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0x5000) //bits 15-12 == 0b0101
-            {
-                if (((instruction >> 9) & 1) == 0)
-                {
-                    //format 7
-                    decoded = "LDR/STR f7";
-                    this.ExecuteThumbFormat7(instruction);
-                    ThumbFormat7++;
-                    return;
-                }
-                //format 8
-                decoded = "LDR/STR seHW f8";
-                this.ExecuteThumbFormat8(instruction);
-                ThumbFormat8++;
-                return;
-            }
-
-            if ((instruction & 0xE000) == 0x6000) //bits 15-13 == 0b011
-            {
-                //format 9
-                decoded = "LDR/STR immOff f9";
-                this.ExecuteThumbFormat9(instruction);
-                ThumbFormat9++;
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0x8000) //bits 15-12 == 0b1000
-            {
-                //format 10
-                decoded = "LDR/STR HW f10";
-                this.ExecuteThumbFormat10(instruction);
-                ThumbFormat10++;
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0x9000) //bits 15-12 == 0b1001
-            {
-                //format 11
-                decoded = "LDR/STR SP rel f11";
-                this.ExecuteThumbFormat11(instruction);
-                ThumbFormat11++;
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0xA000) //bits 15-12 == 0b1010
-            {
-                //format 12
-                decoded = "SP or PC Load f12";
-                this.ExecuteThumbFormat12(instruction);
-                ThumbFormat12++;
-                return;
-            }
-
-            if ((instruction & 0xFF00) == 0xB000) //bits 15-8 == 0b10110000
-            {
-                //format 13
-                decoded = "offset SP f13";
-                this.ExecuteThumbFormat13(instruction);
-                ThumbFormat13++;
-                return;
-            }
-
-            if ((instruction & 0xF600) == 0xB400) //bits 15-12 == 0b1011 and bits 10-9 == 0b10
-            {
-                //format 14
-                decoded = "PUSH/POP reg f14";
-                ThumbFormat14++;
-                this.ExecuteThumbFormat14(instruction);
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0xC000) //bits 15-12 == 0b1100
-            {
-                //format 15
-                decoded = "mult Load/store f15";
-                ThumbFormat15++;
-                this.ExecuteThumbFormat15(instruction);
-                return;
-            }
-
-            if ((instruction & 0xFF00) == 0xDF00) //bits 15-8 == 0b11011111
-            {
-                //format 17
-                decoded = "SWI f17";
-                ThumbFormat17++;
-                this.ExecuteThumbFormat17(instruction);
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0xD000) //bits 15-12 == 0b1101
-            {
-                //format 16
-                decoded = "COND B f16";
-                this.ExecuteThumbFormat16(instruction);
-                ThumbFormat16++;
-                return;
-            }
-
-            if ((instruction & 0xF800) == 0xE000) //bits 15-11 == 0b11100
-            {
-                //format 18
-                decoded = "B f18";
-                this.ExecuteThumbFormat18(instruction);
-                ThumbFormat18++;
-                return;
-            }
-
-            if ((instruction & 0xF000) == 0xF000) //bits 15-12 == 0b1111
-            {
-                //format 19
-                decoded = "Long BL f19";
-                this.ExecuteThumbFormat19(instruction);
-                ThumbFormat19++;
-                return;
-            }
-
-            decoded = "NOTHING";
-            throw new NotSupportedException($"THUMB instruction could not be decoded instruction: {instruction:x4}");
+            //format 1
+            this.ExecuteThumbFormat1(instruction);
+            ThumbFormat1++;
+            return;
         }
-        finally
+
+        if ((instruction & 0xE000) == 0x2000) //bits 15-13 == 0b001
         {
-            //var trace = new CpuTrace(instructionAddress, instruction, Registers.Cpsr.ThumbState, Registers.Cpsr.Mode, Registers[0],
-            //    Registers[1], Registers[2], Registers[3], Registers[12], Registers.StackPointer, Registers.LinkRegister,
-            //    pcBeforeExecute, Registers.ProgramCounter, Registers.Cpsr.ToUInt32(), decoded);
-            //DebugUtilities.AddTrace(_traces, trace, ref _traceIndex);
+            //format 3
+            this.ExecuteThumbFormat3(instruction);
+            ThumbFormat3++;
+            return;
         }
+
+        if ((instruction & 0xF800) == 0x4000) //bits 15-11 == 0b01000
+        {
+            if (((instruction >> 10) & 1) == 0)
+            {
+                //format 4
+                this.ExecuteThumbFormat4(instruction);
+                ThumbFormat4++;
+                return;
+            }
+            //format 5
+            ThumbFormat5++;
+            this.ExecuteThumbFormat5(instruction);
+            return;
+        }
+
+        if ((instruction & 0xF800) == 0x4800) //bits 15-11 == 0b01001
+        {
+            //format 6
+            this.ExecuteThumbFormat6(instruction);
+            ThumbFormat6++;
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0x5000) //bits 15-12 == 0b0101
+        {
+            if (((instruction >> 9) & 1) == 0)
+            {
+                //format 7
+                this.ExecuteThumbFormat7(instruction);
+                ThumbFormat7++;
+                return;
+            }
+            //format 8
+            this.ExecuteThumbFormat8(instruction);
+            ThumbFormat8++;
+            return;
+        }
+
+        if ((instruction & 0xE000) == 0x6000) //bits 15-13 == 0b011
+        {
+            //format 9
+            this.ExecuteThumbFormat9(instruction);
+            ThumbFormat9++;
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0x8000) //bits 15-12 == 0b1000
+        {
+            //format 10
+            this.ExecuteThumbFormat10(instruction);
+            ThumbFormat10++;
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0x9000) //bits 15-12 == 0b1001
+        {
+            //format 11
+            this.ExecuteThumbFormat11(instruction);
+            ThumbFormat11++;
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0xA000) //bits 15-12 == 0b1010
+        {
+            //format 12
+            this.ExecuteThumbFormat12(instruction);
+            ThumbFormat12++;
+            return;
+        }
+
+        if ((instruction & 0xFF00) == 0xB000) //bits 15-8 == 0b10110000
+        {
+            //format 13
+            this.ExecuteThumbFormat13(instruction);
+            ThumbFormat13++;
+            return;
+        }
+
+        if ((instruction & 0xF600) == 0xB400) //bits 15-12 == 0b1011 and bits 10-9 == 0b10
+        {
+            //format 14
+            ThumbFormat14++;
+            this.ExecuteThumbFormat14(instruction);
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0xC000) //bits 15-12 == 0b1100
+        {
+            //format 15
+            ThumbFormat15++;
+            this.ExecuteThumbFormat15(instruction);
+            return;
+        }
+
+        if ((instruction & 0xFF00) == 0xDF00) //bits 15-8 == 0b11011111
+        {
+            //format 17
+            ThumbFormat17++;
+            this.ExecuteThumbFormat17(instruction);
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0xD000) //bits 15-12 == 0b1101
+        {
+            //format 16
+            this.ExecuteThumbFormat16(instruction);
+            ThumbFormat16++;
+            return;
+        }
+
+        if ((instruction & 0xF800) == 0xE000) //bits 15-11 == 0b11100
+        {
+            //format 18
+            this.ExecuteThumbFormat18(instruction);
+            ThumbFormat18++;
+            return;
+        }
+
+        if ((instruction & 0xF000) == 0xF000) //bits 15-12 == 0b1111
+        {
+            //format 19
+            this.ExecuteThumbFormat19(instruction);
+            ThumbFormat19++;
+            return;
+        }
+
+        throw new NotSupportedException($"THUMB instruction could not be decoded instruction: {instruction:x4}");
     }
 
     private uint DecodeImmediateOperand(uint instruction, out bool carryOut)
