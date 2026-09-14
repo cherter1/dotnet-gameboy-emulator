@@ -9,20 +9,24 @@ namespace GbaEmulator.Core.Cpu;
 
 public sealed partial class Arm7Tdmi
 {
-    public delegate void ExecuteArmInstruction(uint instruction);
-    public readonly ExecuteArmInstruction[] ArmInstructionFetch;
+    private int _cycles;
     private readonly GbaBus _bus;
     private readonly InterruptController _interrupts;
+
+    public delegate void ExecuteArmInstruction(uint instruction);
+    public readonly ExecuteArmInstruction[] ArmInstructionDispatch;
+
+    public delegate void ExecuteThumbInstruction(ushort instruction);
+    public readonly ExecuteThumbInstruction[] ThumbInstructionDispatch;
+
+    public RegisterBank Registers { get; private set; } = null!;
 
     public Arm7Tdmi(GbaBus bus, InterruptController interrupts)
     {
         _bus = bus;
         _interrupts = interrupts;
-        ArmInstructionFetch = GenArmIns();
+        ArmInstructionDispatch = GenerateArmInstructionTable();
     }
-    private readonly CpuTrace?[] _traces = new CpuTrace?[1024];
-    private int _traceIndex;
-    public RegisterBank Registers { get; private set; } = null!;
 
     public void Reset(bool skipBios)
     {
@@ -38,8 +42,6 @@ public sealed partial class Arm7Tdmi
 
         Registers.ProgramCounter = skipBios ? 0x08000000u : 0u;
     }
-
-    private int _cycles;
 
     public int Step()
     {
@@ -136,18 +138,6 @@ public sealed partial class Arm7Tdmi
 
     #endregion
 
-    public ExecuteArmInstruction[] GenArmIns()
-    {
-        ExecuteArmInstruction[] table = new ExecuteArmInstruction[4096];
-        for (uint i = 0; i < 4096; i++)
-        {
-            uint opCode = ((i & 0xFF0) << 16) | ((i & 0xF) << 4);
-            table[i] = ArmIns(opCode);
-        }
-
-        return table;
-    }
-
     private void StepArm()
     {
         var instructionAddress = Registers.ProgramCounter;
@@ -155,8 +145,6 @@ public sealed partial class Arm7Tdmi
         var instruction = _bus.Read32(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 4;
 
-        string currIns = "ILL";
-        //var condFailed = !ConditionPassed((Condition)(instruction >> 28));//bits 31-28
         if (!ConditionPassed((Condition)(instruction >> 28))) //bits 31-28
         {
             _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
@@ -164,210 +152,7 @@ public sealed partial class Arm7Tdmi
         }
 
         uint decodeBits = ((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF);
-        var armin = ArmInstructionFetch[decodeBits];
-        armin(instruction);
-        /*
-               try
-               {
-
-                   var bits27_25 = (instruction >> 25) & 0b111;
-
-                   if (bits27_25 == 0b101)
-                   {
-                       if ((instruction & 0x01000000) == 0) //bit 24
-                       {
-                           currIns = "B";
-                       }
-                       else
-                       {
-                           currIns = "Bl";
-                       }
-                       // B, BL
-                       ExecuteArmBranch(instruction);
-                       ArmBranch++;
-                       return;
-                   }
-
-                   if (bits27_25 == 0b100)
-                   {
-                       if ((instruction & 0x00100000) == 0)
-                       {
-                           currIns = "Stm";
-                       }
-                       else
-                       {
-                           currIns = "Ldm";
-                       }
-                       // LDM, STM
-                       ArmBlockDataTransfer++;
-                       ExecuteBlockDataTransfer(instruction);
-                       return;
-                   }
-
-                   // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
-                   if ((instruction & 0xc100000) == 0x4100000) //bit 20 set is load
-                   {
-                       currIns = "Ldr";
-                       // LDR
-                       ArmSingleDataTransfer++;
-                       ExecuteSingleDataLoad(instruction);
-                       return;
-                   }
-
-                   // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0000_0000_0000_0000_0000_0000
-                   if ((instruction & 0xc100000) == 0x4000000) //bit 20 not set is store
-                   {
-                       currIns = "Str";
-                       // STR
-                       ArmSingleDataTransfer++;
-                       ExecuteSingleDataStore(instruction);
-                       return;
-                   }
-
-                   if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
-                   {
-                       currIns = "Swi";
-                       ArmSwi++;
-                       ExecuteSoftwareInterrupt(instruction);
-                       return;
-                   }
-
-                   if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
-                   {
-                       currIns = "Bx";
-                       // BX
-                       ExecuteArmBranchExchange(instruction);
-                       ArmBranchExchange++;
-                       return;
-                   }
-
-                   //equivalent mask
-                   //((instruction & 0x0FB00FF0) == 0x01000090)
-                   if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
-                       ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
-                       ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
-                   {
-                       var byteSwap = BitUtils.IsBitSet(instruction, 22);
-                       if (byteSwap)
-                       {
-                           currIns = "Swpb";
-                       }
-                       else
-                       {
-                           currIns = "Swp";
-                       }
-                       // SWP, SWPB
-                       ExecuteArmSingleDataSwap(instruction);
-                       ArmSingleDataSwap++;
-                       return;
-                   }
-
-                   if ((instruction & 0x0FC000F0) == 0x00000090)
-                   {
-                       var accumulate = BitUtils.IsBitSet(instruction, 21);
-                       if (accumulate)
-                       {
-                           currIns = "Mla";
-                       }
-                       else
-                       {
-                           currIns = "Mul";
-                       }
-                       this.ExecuteArmMultiply(instruction);
-                       ArmMultiply++;
-                       return;
-                   }
-
-                   if ((instruction & 0x0F8000F0) == 0x00800090)
-                   {
-                       var accumulate = BitUtils.IsBitSet(instruction, 21);
-                       var signed = BitUtils.IsBitSet(instruction, 22);
-                       currIns = (signed, accumulate) switch
-                       {
-                           (false, false) => "Umull",
-                           (false, true) => "Umlal",
-                           (true, false) => "Smull",
-                           (true, true) => "Smlal"
-                       };
-                       this.ExecuteArmMultiplyLong(instruction);
-                       ArmMultiplyLong++;
-                       return;
-                   }
-
-                   // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0001_0000_0000_0000_1001_0000
-                   if ((instruction & 0x0E100090) == 0x100090)
-                   {
-                       var opCode = (instruction >> 5) & 0b11;
-                       currIns = opCode switch
-                       {
-                           0b01 => "Ldrh",
-                           0b10 => "Ldrsb",
-                           0b11 => "Ldrsh",
-                           _ => currIns
-                       };
-                       // LDRH, LDRSB, LDRSH
-                       ExecuteHalfwordSignedDataLoad(instruction);
-                       ArmHalfwordSignedDataTransfer++;
-                       return;
-                   }
-
-                   // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0000_0000_0000_0000_1001_0000
-                   if ((instruction & 0x0E100090) == 0x90)
-                   {
-                       currIns = "Strh";
-                       // STRH
-                       ExecuteHalfwordDataStore(instruction);
-                       ArmHalfwordSignedDataTransfer++;
-                       return;
-                   }
-
-                   if ((instruction & 0x0FBF0FFF) == 0x010F0000)
-                   {
-                       currIns = "Mrs";
-                       //MRS
-                       ExecuteMrs(instruction);
-                       ArmMrs++;
-                       return;
-                   }
-
-                   //MSR
-                   if ((instruction & 0x0DB0F000) == 0x0120F000)
-                   {
-                       var immediate = BitUtils.IsBitSet(instruction, 25);
-                       if (immediate)
-                       {
-                           currIns = "MsrImm";
-                       }
-                       else
-                       {
-                           currIns = "Msr";
-                       }
-                       ExecuteMsr(instruction);
-                       ArmMsr++;
-                       return;
-                   }
-
-                   currIns = "data proc";
-                   ExecuteArmDataProcessing(instruction);
-                   ArmDataProc++;
-               }
-               finally
-               {
-                   uint decodeBits = ((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF);
-                   var x = ArmInstructionFetch[decodeBits];
-                   //Console.WriteLine(x.Method.Name);
-                   if (x.Method.Name != currIns)
-                   {
-                       if (currIns != "data proc")
-                       {
-                           Console.WriteLine($"New Method: {x.Method.Name}");
-                           Console.WriteLine($"Old Method: {currIns}");
-                           throw new DataException();
-                       }
-                   }
-               }
-       */
-
+        ArmInstructionDispatch[decodeBits](instruction);
     }
 
     private void StepThumb()
@@ -714,7 +499,19 @@ public sealed partial class Arm7Tdmi
         return result;
     }
 
-    private ExecuteArmInstruction ArmIns(uint instruction)
+    public ExecuteArmInstruction[] GenerateArmInstructionTable()
+    {
+        ExecuteArmInstruction[] table = new ExecuteArmInstruction[4096];
+        for (uint i = 0; i < 4096; i++)
+        {
+            uint opCode = ((i & 0xFF0) << 16) | ((i & 0xF) << 4);
+            table[i] = DecodeArmInstruction(opCode);
+        }
+
+        return table;
+    }
+
+    private ExecuteArmInstruction DecodeArmInstruction(uint instruction)
     {
         var bits27_25 = (instruction >> 25) & 0b111;
         if (bits27_25 == 0b111)
@@ -1052,5 +849,121 @@ public sealed partial class Arm7Tdmi
 
         return Illegal;
         //return "ILL";
+    }
+
+    public ExecuteThumbInstruction[] GenerateThumbInstructionTable()
+    {
+        ExecuteThumbInstruction[] table = new ExecuteThumbInstruction[1024];
+        for (ushort i = 0; i < 1024; i++)
+        {
+            ushort opCode = (ushort)(i << 6);
+            table[i] = DecodeThumbInstruction(opCode);
+        }
+
+        return table;
+    }
+
+    public ExecuteThumbInstruction DecodeThumbInstruction(ushort instruction)
+    {
+        var bits11_9 = (instruction >> 9) & 0b111;
+        var bits11_6 = (instruction >> 6) & 0x3f;
+        var bits12_11 = (instruction >> 11) & 0b11;
+        var topBits = (instruction >> 12) & 0xf; //bits 15-12
+        switch (topBits)
+        {
+            case 0b0000:
+            case 0b0001:
+                switch (bits12_11)
+                {
+                    case 0b00:
+                        break; //lsl 5bit imm
+                    case 0b01:
+                        break; //lsr 5bit imm
+                    case 0b10:
+                        break; //asr 5bit imm
+                    case 0b11:
+                        break; //add sub r or 3bit imm
+                }
+                break; //f1 f2
+            case 0b0010:
+            case 0b0011:
+                switch (bits12_11)
+                {
+                    case 0b00:
+                        break; //mov 8bit imm
+                    case 0b01:
+                        break; //cmp 8bit imm
+                    case 0b10:
+                        break; //add 8bit imm
+                    case 0b11:
+                        break; //sub 8bit imm
+                }
+                break; //f3
+            case 0b0100:
+                switch (bits11_6)
+                {
+                    case 0b000000:
+                        break; //and lo r pair
+                    case 0b000001:
+                        break; //eor lo r pair
+                    case 0b000010:
+                        break; //lsl lo r pair
+                    case 0b000011:
+                        break; //lsr lo r pair
+                    case 0b000100:
+                        break; //asr lo r pair
+                    case 0b000101:
+                        break; //adc lo r pair
+                    case 0b000110:
+                        break; //sbc lo r pair
+                    case 0b000111:
+                        break; //ror lo r pair
+                    case 0b001000:
+                        break; //tst lo r pair
+                    case 0b001001:
+                        break; //neg lo r pair
+                    case 0b001010:
+                        break; //cmp lo r pair
+                    case 0b001011:
+                        break; //cmn lo r pair
+                    case 0b001100:
+                        break; //orr lo r pair
+                    case 0b001101:
+                        break; //mul lo r pair
+                    case 0b001110:
+                        break; //bic lo r pair
+                    case 0b001111:
+                        break; //mvn lo r pair
+                    default:
+                        break; //f5 f6
+                }
+                break; //f4 f5 f6
+            case 0b0101:
+                switch (bits11_9)
+                {
+                    
+                }
+                break; //f7 f8
+            case 0b0110:
+            case 0b0111:
+                break; //f9
+            case 0b1000:
+                break; //f10
+            case 0b1001:
+                break; //f11
+            case 0b1010:
+                break; //f12
+            case 0b1011:
+                break; //f13 f14
+            case 0b1100:
+                break; //f15
+            case 0b1101:
+                break; //f16 f17
+            case 0b1110:
+                break; //f18
+            case 0b1111:
+                break; //f19
+        }
+        return default;
     }
 }
