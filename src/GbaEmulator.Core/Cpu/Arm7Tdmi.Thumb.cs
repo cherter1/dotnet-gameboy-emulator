@@ -64,7 +64,7 @@ public sealed partial class Arm7Tdmi
         Registers[rd] = result;
         UpdateNz(result);
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat2(ushort instruction)
@@ -95,7 +95,7 @@ public sealed partial class Arm7Tdmi
         UpdateArithmeticFlags(Registers[rs], operand2, result, opCode);
         Registers[rd] = result;
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat3(ushort instruction)
@@ -139,7 +139,7 @@ public sealed partial class Arm7Tdmi
                 throw new NotSupportedException("not a valid opCode for Thumb format 3");
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat4(ushort instruction)
@@ -277,7 +277,7 @@ public sealed partial class Arm7Tdmi
                 throw new NotSupportedException("not a valid opCode for Thumb format 4");
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat5(ushort instruction)
@@ -304,8 +304,8 @@ public sealed partial class Arm7Tdmi
                     Registers[rd] &= ~1u;
 
                     //refill pipeline adds 1S and 1N
-                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
-                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+                    _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+                    _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
                 }
 
                 break;
@@ -321,8 +321,8 @@ public sealed partial class Arm7Tdmi
                     Registers[rd] &= ~1u;
 
                     //refill pipeline adds 1S and 1N
-                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
-                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+                    _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+                    _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
                 }
 
                 break;
@@ -336,14 +336,14 @@ public sealed partial class Arm7Tdmi
                 target &= setThumb ? ~1u : ~3u;
                 Registers.ProgramCounter = target;
 
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter,
+                _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter,
                     setThumb ? AccessWidth.Halfword : AccessWidth.Word, sequential: false); //N
-                _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter,
+                _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter,
                     setThumb ? AccessWidth.Halfword : AccessWidth.Word, sequential: true) * 2; //2S
                 return;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
     }
 
     private void ExecuteThumbFormat6(ushort instruction)
@@ -358,11 +358,11 @@ public sealed partial class Arm7Tdmi
         var offset = (instruction & 0xFF) << 2;
         var pc = (Registers.ProgramCounter + 2) & ~3u;
         var address = pc + (uint)offset;
-        Registers[rd] = bus.Read32(address);
+        Registers[rd] = _bus.Read32(address);
 
-        _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false); //N
+        _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false); //N
         _cycles++; //I
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
     }
 
     private void ExecuteThumbFormat7(ushort instruction)
@@ -384,35 +384,35 @@ public sealed partial class Arm7Tdmi
         {
             if (byteTransfer)
             {
-                Registers[rd] = bus.Read8(effectiveAddress);
+                Registers[rd] = _bus.Read8(effectiveAddress);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
             }
             else
             {
-                Registers[rd] = bus.Read32(effectiveAddress);
+                Registers[rd] = _bus.Read32(effectiveAddress);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
             }
 
             _cycles++; //I
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
         }
         else //STR
         {
             if (byteTransfer)
             {
-                bus.Write8(effectiveAddress, (byte)Registers[rd]);
+                _bus.Write8(effectiveAddress, (byte)Registers[rd]);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
             }
             else
             {
-                bus.Write32(effectiveAddress, Registers[rd]);
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+                _bus.Write32(effectiveAddress, Registers[rd]);
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
             }
 
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false); //N
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false); //N
         }
     }
 
@@ -433,19 +433,19 @@ public sealed partial class Arm7Tdmi
         switch (opCode)
         {
             case 0b00: //STRH
-                bus.Write16(effectiveAddress, (ushort)Registers[rd]);
+                _bus.Write16(effectiveAddress, (ushort)Registers[rd]);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false);
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false);
                 break;
             case 0b01: //LDSB
-                var loadedByte = bus.Read8(effectiveAddress);
+                var loadedByte = _bus.Read8(effectiveAddress);
                 Registers[rd] = (uint)BitUtils.SignExtend(loadedByte, 8);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
                 _cycles++; //I
                 break;
             case 0b10: //LDRH
-                uint value = bus.Read16(effectiveAddress);
+                uint value = _bus.Read16(effectiveAddress);
                 if ((effectiveAddress & 1) != 0)
                 {
                     value = BitOperations.RotateRight(value, 8);
@@ -453,11 +453,11 @@ public sealed partial class Arm7Tdmi
 
                 Registers[rd] = value;
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
                 _cycles++; //I
                 break;
             case 0b11: //LDSH
-                var loadedHalfword = bus.Read16(effectiveAddress);
+                var loadedHalfword = _bus.Read16(effectiveAddress);
                 if ((effectiveAddress & 1) != 0)
                 {
                     Registers[rd] = (uint)BitUtils.SignExtend((loadedHalfword >> 8) & 0xff, 8);
@@ -467,14 +467,14 @@ public sealed partial class Arm7Tdmi
                     Registers[rd] = (uint)BitUtils.SignExtend(loadedHalfword, 16);
                 }
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
                 _cycles++; //I
                 break;
             default:
                 throw new NotSupportedException("not a valid opCode for Thumb format 8");
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: opCode != 0); //N for store else S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: opCode != 0); //N for store else S
     }
 
     private void ExecuteThumbFormat9(ushort instruction)
@@ -498,30 +498,30 @@ public sealed partial class Arm7Tdmi
         switch (opCode)
         {
             case 0b00: //STR
-                bus.Write32(effectiveAddress, Registers[rd]);
+                _bus.Write32(effectiveAddress, Registers[rd]);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
                 break;
             case 0b01: //LDR
-                Registers[rd] = bus.Read32(effectiveAddress);
+                Registers[rd] = _bus.Read32(effectiveAddress);
 
                 _cycles++; //I
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
                 break;
             case 0b10: //STRB
-                bus.Write8(effectiveAddress, (byte)Registers[rd]);
+                _bus.Write8(effectiveAddress, (byte)Registers[rd]);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
                 break;
             case 0b11: //LDRB
-                Registers[rd] = bus.Read8(effectiveAddress);
+                Registers[rd] = _bus.Read8(effectiveAddress);
 
                 _cycles++; //I
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N
                 break;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: opCode is 0b01 or 0b11); //N for store else S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: opCode is 0b01 or 0b11); //N for store else S
     }
 
     private void ExecuteThumbFormat10(ushort instruction)
@@ -540,7 +540,7 @@ public sealed partial class Arm7Tdmi
 
         if (isLoad) //LDRH
         {
-            uint value = bus.Read16(effectiveAddress);
+            uint value = _bus.Read16(effectiveAddress);
             if ((effectiveAddress & 1) != 0)
             {
                 value = BitOperations.RotateRight(value, 8);
@@ -552,11 +552,11 @@ public sealed partial class Arm7Tdmi
         }
         else //STRH
         {
-            bus.Write16(effectiveAddress, (ushort)Registers[rd]);
+            _bus.Write16(effectiveAddress, (ushort)Registers[rd]);
         }
 
-        _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad); //N for store else S
+        _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad); //N for store else S
     }
 
     private void ExecuteThumbFormat11(ushort instruction)
@@ -574,19 +574,19 @@ public sealed partial class Arm7Tdmi
 
         if (isLoad) //LDR
         {
-            Registers[rd] = bus.Read32(effectiveAddress);
+            Registers[rd] = _bus.Read32(effectiveAddress);
 
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+            _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
             _cycles++; //I
         }
         else //STR
         {
-            bus.Write32(effectiveAddress, Registers[rd]);
+            _bus.Write32(effectiveAddress, Registers[rd]);
 
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
+            _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad); //N for STR else S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad); //N for STR else S
     }
 
     private void ExecuteThumbFormat12(ushort instruction)
@@ -606,7 +606,7 @@ public sealed partial class Arm7Tdmi
 
         Registers[rd] = operand1 + (uint)immediate;
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
     }
 
     private void ExecuteThumbFormat13(ushort instruction)
@@ -629,7 +629,7 @@ public sealed partial class Arm7Tdmi
             Registers[13] = Registers.StackPointer + (uint)imm;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
     }
 
     private void ExecuteThumbFormat14(ushort instruction)
@@ -651,8 +651,8 @@ public sealed partial class Arm7Tdmi
 
                 Registers[13] -= 4;
                 var register = Registers[reg];
-                bus.Write32(Registers.StackPointer, reg == 8 ? Registers.LinkRegister : register);
-                _cycles += bus.GetCpuAccessCycles(Registers.StackPointer, AccessWidth.Halfword, sequential: BitOperations.TrailingZeroCount(instruction) != reg);
+                _bus.Write32(Registers.StackPointer, reg == 8 ? Registers.LinkRegister : register);
+                _cycles += _bus.GetCpuAccessCycles(Registers.StackPointer, AccessWidth.Halfword, sequential: BitOperations.TrailingZeroCount(instruction) != reg);
             }
         }
         else
@@ -663,9 +663,9 @@ public sealed partial class Arm7Tdmi
                 if (!shouldTransfer)
                     continue;
 
-                var result = bus.Read32(Registers.StackPointer & ~3u);
+                var result = _bus.Read32(Registers.StackPointer & ~3u);
 
-                _cycles += bus.GetCpuAccessCycles(Registers.StackPointer, AccessWidth.Halfword,
+                _cycles += _bus.GetCpuAccessCycles(Registers.StackPointer, AccessWidth.Halfword,
                     sequential: BitOperations.TrailingZeroCount(instruction) != reg);
 
                 if (reg == 8)
@@ -673,8 +673,8 @@ public sealed partial class Arm7Tdmi
                     Registers[15] = result & ~1u;
 
                     //refill pipeline
-                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false); //N
-                    _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
+                    _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false); //N
+                    _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true); //S
                 }
                 else
                 {
@@ -684,7 +684,7 @@ public sealed partial class Arm7Tdmi
             }
             _cycles++; //I
         }
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: !isPush);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: !isPush);
     }
 
     private void ExecuteThumbFormat15(ushort instruction)
@@ -706,14 +706,14 @@ public sealed partial class Arm7Tdmi
             Registers[rb] += 0x40;
             if (isLoad)
             {
-                Registers[15] = bus.Read32(address & ~3u);
+                Registers[15] = _bus.Read32(address & ~3u);
             }
             else
             {
-                bus.Write32(address, Registers[15] + 4);
+                _bus.Write32(address, Registers[15] + 4);
             }
 
-            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false);
             return;
         }
 
@@ -725,20 +725,20 @@ public sealed partial class Arm7Tdmi
 
             if (isLoad) //LDMIA
             {
-                Registers[reg] = bus.Read32(address);
-                _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
+                Registers[reg] = _bus.Read32(address);
+                _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
             }
             else //STMIA
             {
                 if (reg == rb && reg != BitOperations.TrailingZeroCount(instruction))
                 {
-                    bus.Write32(address, finalAddress);
-                    _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
+                    _bus.Write32(address, finalAddress);
+                    _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
                 }
                 else
                 {
-                    bus.Write32(address, Registers[reg]);
-                    _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
+                    _bus.Write32(address, Registers[reg]);
+                    _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: reg != BitOperations.TrailingZeroCount(instruction));
                 }
             }
 
@@ -752,7 +752,7 @@ public sealed partial class Arm7Tdmi
             Registers[rb] = finalAddress;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: isLoad);
     }
 
     private void ExecuteThumbFormat16(ushort instruction)
@@ -767,7 +767,7 @@ public sealed partial class Arm7Tdmi
         if (!ConditionPassed((Condition)cond))
         {
             //1S cycle for unmet conditions
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true);
             return;
         }
 
@@ -776,8 +776,8 @@ public sealed partial class Arm7Tdmi
         Registers.ProgramCounter = (uint)(Registers.ProgramCounter + 2 + offset);
 
         //refill pipeline
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true) * 2; //2S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true) * 2; //2S
     }
 
     private void ExecuteThumbFormat17(ushort instruction)
@@ -801,8 +801,8 @@ public sealed partial class Arm7Tdmi
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
     }
 
     private void ExecuteThumbFormat18(ushort instruction)
@@ -816,8 +816,8 @@ public sealed partial class Arm7Tdmi
         var offset = BitUtils.SignExtend((instruction & 0x7FF) << 1, 12);
         Registers.ProgramCounter = (Registers.ProgramCounter + 2) + (uint)offset;
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true) * 2;
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: false);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Halfword, sequential: true) * 2;
     }
 
     private void ExecuteThumbFormat19(ushort instruction)

@@ -26,8 +26,8 @@ public sealed partial class Arm7Tdmi
         Registers.ProgramCounter = (uint)(pc + 4 + offset);
 
         //2S + 1N cycles basically 1S and FlushingPipeline
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //1N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //1N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S
     }
 
     private void ExecuteBlockDataTransfer(uint instruction)
@@ -73,14 +73,14 @@ public sealed partial class Arm7Tdmi
 
             if (isLoad)
             {
-                Registers[15] = bus.Read32(startAddress & ~3u);
+                Registers[15] = _bus.Read32(startAddress & ~3u);
             }
             else
             {
-                bus.Write32(startAddress, Registers[15] + 8);
+                _bus.Write32(startAddress, Registers[15] + 8);
             }
 
-            _cycles += bus.GetCpuAccessCycles(startAddress, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(startAddress, AccessWidth.Word, sequential: false);
             return;
         }
 
@@ -101,7 +101,7 @@ public sealed partial class Arm7Tdmi
 
             if (isLoad)
             {
-                uint value = bus.Read32(address & ~3u);
+                uint value = _bus.Read32(address & ~3u);
 
                 if (tReg == 15)
                 {
@@ -117,18 +117,18 @@ public sealed partial class Arm7Tdmi
             {
                 if (tReg == rn && tReg != BitOperations.TrailingZeroCount(instruction))
                 {
-                    bus.Write32(address, finalAddress);
+                    _bus.Write32(address, finalAddress);
                 }
                 else
                 {
                     uint value = tReg == 15
                         ? Registers.ProgramCounter + 8
                         : Registers[tReg];
-                    bus.Write32(address, value);
+                    _bus.Write32(address, value);
                 }
             }
 
-            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word,
+            _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word,
                 sequential: tReg != BitOperations.TrailingZeroCount(instruction)); //First transfer N, the rest are S
 
             address += 4;
@@ -148,11 +148,11 @@ public sealed partial class Arm7Tdmi
         if (isLoad && BitUtils.IsBitSet(instruction, 15))
         {
             //ldm refill pipeline if r15 in rList
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: isLoad);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: isLoad);
     }
 
     private void ExecuteSingleDataLoad(uint instruction)
@@ -187,13 +187,13 @@ public sealed partial class Arm7Tdmi
 
         if (byteTransfer)
         {
-            loadedWord = bus.Read8(effectiveAddress);
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
+            loadedWord = _bus.Read8(effectiveAddress);
+            _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
         }
         else
         {
-            loadedWord = bus.Read32(effectiveAddress);
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
+            loadedWord = _bus.Read32(effectiveAddress);
+            _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
         }
 
         if (!preIndex)
@@ -213,12 +213,12 @@ public sealed partial class Arm7Tdmi
         if (destinationRegister == 15)
         {
             //if LDR PC add another 1S and 1N for pipeline refill
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2;
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2;
             return;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //LDR S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //LDR S
     }
 
     private void ExecuteSingleDataStore(uint instruction)
@@ -255,15 +255,15 @@ public sealed partial class Arm7Tdmi
 
         if (byteTransfer)
         {
-            bus.Write8(effectiveAddress, (byte)writeValue);
+            _bus.Write8(effectiveAddress, (byte)writeValue);
 
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
+            _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //STR N
         }
         else
         {
-            bus.Write32(effectiveAddress, writeValue);
+            _bus.Write32(effectiveAddress, writeValue);
 
-            _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
+            _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //STR N
         }
 
         if (!preIndex)
@@ -275,7 +275,7 @@ public sealed partial class Arm7Tdmi
             Registers[baseRegister] = effectiveAddress;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //STR N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //STR N
     }
 
     private void ExecuteSoftwareInterrupt(uint instruction)
@@ -301,8 +301,8 @@ public sealed partial class Arm7Tdmi
         Registers[14] = Registers.ProgramCounter;
         Registers.ProgramCounter = 0x8; //vector address 0x8
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
 
         var functionVector = comment >> 16;
         if (functionVector == 0x6)
@@ -343,8 +343,8 @@ public sealed partial class Arm7Tdmi
         Registers.ProgramCounter = target;
 
         //2S + 1N cycles basically 1S and FlushingPipeline
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //1N
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //2S
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //1N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //2S
     }
 
     private void ExecuteArmSingleDataSwap(uint instruction)
@@ -363,23 +363,23 @@ public sealed partial class Arm7Tdmi
         var address = Registers[rn];
         if (byteSwap)
         {
-            var temp = bus.Read8(address);
-            bus.Write8(address, (byte)(Registers[rm] & 0xFF));
+            var temp = _bus.Read8(address);
+            _bus.Write8(address, (byte)(Registers[rm] & 0xFF));
             Registers[rd] = temp;
 
-            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Byte, sequential: false) * 2; //2N cycles
+            _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Byte, sequential: false) * 2; //2N cycles
         }
         else
         {
-            var temp = bus.Read32(address);
-            bus.Write32(address, Registers[rm]);
+            var temp = _bus.Read32(address);
+            _bus.Write32(address, Registers[rm]);
             Registers[rd] = temp;
 
-            _cycles += bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false) * 2; //2N cycles
+            _cycles += _bus.GetCpuAccessCycles(address, AccessWidth.Word, sequential: false) * 2; //2N cycles
         }
 
         _cycles++; //I
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //1S cycle
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //1S cycle
     }
 
     private void ExecuteArmMultiply(uint instruction)
@@ -419,7 +419,7 @@ public sealed partial class Arm7Tdmi
 
         // 1S + mI cycles or if accumulate 1S + (m + 1)I cycles
         _cycles += bitMultiplier; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private static int GetMultiplierArrayCycles(uint multiplierOperand, bool unSigned)
@@ -524,7 +524,7 @@ public sealed partial class Arm7Tdmi
 
         //1S + (m+1)I cycles unless accumulate then 1S + (m+2)I cycles
         _cycles += bitMultiplier; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void ExecuteHalfwordSignedDataLoad(uint instruction)
@@ -565,27 +565,27 @@ public sealed partial class Arm7Tdmi
             case 0b00: //reserved for swp
                 throw new NotSupportedException("opcode 0b00 should be reserved for a SWP instruction");
             case 0b01: //unsigned halfword
-                loadedValue = bus.Read16(effectiveAddress);
+                loadedValue = _bus.Read16(effectiveAddress);
                 loadedValue = BitOperations.RotateRight(loadedValue, (int)((effectiveAddress & 1u) * 8));
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
                 break;
             case 0b10: //signed byte
-                loadedValue = (uint)(sbyte)bus.Read8(effectiveAddress);
+                loadedValue = (uint)(sbyte)_bus.Read8(effectiveAddress);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N cycle
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Byte, sequential: false); //N cycle
                 break;
             case 0b11: //signed halfword
-                var rawHalfword = bus.Read16(effectiveAddress);
+                var rawHalfword = _bus.Read16(effectiveAddress);
                 if ((effectiveAddress & 1) != 0)
                 {
                     loadedValue = (uint)BitUtils.SignExtend((rawHalfword >> 8) & 0xff, 8);
-                    _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
+                    _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
                     break;
                 }
                 loadedValue = (uint)BitUtils.SignExtend(rawHalfword, 16);
 
-                _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
+                _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Halfword, sequential: false); //N cycle
                 break;
             default:
                 throw new NotSupportedException("not a possible opcode for this singed/halfword data transfer");
@@ -602,12 +602,12 @@ public sealed partial class Arm7Tdmi
             Registers.ProgramCounter = loadedValue & ~3u;
 
             //refill pipeline
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N cycle
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
         }
 
         _cycles++; //I cycle
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true); //S cycle
     }
 
     private void ExecuteHalfwordDataStore(uint instruction)
@@ -649,14 +649,14 @@ public sealed partial class Arm7Tdmi
         uint value = rd == 15
             ? Registers.ProgramCounter + 4
             : Registers[rd];
-        bus.Write16(effectiveAddress, (ushort)value);
-        _cycles += bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N cycle
+        _bus.Write16(effectiveAddress, (ushort)value);
+        _cycles += _bus.GetCpuAccessCycles(effectiveAddress, AccessWidth.Word, sequential: false); //N cycle
 
         if (isPreIndex && isWriteback || !isPreIndex)
         {
             Registers[rn] = updatedAddress;
         }
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //STR N
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //STR N
     }
 
     private void ExecuteMrs(uint instruction)
@@ -674,7 +674,7 @@ public sealed partial class Arm7Tdmi
         Registers[rd] = statusReg;
 
         //1S cycle
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void ExecuteMsr(uint instruction)
@@ -720,7 +720,7 @@ public sealed partial class Arm7Tdmi
         }
 
         //1S cycle
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void ExecuteArmDataProcessing(uint instruction)
@@ -924,8 +924,8 @@ public sealed partial class Arm7Tdmi
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
         if (!immediate && BitUtils.IsBitSet(instruction, 4))
@@ -934,6 +934,6 @@ public sealed partial class Arm7Tdmi
             _cycles += 1;
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 }

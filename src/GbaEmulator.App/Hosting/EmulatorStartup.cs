@@ -24,10 +24,6 @@ public sealed class EmulatorStartup
             ? $"GBA Emulator - {romTitle}"
             : "GBA Emulator";
 
-        foreach (var ins in Arm7Tdmi.ArmInstructionFetch)
-        {
-            //Console.WriteLine(ins);
-        }
         return new EmulatorStartup
         {
             Machine = machine,

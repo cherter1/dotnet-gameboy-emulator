@@ -438,149 +438,133 @@ public sealed partial class CpuOpt(BusOpt bus, InterruptController interrupts)
             return;
         }
 
-        try
+        var bits27_25 = (instruction >> 25) & 0b111;
+
+        if (bits27_25 == 0b101)
         {
-            var bits27_25 = (instruction >> 25) & 0b111;
-
-            if (bits27_25 == 0b101)
-            {
-                currIns = "B BL";
-                // B, BL
-                ExecuteArmBranch(instruction);
-                ArmBranch++;
-                return;
-            }
-
-            if (bits27_25 == 0b100)
-            {
-                currIns = "LDM STM";
-                // LDM, STM
-                ArmBlockDataTransfer++;
-                ExecuteBlockDataTransfer(instruction);
-                return;
-            }
-
-            // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
-            if ((instruction & 0xc100000) == 0x4100000) //bit 20 set is load
-            {
-                currIns = "LDR";
-                // LDR
-                ArmSingleDataTransfer++;
-                ExecuteSingleDataLoad(instruction);
-                return;
-            }
-
-            // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0000_0000_0000_0000_0000_0000
-            if ((instruction & 0xc100000) == 0x4000000) //bit 20 not set is store
-            {
-                currIns = "STR";
-                // STR
-                ArmSingleDataTransfer++;
-                ExecuteSingleDataStore(instruction);
-                return;
-            }
-
-            if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
-            {
-                currIns = "SWI";
-                ArmSwi++;
-                ExecuteSoftwareInterrupt(instruction);
-                return;
-            }
-
-            if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
-            {
-                currIns = "BX";
-                // BX
-                ExecuteArmBranchExchange(instruction);
-                ArmBranchExchange++;
-                return;
-            }
-
-            //equivalent mask
-            //((instruction & 0x0FB00FF0) == 0x01000090)
-            if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
-                ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
-                ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
-            {
-                currIns = "SWP SWPB";
-                // SWP, SWPB
-                ExecuteArmSingleDataSwap(instruction);
-                ArmSingleDataSwap++;
-                return;
-            }
-
-            if ((instruction & 0x0FC000F0) == 0x00000090)
-            {
-                currIns = "mult";
-                this.ExecuteArmMultiply(instruction);
-                ArmMultiply++;
-                return;
-            }
-
-            if ((instruction & 0x0F8000F0) == 0x00800090)
-            {
-                currIns = "mult long";
-                this.ExecuteArmMultiplyLong(instruction);
-                ArmMultiplyLong++;
-                return;
-            }
-
-            // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0001_0000_0000_0000_1001_0000
-            if ((instruction & 0x0E100090) == 0x100090)
-            {
-                currIns = "LDRH LDRSB LDRSH";
-                // LDRH, LDRSB, LDRSH
-                ExecuteHalfwordSignedDataLoad(instruction);
-                ArmHalfwordSignedDataTransfer++;
-                return;
-            }
-
-            // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0000_0000_0000_0000_1001_0000
-            if ((instruction & 0x0E100090) == 0x90)
-            {
-                currIns = "STRH";
-                // STRH
-                ExecuteHalfwordDataStore(instruction);
-                ArmHalfwordSignedDataTransfer++;
-                return;
-            }
-
-            if ((instruction & 0x0FBF0FFF) == 0x010F0000)
-            {
-                currIns = "MRS";
-                //MRS
-                ExecuteMrs(instruction);
-                ArmMrs++;
-                return;
-            }
-
-            //MSR
-            if ((instruction & 0x0DB0F000) == 0x0120F000)
-            {
-                currIns = "MSR";
-                ExecuteMsr(instruction);
-                ArmMsr++;
-                return;
-            }
-
-            currIns = "data proc";
-            ExecuteArmDataProcessing(instruction);
-            ArmDataProc++;
+            currIns = "B BL";
+            // B, BL
+            ExecuteArmBranch(instruction);
+            ArmBranch++;
+            return;
         }
-        finally
+
+        if (bits27_25 == 0b100)
         {
-            uint decodeBits = ((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF);
-            var newIns = ArmInstructionFetch[decodeBits];
-            if (currIns != newIns)
-            {
-                Console.WriteLine($"instruction: {instruction:x8}");
-                Console.WriteLine($"condition failed: {condFailed}");
-                Console.WriteLine($"current instruction fam: {currIns}");
-                Console.WriteLine($"new instruction fam: {newIns}");
-                throw new DataException();
-            }
+            currIns = "LDM STM";
+            // LDM, STM
+            ArmBlockDataTransfer++;
+            ExecuteBlockDataTransfer(instruction);
+            return;
         }
+
+        // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0001_0000_0000_0000_0000_0000
+        if ((instruction & 0xc100000) == 0x4100000) //bit 20 set is load
+        {
+            currIns = "LDR";
+            // LDR
+            ArmSingleDataTransfer++;
+            ExecuteSingleDataLoad(instruction);
+            return;
+        }
+
+        // 0000_1100_0001_0000_0000_0000_0000_0000 == 0000_0100_0000_0000_0000_0000_0000_0000
+        if ((instruction & 0xc100000) == 0x4000000) //bit 20 not set is store
+        {
+            currIns = "STR";
+            // STR
+            ArmSingleDataTransfer++;
+            ExecuteSingleDataStore(instruction);
+            return;
+        }
+
+        if ((instruction & 0x0F000000) == 0x0F000000) //bits 27-8 == 0b1111
+        {
+            currIns = "SWI";
+            ArmSwi++;
+            ExecuteSoftwareInterrupt(instruction);
+            return;
+        }
+
+        if ((instruction & 0x0FFFFFF0) == 0x012FFF10) //bits 27-8 == 0001_0010_1111_1111_1111
+        {
+            currIns = "BX";
+            // BX
+            ExecuteArmBranchExchange(instruction);
+            ArmBranchExchange++;
+            return;
+        }
+
+        //equivalent mask
+        //((instruction & 0x0FB00FF0) == 0x01000090)
+        if (((instruction >> 23) & 0x1F) == 0x2 && //bits 27-23 == 0b00010
+            ((instruction >> 20) & 0x3) == 0x0 && //bits 21-20 == 0b00
+            ((instruction >> 4) & 0xFF) == 0x9) //bits 11-4 == 0000_1001
+        {
+            currIns = "SWP SWPB";
+            // SWP, SWPB
+            ExecuteArmSingleDataSwap(instruction);
+            ArmSingleDataSwap++;
+            return;
+        }
+
+        if ((instruction & 0x0FC000F0) == 0x00000090)
+        {
+            currIns = "mult";
+            this.ExecuteArmMultiply(instruction);
+            ArmMultiply++;
+            return;
+        }
+
+        if ((instruction & 0x0F8000F0) == 0x00800090)
+        {
+            currIns = "mult long";
+            this.ExecuteArmMultiplyLong(instruction);
+            ArmMultiplyLong++;
+            return;
+        }
+
+        // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0001_0000_0000_0000_1001_0000
+        if ((instruction & 0x0E100090) == 0x100090)
+        {
+            currIns = "LDRH LDRSB LDRSH";
+            // LDRH, LDRSB, LDRSH
+            ExecuteHalfwordSignedDataLoad(instruction);
+            ArmHalfwordSignedDataTransfer++;
+            return;
+        }
+
+        // 0000_1110_0001_0000_0000_0000_1001_0000 == 0000_0000_0000_0000_0000_0000_1001_0000
+        if ((instruction & 0x0E100090) == 0x90)
+        {
+            currIns = "STRH";
+            // STRH
+            ExecuteHalfwordDataStore(instruction);
+            ArmHalfwordSignedDataTransfer++;
+            return;
+        }
+
+        if ((instruction & 0x0FBF0FFF) == 0x010F0000)
+        {
+            currIns = "MRS";
+            //MRS
+            ExecuteMrs(instruction);
+            ArmMrs++;
+            return;
+        }
+
+        //MSR
+        if ((instruction & 0x0DB0F000) == 0x0120F000)
+        {
+            currIns = "MSR";
+            ExecuteMsr(instruction);
+            ArmMsr++;
+            return;
+        }
+
+        currIns = "data proc";
+        ExecuteArmDataProcessing(instruction);
+        ArmDataProc++;
     }
 
     private void StepThumb()

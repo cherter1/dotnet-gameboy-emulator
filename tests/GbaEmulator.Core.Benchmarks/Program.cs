@@ -9,15 +9,15 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        //BenchmarkRunner.Run<ArmHalfwordLoadBenchmark>();
+        BenchmarkRunner.Run<ArmHalfwordLoadBenchmark>();
 
-        var armb = new ArmAluBenchmarks();
-        armb.Setup();
-        var unique = CpuOpt.ArmInstructionFetch.Distinct();
-        foreach (var instruction in unique)
-        {
-            Console.WriteLine(instruction);
-        }
+        //var armb = new ArmAluBenchmarks();
+        //armb.Setup();
+        //var unique = CpuOpt.ArmInstructionFetch.Distinct();
+        //foreach (var instruction in unique)
+        //{
+            //Console.WriteLine(instruction);
+        //}
         //armb.Opt_StepArm_AndWithRotate();
         //armb.StepArm_AndWithRotate();
         //Console.WriteLine(armb._cpu.Registers[3]);

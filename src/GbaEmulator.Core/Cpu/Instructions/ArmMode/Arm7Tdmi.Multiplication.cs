@@ -2,7 +2,7 @@ using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Cpu;
 
-public sealed partial class CpuOpt
+public sealed partial class Arm7Tdmi
 {
     /* MULTIPLICATION INSTRUCTION ENCODINGS
 
@@ -31,7 +31,7 @@ public sealed partial class CpuOpt
 
         // 1S + mI cycles
         _cycles += GetMultiplierArrayCycles(multiplierOp, false); //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void Mla(uint instruction)
@@ -54,7 +54,7 @@ public sealed partial class CpuOpt
 
         // 1S + (m + 1)I cycles
         _cycles += GetMultiplierArrayCycles(multiplierOp, false) + 1; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void Umull(uint instruction)
@@ -79,7 +79,7 @@ public sealed partial class CpuOpt
 
         // 1S + (m + 1)I cycles
         _cycles += GetMultiplierArrayCycles(multiplierOp, true) + 1; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void Umlal(uint instruction)
@@ -106,7 +106,7 @@ public sealed partial class CpuOpt
 
         //1S + (m+2)I cycles
         _cycles += GetMultiplierArrayCycles(multiplierOp, true) + 2; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void Smull(uint instruction)
@@ -131,7 +131,7 @@ public sealed partial class CpuOpt
 
         // 1S + (m + 1)I cycles
         _cycles += GetMultiplierArrayCycles(multiplierOp, false) + 1; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 
     private void Smlal(uint instruction)
@@ -158,6 +158,6 @@ public sealed partial class CpuOpt
 
         //1S + (m+2)I cycles
         _cycles += GetMultiplierArrayCycles(multiplierOp, false) + 2; //I cycles
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, true); //S cycles
     }
 }

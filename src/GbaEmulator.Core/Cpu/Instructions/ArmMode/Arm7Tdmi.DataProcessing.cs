@@ -2,7 +2,7 @@ using GbaEmulator.Core.Memory;
 
 namespace GbaEmulator.Core.Cpu;
 
-public sealed partial class CpuOpt
+public sealed partial class Arm7Tdmi
 {
     /* DATA PROCESSING INSTRUCTION ENCODINGS
 
@@ -38,13 +38,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void AndImm(uint instruction)
@@ -70,11 +70,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Eor(uint instruction)
@@ -101,13 +101,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void EorImm(uint instruction)
@@ -133,11 +133,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Sub(uint instruction)
@@ -170,13 +170,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void SubImm(uint instruction)
@@ -208,11 +208,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Rsb(uint instruction)
@@ -236,13 +236,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void RsbImm(uint instruction)
@@ -264,11 +264,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Add(uint instruction)
@@ -292,13 +292,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void AddImm(uint instruction)
@@ -320,11 +320,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Adc(uint instruction)
@@ -355,13 +355,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void AdcImm(uint instruction)
@@ -390,11 +390,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Sbc(uint instruction)
@@ -425,13 +425,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void SbcImm(uint instruction)
@@ -460,11 +460,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Rsc(uint instruction)
@@ -495,13 +495,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void RscImm(uint instruction)
@@ -530,11 +530,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Tst(uint instruction)
@@ -550,7 +550,6 @@ public sealed partial class CpuOpt
         var op2 = ComputeShiftedRegisterOperand(instruction, out var carryOut);
 
         var result = op1 & op2; //TST
-        Registers[rd] = result;
 
         UpdateNz(result);
         Registers.Cpsr.Carry = carryOut;
@@ -558,13 +557,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void TstImm(uint instruction)
@@ -578,7 +577,6 @@ public sealed partial class CpuOpt
         var op2 = DecodeImmediateOperand(instruction, out var carryOut);
 
         var result = op1 & op2; //TST
-        Registers[rd] = result;
 
         UpdateNz(result);
         Registers.Cpsr.Carry = carryOut;
@@ -586,11 +584,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Teq(uint instruction)
@@ -606,7 +604,6 @@ public sealed partial class CpuOpt
         var op2 = ComputeShiftedRegisterOperand(instruction, out var carryOut);
 
         var result = op1 ^ op2; //TEQ
-        Registers[rd] = result;
 
         UpdateNz(result);
         Registers.Cpsr.Carry = carryOut;
@@ -614,13 +611,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void TeqImm(uint instruction)
@@ -634,7 +631,6 @@ public sealed partial class CpuOpt
         var op2 = DecodeImmediateOperand(instruction, out var carryOut);
 
         var result = op1 ^ op2; //TEQ
-        Registers[rd] = result;
 
         UpdateNz(result);
         Registers.Cpsr.Carry = carryOut;
@@ -642,11 +638,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Cmp(uint instruction)
@@ -662,7 +658,6 @@ public sealed partial class CpuOpt
         var op2 = ComputeShiftedRegisterOperand(instruction, out _);
 
         var result = op1 - op2; //CMP
-        Registers[rd] = result;
 
         UpdateArithmeticFlags(op1, op2, result, subtraction: true);
 
@@ -675,13 +670,13 @@ public sealed partial class CpuOpt
             }
 
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void CmpImm(uint instruction)
@@ -695,7 +690,6 @@ public sealed partial class CpuOpt
         var op2 = DecodeImmediateOperand(instruction, out _);
 
         var result = op1 - op2; //CMP
-        Registers[rd] = result;
 
         UpdateArithmeticFlags(op1, op2, result, subtraction: true);
 
@@ -708,11 +702,11 @@ public sealed partial class CpuOpt
             }
 
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Cmn(uint instruction)
@@ -728,20 +722,19 @@ public sealed partial class CpuOpt
         var op2 = ComputeShiftedRegisterOperand(instruction, out _);
 
         var result = op1 + op2; //CMN
-        Registers[rd] = result;
 
         UpdateArithmeticFlags(op1, op2, result, subtraction: false);
 
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void CmnImm(uint instruction)
@@ -755,18 +748,17 @@ public sealed partial class CpuOpt
         var op2 = DecodeImmediateOperand(instruction, out _);
 
         var result = op1 + op2; //CMN
-        Registers[rd] = result;
 
         UpdateArithmeticFlags(op1, op2, result, subtraction: false);
 
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Orr(uint instruction)
@@ -794,13 +786,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void OrrImm(uint instruction)
@@ -826,11 +818,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Mov(uint instruction)
@@ -856,13 +848,13 @@ public sealed partial class CpuOpt
                 //TODO mode
             }
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void MovImm(uint instruction)
@@ -888,11 +880,11 @@ public sealed partial class CpuOpt
                 //TODO mode
             }
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Bic(uint instruction)
@@ -920,13 +912,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void BicImm(uint instruction)
@@ -952,11 +944,11 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void Mvn(uint instruction)
@@ -978,13 +970,13 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
         //if shift by register value amount, add I cycle
         if ((instruction & 0x10) != 0) _cycles += 1; //I cycle
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 
     private void MvnImm(uint instruction)
@@ -1006,10 +998,10 @@ public sealed partial class CpuOpt
         if (rd == 15)
         {
             //simulates pipeline flush adding extra cycle S cycle and N cycle
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
-            _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false);
+            _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
         }
 
-        _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
+        _cycles += _bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true);
     }
 }
