@@ -26,6 +26,7 @@ public sealed partial class Arm7Tdmi
         _bus = bus;
         _interrupts = interrupts;
         ArmInstructionDispatch = GenerateArmInstructionTable();
+        ThumbInstructionDispatch = GenerateThumbInstructionTable();
     }
 
     public void Reset(bool skipBios)
@@ -161,6 +162,9 @@ public sealed partial class Arm7Tdmi
         var instruction = _bus.Read16(instructionAddress);
         Registers.ProgramCounter = instructionAddress + 2;
 
+        var decodeBits = instruction >> 6;
+        ThumbInstructionDispatch[decodeBits](instruction);
+/*
         if ((instruction & 0xE000) == 0) //bits 15-13 == 0
         {
             if ((instruction >> 11) == 0b11)
@@ -311,6 +315,7 @@ public sealed partial class Arm7Tdmi
         }
 
         throw new NotSupportedException($"THUMB instruction could not be decoded instruction: {instruction:x4}");
+        */
     }
 
     private uint DecodeImmediateOperand(uint instruction, out bool carryOut)
@@ -876,86 +881,80 @@ public sealed partial class Arm7Tdmi
                 switch (bits12_11)
                 {
                     case 0b00:
-                        break; //lsl 5bit imm
+                        return LslImm; //f1
                     case 0b01:
-                        break; //lsr 5bit imm
+                        return LsrImm; //f1
                     case 0b10:
-                        break; //asr 5bit imm
+                        return AsrImm; //f1
                     case 0b11:
-                        break; //add sub r or 3bit imm
+                        if ((instruction & 0x200) != 0) //bit 9
+                        {
+                            return Sub; //f2
+                        }
+                        return Add; //f2
                 }
                 break; //f1 f2
             case 0b0010:
             case 0b0011:
-                switch (bits12_11)
+                //f3
+                return bits12_11 switch
                 {
-                    case 0b00:
-                        break; //mov 8bit imm
-                    case 0b01:
-                        break; //cmp 8bit imm
-                    case 0b10:
-                        break; //add 8bit imm
-                    case 0b11:
-                        break; //sub 8bit imm
-                }
-                break; //f3
+                    0b00 => MovImm,
+                    0b01 => CmpImm,
+                    0b10 => AddImm,
+                    0b11 => SubImm,
+                    _ => Illegal
+                };
             case 0b0100:
                 switch (bits11_6)
                 {
                     case 0b000000:
-                        break; //and lo r pair
+                        return And; //f4
                     case 0b000001:
-                        break; //eor lo r pair
+                        return Eor; //f4
                     case 0b000010:
-                        break; //lsl lo r pair
+                        return Lsl; //f4
                     case 0b000011:
-                        break; //lsr lo r pair
+                        return Lsr; //f4
                     case 0b000100:
-                        break; //asr lo r pair
+                        return Asr; //f4
                     case 0b000101:
-                        break; //adc lo r pair
+                        return Adc; //f4
                     case 0b000110:
-                        break; //sbc lo r pair
+                        return Sbc; //f4
                     case 0b000111:
-                        break; //ror lo r pair
+                        return Ror; //f4
                     case 0b001000:
-                        break; //tst lo r pair
+                        return Tst; //f4
                     case 0b001001:
-                        break; //neg lo r pair
+                        return Neg; //f4
                     case 0b001010:
-                        break; //cmp lo r pair
+                        return Cmp; //f4
                     case 0b001011:
-                        break; //cmn lo r pair
+                        return Cmn; //f4
                     case 0b001100:
-                        break; //orr lo r pair
+                        return Orr; //f4
                     case 0b001101:
-                        break; //mul lo r pair
+                        return Mul; //f4
                     case 0b001110:
-                        break; //bic lo r pair
+                        return Bic; //f4
                     case 0b001111:
-                        break; //mvn lo r pair
+                        return Mvn; //f4
                     default:
                         if ((instruction & 0x800) != 0) //bit 11
                         {
                             return LdrPc; //f6
                         }
-                        else
+
+                        return ((instruction >> 8) & 0xf) switch
                         {
-                            switch ((instruction >> 8) & 0xf)
-                            {
-                                case 0b0100:
-                                    break; //add lo/hi r or hi r pair
-                                case 0b0101:
-                                    break; //cmp lo/hi r or hi r pair
-                                case 0b0110:
-                                    break; //mov lo/hi r or hi r pair
-                                case 0b0111:
-                                    return Bx; //f5
-                            }
-                        }
-                        break; //f5 f6
+                            0b0100 => AddHiReg, //f5
+                            0b0101 => CmpHiReg, //f5
+                            0b0110 => MovHiReg, //f5
+                            0b0111 => Bx, //f5
+                            _ => Illegal
+                        };
                 }
-                break; //f4 f5 f6
             case 0b0101:
                 return bits11_9 switch
                 {
@@ -967,7 +966,7 @@ public sealed partial class Arm7Tdmi
                     0b101 => Ldrh, //f8
                     0b110 => Ldrb, //f7
                     0b111 => Ldsh, //f8
-                    _ => throw new InvalidDataException("not possible")
+                    _ => Illegal
                 };
             case 0b0110:
             case 0b0111:
@@ -978,7 +977,7 @@ public sealed partial class Arm7Tdmi
                     0b01 => LdrImm,
                     0b10 => StrbImm,
                     0b11 => LdrbImm,
-                    _ => throw new InvalidDataException("not possible")
+                    _ => Illegal
                 };
             case 0b1000:
                 //f10
@@ -986,78 +985,41 @@ public sealed partial class Arm7Tdmi
                 {
                     return LdrhImm;
                 }
-                else
-                {
-                    return StrhImm;
-                }
+                return StrhImm;
             case 0b1001:
                 //f11
                 if ((instruction & 0x800) != 0) //bit 11
                 {
                     return LdrWithSp;
                 }
-                else
-                {
-                    return StrWithSp;
-                }
+                return StrWithSp;
             case 0b1010:
-                if ((instruction & 0x800) != 0) //bit 11
-                {
-                    //add with pc
-                }
-                else
-                {
-                    //add with sp
-                }
-                break; //f12
+                return AddWithPcOrSp; //f12
             case 0b1011:
-                switch (bits11_9)
+                return bits11_9 switch
                 {
-                    case 0b000:
-                        if ((instruction & 0x80) != 0) //bit 7
-                        {
-                            //sub sp -= imm
-                        }
-                        else
-                        {
-                            //add sp += imm
-                        }
-                        break; //add sub
-                    case 0b010:
-                        //f14
-                        return Push;
-                    case 0b110:
-                        //f14
-                        return Pop;
-                }
-                break; //f13 f14
+                    0b000 => AddSubOffsetSp, //f13 sp (+/-)= imm
+                    0b010 => Push, //f14
+                    0b110 => Pop, //f14
+                    _ => Illegal
+                };
             case 0b1100:
                 //f15
                 if ((instruction & 0x800) != 0) //bit 11
                 {
                     return Ldm;
                 }
-                else
-                {
-                    return Stm;
-                }
+                return Stm;
             case 0b1101:
                 if ((instruction & 0xf00) == 0xf00) //bits 11-8 == 0xf swi
                 {
-                    //f17
-                    return Swi;
+                    return Swi; //f17
                 }
-                else
-                {
-                    //f16
-                    return BCond;
-                }
+                return BCond; //f16
             case 0b1110:
-                //f18
-                return B;
+                return B; //f18
             case 0b1111:
-                //f19
-                return Bl;
+                return Bl; //f19
         }
         return Illegal;
     }
