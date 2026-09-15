@@ -935,35 +935,130 @@ public sealed partial class Arm7Tdmi
                     case 0b001111:
                         break; //mvn lo r pair
                     default:
+                        if ((instruction & 0x800) != 0) //bit 11
+                        {
+                            return LdrPc; //f6
+                        }
+                        else
+                        {
+                            switch ((instruction >> 8) & 0xf)
+                            {
+                                case 0b0100:
+                                    break; //add lo/hi r or hi r pair
+                                case 0b0101:
+                                    break; //cmp lo/hi r or hi r pair
+                                case 0b0110:
+                                    break; //mov lo/hi r or hi r pair
+                                case 0b0111:
+                                    return Bx; //f5
+                            }
+                        }
                         break; //f5 f6
                 }
                 break; //f4 f5 f6
             case 0b0101:
-                switch (bits11_9)
+                return bits11_9 switch
                 {
-                    
-                }
-                break; //f7 f8
+                    0b000 => Str, //f7
+                    0b001 => Strh, //f8
+                    0b010 => Strb, //f7
+                    0b011 => Ldsb, //f8
+                    0b100 => Ldr, //f7
+                    0b101 => Ldrh, //f8
+                    0b110 => Ldrb, //f7
+                    0b111 => Ldsh, //f8
+                    _ => throw new InvalidDataException("not possible")
+                };
             case 0b0110:
             case 0b0111:
-                break; //f9
+                //f9
+                return bits12_11 switch
+                {
+                    0b00 => StrImm,
+                    0b01 => LdrImm,
+                    0b10 => StrbImm,
+                    0b11 => LdrbImm,
+                    _ => throw new InvalidDataException("not possible")
+                };
             case 0b1000:
-                break; //f10
+                //f10
+                if ((instruction & 0x800) != 0) //bit 11
+                {
+                    return LdrhImm;
+                }
+                else
+                {
+                    return StrhImm;
+                }
             case 0b1001:
-                break; //f11
+                //f11
+                if ((instruction & 0x800) != 0) //bit 11
+                {
+                    return LdrWithSp;
+                }
+                else
+                {
+                    return StrWithSp;
+                }
             case 0b1010:
+                if ((instruction & 0x800) != 0) //bit 11
+                {
+                    //add with pc
+                }
+                else
+                {
+                    //add with sp
+                }
                 break; //f12
             case 0b1011:
+                switch (bits11_9)
+                {
+                    case 0b000:
+                        if ((instruction & 0x80) != 0) //bit 7
+                        {
+                            //sub sp -= imm
+                        }
+                        else
+                        {
+                            //add sp += imm
+                        }
+                        break; //add sub
+                    case 0b010:
+                        //f14
+                        return Push;
+                    case 0b110:
+                        //f14
+                        return Pop;
+                }
                 break; //f13 f14
             case 0b1100:
-                break; //f15
+                //f15
+                if ((instruction & 0x800) != 0) //bit 11
+                {
+                    return Ldm;
+                }
+                else
+                {
+                    return Stm;
+                }
             case 0b1101:
-                break; //f16 f17
+                if ((instruction & 0xf00) == 0xf00) //bits 11-8 == 0xf swi
+                {
+                    //f17
+                    return Swi;
+                }
+                else
+                {
+                    //f16
+                    return BCond;
+                }
             case 0b1110:
-                break; //f18
+                //f18
+                return B;
             case 0b1111:
-                break; //f19
+                //f19
+                return Bl;
         }
-        return default;
+        return Illegal;
     }
 }
