@@ -55,7 +55,7 @@ public sealed partial class Arm7Tdmi
 #if DEBUG
             if (Registers.ProgramCounter % 2 == 1)
             {
-                DebugUtilities.DumpTrace(_traces, ref _traceIndex);
+                //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
                 Console.WriteLine(nameof(ArmBranch) + $": {ArmBranch:N0}");
                 Console.WriteLine(nameof(ArmBlockDataTransfer) + $": {ArmBlockDataTransfer:N0}");
                 Console.WriteLine(nameof(ArmSingleDataTransfer) + $": {ArmSingleDataTransfer:N0}");
@@ -164,158 +164,6 @@ public sealed partial class Arm7Tdmi
 
         var decodeBits = instruction >> 6;
         ThumbInstructionDispatch[decodeBits](instruction);
-/*
-        if ((instruction & 0xE000) == 0) //bits 15-13 == 0
-        {
-            if ((instruction >> 11) == 0b11)
-            {
-                //Format 2
-                this.ExecuteThumbFormat2(instruction);
-                ThumbFormat2++;
-                return;
-            }
-            //format 1
-            this.ExecuteThumbFormat1(instruction);
-            ThumbFormat1++;
-            return;
-        }
-
-        if ((instruction & 0xE000) == 0x2000) //bits 15-13 == 0b001
-        {
-            //format 3
-            this.ExecuteThumbFormat3(instruction);
-            ThumbFormat3++;
-            return;
-        }
-
-        if ((instruction & 0xF800) == 0x4000) //bits 15-11 == 0b01000
-        {
-            if (((instruction >> 10) & 1) == 0)
-            {
-                //format 4
-                this.ExecuteThumbFormat4(instruction);
-                ThumbFormat4++;
-                return;
-            }
-            //format 5
-            ThumbFormat5++;
-            this.ExecuteThumbFormat5(instruction);
-            return;
-        }
-
-        if ((instruction & 0xF800) == 0x4800) //bits 15-11 == 0b01001
-        {
-            //format 6
-            this.ExecuteThumbFormat6(instruction);
-            ThumbFormat6++;
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0x5000) //bits 15-12 == 0b0101
-        {
-            if (((instruction >> 9) & 1) == 0)
-            {
-                //format 7
-                this.ExecuteThumbFormat7(instruction);
-                ThumbFormat7++;
-                return;
-            }
-            //format 8
-            this.ExecuteThumbFormat8(instruction);
-            ThumbFormat8++;
-            return;
-        }
-
-        if ((instruction & 0xE000) == 0x6000) //bits 15-13 == 0b011
-        {
-            //format 9
-            this.ExecuteThumbFormat9(instruction);
-            ThumbFormat9++;
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0x8000) //bits 15-12 == 0b1000
-        {
-            //format 10
-            this.ExecuteThumbFormat10(instruction);
-            ThumbFormat10++;
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0x9000) //bits 15-12 == 0b1001
-        {
-            //format 11
-            this.ExecuteThumbFormat11(instruction);
-            ThumbFormat11++;
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0xA000) //bits 15-12 == 0b1010
-        {
-            //format 12
-            this.ExecuteThumbFormat12(instruction);
-            ThumbFormat12++;
-            return;
-        }
-
-        if ((instruction & 0xFF00) == 0xB000) //bits 15-8 == 0b10110000
-        {
-            //format 13
-            this.ExecuteThumbFormat13(instruction);
-            ThumbFormat13++;
-            return;
-        }
-
-        if ((instruction & 0xF600) == 0xB400) //bits 15-12 == 0b1011 and bits 10-9 == 0b10
-        {
-            //format 14
-            ThumbFormat14++;
-            this.ExecuteThumbFormat14(instruction);
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0xC000) //bits 15-12 == 0b1100
-        {
-            //format 15
-            ThumbFormat15++;
-            this.ExecuteThumbFormat15(instruction);
-            return;
-        }
-
-        if ((instruction & 0xFF00) == 0xDF00) //bits 15-8 == 0b11011111
-        {
-            //format 17
-            ThumbFormat17++;
-            this.ExecuteThumbFormat17(instruction);
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0xD000) //bits 15-12 == 0b1101
-        {
-            //format 16
-            this.ExecuteThumbFormat16(instruction);
-            ThumbFormat16++;
-            return;
-        }
-
-        if ((instruction & 0xF800) == 0xE000) //bits 15-11 == 0b11100
-        {
-            //format 18
-            this.ExecuteThumbFormat18(instruction);
-            ThumbFormat18++;
-            return;
-        }
-
-        if ((instruction & 0xF000) == 0xF000) //bits 15-12 == 0b1111
-        {
-            //format 19
-            this.ExecuteThumbFormat19(instruction);
-            ThumbFormat19++;
-            return;
-        }
-
-        throw new NotSupportedException($"THUMB instruction could not be decoded instruction: {instruction:x4}");
-        */
     }
 
     private uint DecodeImmediateOperand(uint instruction, out bool carryOut)
@@ -502,6 +350,39 @@ public sealed partial class Arm7Tdmi
             Registers.Cpsr.Carry : //when rs == 0 carry remains unchanged
             BitUtils.IsBitSet(result, 31);
         return result;
+    }
+
+    private static int GetMultiplierArrayCycles(uint multiplierOperand, bool unSigned)
+    {
+        const uint SingleCycleMask = 0xffffff00;
+        const uint DoubleCycleMask = 0xffff0000;
+        const uint TripleCycleMask = 0xff000000;
+        if (unSigned)
+        {
+            if ((multiplierOperand & SingleCycleMask) == 0)
+            {
+                return 1;
+            }
+
+            if ((multiplierOperand & DoubleCycleMask) == 0)
+            {
+                return 2;
+            }
+
+            return (multiplierOperand & TripleCycleMask) == 0 ? 3 : 4;
+        }
+
+        if ((multiplierOperand & SingleCycleMask) is 0 or SingleCycleMask)
+        {
+            return 1;
+        }
+
+        if ((multiplierOperand & DoubleCycleMask) is 0 or DoubleCycleMask)
+        {
+            return 2;
+        }
+
+        return (multiplierOperand & TripleCycleMask) is 0 or TripleCycleMask ? 3 : 4;
     }
 
     public ExecuteArmInstruction[] GenerateArmInstructionTable()

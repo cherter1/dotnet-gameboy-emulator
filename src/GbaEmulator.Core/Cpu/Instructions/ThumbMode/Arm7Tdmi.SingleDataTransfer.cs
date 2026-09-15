@@ -92,7 +92,7 @@ public sealed partial class Arm7Tdmi
     {
         var rd = instruction & 0b111;
         var rb = (instruction >> 3) & 0b111;
-        var offset = (instruction >> 6) & 0x1F;
+        var offset = ((instruction >> 6) & 0x1F) << 2;
         var effectiveAddress = Registers[rb] + (uint)offset;
 
         _bus.Write32(effectiveAddress, Registers[rd]);
@@ -105,7 +105,7 @@ public sealed partial class Arm7Tdmi
     {
         var rd = instruction & 0b111;
         var rb = (instruction >> 3) & 0b111;
-        var offset = (instruction >> 6) & 0x1F;
+        var offset = ((instruction >> 6) & 0x1F) << 2;
         var effectiveAddress = Registers[rb] + (uint)offset;
 
         Registers[rd] = _bus.Read32(effectiveAddress);
@@ -119,7 +119,7 @@ public sealed partial class Arm7Tdmi
     {
         var rd = instruction & 0b111;
         var rb = (instruction >> 3) & 0b111;
-        var offset = ((instruction >> 6) & 0x1F) << 2;
+        var offset = (instruction >> 6) & 0x1F;
         var effectiveAddress = Registers[rb] + (uint)offset;
 
         _bus.Write8(effectiveAddress, (byte)Registers[rd]);
