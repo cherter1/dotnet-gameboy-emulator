@@ -1,14 +1,50 @@
+using GbaEmulator.Core.Interrupts;
+using GbaEmulator.Core.Memory;
+
 namespace GbaEmulator.Core.Input;
 
 public sealed class KeypadState
 {
-    private ushort _state = 0x03FF;
+    private readonly GbaMemory _memory;
+    private readonly InterruptController _interrupts;
 
-    public ushort ReadKeyInput() => _state;
+    public KeypadState(GbaMemory memory, InterruptController interrupts)
+    {
+        _memory = memory;
+        _interrupts = interrupts;
+    }
 
     public void SetPressed(GbaButton button, bool pressed)
     {
         var mask = (ushort)(1 << (int)button);
-        _state = pressed ? (ushort)(_state & ~mask) : (ushort)(_state | mask);
+
+        if (pressed)
+        {
+            _memory.Io.REG_KEYINPUT = (ushort)(_memory.Io.REG_KEYINPUT & ~mask);
+
+            var generateInterrupts = (_memory.Io.REG_KEYCNT & 0x4000) != 0; //bit 14
+            if (!generateInterrupts)
+            {
+                return;
+            }
+
+            var interruptMask = _memory.Io.REG_KEYCNT & 0x3ff;
+            var andOperation = (_memory.Io.REG_KEYCNT & 0x8000) != 0;
+            if (andOperation) //All Set Keys Pressed
+            {
+                //TODO: handling simultaneous input
+            }
+            else //Any set key pressed
+            {
+                if ((interruptMask & mask) != 0)
+                {
+                    _interrupts.Request(InterruptType.Keypad);
+                }
+            }
+        }
+        else //released
+        {
+            _memory.Io.REG_KEYINPUT = (ushort)(_memory.Io.REG_KEYINPUT | mask);
+        }
     }
 }

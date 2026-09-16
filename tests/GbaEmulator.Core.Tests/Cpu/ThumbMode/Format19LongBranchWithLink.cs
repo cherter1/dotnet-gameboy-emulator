@@ -17,7 +17,7 @@ public sealed class Format19LongBranchWithLink
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetOverflow(true);
@@ -31,10 +31,10 @@ public sealed class Format19LongBranchWithLink
         Assert.Equal(0x02000104u, cpu.Registers.ProgramCounter);
         Assert.Equal(0x02000105u, cpu.Registers.LinkRegister);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class Format19LongBranchWithLink
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -70,7 +70,7 @@ public sealed class Format19LongBranchWithLink
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

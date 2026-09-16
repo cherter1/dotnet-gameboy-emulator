@@ -20,7 +20,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         // set flags high
         cpu.SetCarry(initialFlagValue);
@@ -33,11 +33,11 @@ public sealed class Format1Shifts
 
         //Assert
         Assert.Equal(0x12345678u, cpu.Registers[0]);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
 
-        Assert.Equal(initialFlagValue, cpu.Cpsr.Overflow);
-        Assert.Equal(initialFlagValue, cpu.Cpsr.Carry);
+        Assert.Equal(initialFlagValue, cpu.Registers.Cpsr.Overflow);
+        Assert.Equal(initialFlagValue, cpu.Registers.Cpsr.Carry);
     }
 
     [Fact]
@@ -52,18 +52,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000001;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0x2u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -86,11 +86,11 @@ public sealed class Format1Shifts
 
         //Assert
         Assert.Equal(0x80000000, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Negative);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x10;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -113,11 +113,11 @@ public sealed class Format1Shifts
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -132,18 +132,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000001;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0x40000000u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -167,10 +167,10 @@ public sealed class Format1Shifts
         //Assert
         Assert.Equal(0x40000000u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -193,10 +193,10 @@ public sealed class Format1Shifts
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -219,10 +219,10 @@ public sealed class Format1Shifts
         //Assert
         Assert.Equal(0x1u, cpu.Registers[0]);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -237,18 +237,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -263,7 +263,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -271,11 +271,11 @@ public sealed class Format1Shifts
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -290,18 +290,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000001;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0x20000000u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
-        Assert.False(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
     }
 
     [Fact]
@@ -316,7 +316,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -324,11 +324,11 @@ public sealed class Format1Shifts
 
         //Assert
         Assert.Equal(0xC0000000u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Negative);
 
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -343,18 +343,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0xF0000008;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0xFF000000u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -369,18 +369,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -395,18 +395,18 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
 
         //Assert
         Assert.Equal(0xffffffffu, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Carry);
 
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -421,7 +421,7 @@ public sealed class Format1Shifts
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
 
         //Act
@@ -429,10 +429,10 @@ public sealed class Format1Shifts
 
         //Assert
         Assert.Equal(0x0u, cpu.Registers[0]);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Zero);
 
-        Assert.False(cpu.Cpsr.Negative);
-        Assert.False(cpu.Cpsr.Carry);
-        Assert.False(cpu.Cpsr.Overflow);
+        Assert.False(cpu.Registers.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Carry);
+        Assert.False(cpu.Registers.Cpsr.Overflow);
     }
 }
