@@ -162,9 +162,9 @@ public sealed class GbaMachine
             iterations += 1;
         }
         Console.WriteLine($"{iterations} iterations completed");
-        Console.WriteLine($"{cpuWatch.ElapsedMilliseconds} ms in CPU");
-        Console.WriteLine($"{dmaWatch.ElapsedMilliseconds} ms in DMA");
-        Console.WriteLine($"{timerWatch.ElapsedMilliseconds} ms in timers");
-        Console.WriteLine($"{ppuWatch.ElapsedMilliseconds} ms in ppu");
+        Console.WriteLine($"{cpuWatch.Elapsed.TotalMilliseconds} ms in CPU");
+        Console.WriteLine($"{dmaWatch.Elapsed.TotalMilliseconds} ms in DMA");
+        Console.WriteLine($"{timerWatch.Elapsed.TotalMilliseconds} ms in timers");
+        Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
     }
 }
