@@ -19,7 +19,7 @@ public sealed class ExclusiveOrTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -44,7 +44,7 @@ public sealed class ExclusiveOrTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -53,7 +53,7 @@ public sealed class ExclusiveOrTests
 
         //Assert
         Assert.Equal(0x80000000u, cpu.Registers[12]);
-        Assert.False(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Negative);
+        Assert.False(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Negative);
     }
 }

@@ -7,19 +7,16 @@ Clean, incremental Game Boy Advance emulator foundations in C#/.NET.
 - `src/GbaEmulator.Core`: emulator core, CPU/bus/video/input/timers/DMA/interrupts
 - `src/GbaEmulator.App`: WPF desktop host for ROM discovery, keyboard input, and framebuffer presentation
 - `tests/GbaEmulator.Core.Tests`: deterministic unit tests
-- `tests/GbaEmulator.IntegrationTests`: machine stepping and integration tests
 
 ## Usage
 
-Place ROMs in `roms/` and optionally place a BIOS at `bios/gba_bios.bin` or `roms/bios.bin`.
+Place ROMs in `src/roms/`
 
 ```powershell
 dotnet run --project src/GbaEmulator.App
 ```
 
-```powershell
-dotnet run --project src/GbaEmulator.App -- roms\example.gba
-```
+To Run The Tests use
 
 ```powershell
 dotnet test

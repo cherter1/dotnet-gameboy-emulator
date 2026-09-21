@@ -1,7 +1,8 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using GbaEmulator.App.Hosting;
 using GbaEmulator.Core;
 using GbaEmulator.Core.Input;
@@ -12,46 +13,154 @@ public partial class MainWindow
 {
     private readonly GbaMachine _machine;
     private readonly WriteableBitmap _bitmap;
-    private readonly byte[] _pixelBytes;
-    private readonly DispatcherTimer _timer;
+    private readonly Int32Rect _frameRect;
+    private readonly int _stride;
+
+    private readonly Lock _lock = new();
+
+    private byte[] _frontPixels;
+    private byte[] _backPixels;
+    private readonly byte[] _presentationPixels;
+    private bool _frameReady;
+
+    private readonly CancellationTokenSource _shutdown = new();
+    private readonly Thread _emulationThread;
+
+    private const double FramesPerSecond = 59.727500569606d;
+    private static readonly double StopwatchTicksPerFrame = Stopwatch.Frequency / FramesPerSecond;
 
     public MainWindow(EmulatorStartup startup)
     {
         InitializeComponent();
 
         _machine = startup.Machine;
-        _pixelBytes = new byte[_machine.FrameBuffer.Width * _machine.FrameBuffer.Height * 4];
+
+        var width = _machine.FrameBuffer.Width;
+        var height = _machine.FrameBuffer.Height;
+
+        _stride = width * 4;
+        _frameRect = new Int32Rect(0, 0, width, height);
+
+        _frontPixels = new byte[height * _stride];
+        _backPixels = new byte[height * _stride];
+        _presentationPixels = new byte[height * _stride];
 
         _bitmap = new WriteableBitmap(
-            _machine.FrameBuffer.Width,
-            _machine.FrameBuffer.Height,
+            width,
+            height,
             96,
             96,
-            System.Windows.Media.PixelFormats.Bgra32,
+            PixelFormats.Bgra32,
             null);
 
         FrameImage.Source = _bitmap;
+
         Title = startup.WindowTitle;
         StatusText.Text = startup.StatusMessage;
 
-        _timer = new DispatcherTimer(DispatcherPriority.Render)
+        CompositionTarget.Rendering += OnWpfRendering;
+
+        _emulationThread = new Thread(EmulationLoop)
         {
-            Interval = TimeSpan.FromMilliseconds(16.67)
+            Name = "GBA Emulation",
+            IsBackground = true
         };
-        _timer.Tick += OnFrameTick;
-        _timer.Start();
-        Closed += (_, _) => _timer.Stop();
+        _emulationThread.Start();
+        Closed += OnWindowClosed;
     }
 
-    private void OnFrameTick(object? sender, EventArgs e)
+    private void EmulationLoop()
     {
-        _machine.RunFrame();
-        _machine.FrameBuffer.CopyToBgra32(_pixelBytes);
-        _bitmap.WritePixels(
-            new Int32Rect(0, 0, _machine.FrameBuffer.Width, _machine.FrameBuffer.Height),
-            _pixelBytes,
-            _machine.FrameBuffer.Width * 4,
-            0);
+        CancellationToken token = _shutdown.Token;
+
+        long loopStartTicks = Stopwatch.GetTimestamp();
+        long completedFrames = 0;
+
+        while (!token.IsCancellationRequested)
+        {
+            _machine.RunFrame();
+
+            _machine.FrameBuffer.CopyToBgra32(_backPixels);
+
+            lock (_lock)
+            {
+                (_frontPixels, _backPixels) = (_backPixels, _frontPixels);
+
+                _frameReady = true;
+            }
+
+            completedFrames++;
+
+            long nextFrameStartTicks = loopStartTicks + (long)Math.Round(completedFrames * StopwatchTicksPerFrame);
+
+            long now = Stopwatch.GetTimestamp();
+
+            //if we are more than 5 frames late
+            if (now - nextFrameStartTicks > StopwatchTicksPerFrame * 5)
+            {
+                //restart fresh instead of trying to render all the stacked frames
+                loopStartTicks = now;
+                completedFrames = 0;
+                continue;
+            }
+
+            WaitUntil(nextFrameStartTicks, token);
+        }
+    }
+
+    private static void WaitUntil(long deadline, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            long remainingTicks = deadline - Stopwatch.GetTimestamp();
+
+            if (remainingTicks <= 0)
+            {
+                return;
+            }
+
+            double remainingMilliseconds = remainingTicks * 1000.0 / Stopwatch.Frequency;
+
+            if (remainingMilliseconds > 2.0)
+            {
+                int sleepMilliseconds = Math.Max(1, (int)remainingMilliseconds - 1);
+
+                if (token.WaitHandle.WaitOne(sleepMilliseconds))
+                {
+                    return;
+                }
+            }
+            else
+            {
+                Thread.SpinWait(32);
+            }
+        }
+    }
+
+    private void OnWpfRendering(object? sender, EventArgs e)
+    {
+        lock (_lock)
+        {
+            if (!_frameReady)
+            {
+                return;
+            }
+
+            Buffer.BlockCopy(_frontPixels, 0, _presentationPixels, 0, _presentationPixels.Length);
+
+            _frameReady = false;
+        }
+        _bitmap.WritePixels(_frameRect, _frontPixels, _stride, 0);
+    }
+
+    private void OnWindowClosed(object? sender, EventArgs e)
+    {
+        CompositionTarget.Rendering -= OnWpfRendering;
+
+        _shutdown.Cancel();
+        _emulationThread.Join(1000);
+
+        _shutdown.Dispose();
     }
 
     private void OnKeyDown(object sender, KeyEventArgs e)

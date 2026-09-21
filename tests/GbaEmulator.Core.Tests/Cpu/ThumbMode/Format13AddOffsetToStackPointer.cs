@@ -18,7 +18,7 @@ public sealed class Format13AddOffsetToStackPointer
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetZero(true);
@@ -30,10 +30,10 @@ public sealed class Format13AddOffsetToStackPointer
         //Assert
         Assert.Equal(0x03007000u, cpu.Registers.StackPointer);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class Format13AddOffsetToStackPointer
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -69,7 +69,7 @@ public sealed class Format13AddOffsetToStackPointer
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -90,7 +90,7 @@ public sealed class Format13AddOffsetToStackPointer
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -111,7 +111,7 @@ public sealed class Format13AddOffsetToStackPointer
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007004;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -132,7 +132,7 @@ public sealed class Format13AddOffsetToStackPointer
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x030071fc;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

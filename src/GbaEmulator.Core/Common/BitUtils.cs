@@ -1,7 +1,10 @@
+using System.Runtime.CompilerServices;
+
 namespace GbaEmulator.Core.Common;
 
 public static class BitUtils
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsBitSet(uint value, int bit) => ((value >> bit) & 1U) != 0;
 
     public static uint SetBit(uint value, int bit, bool set) =>

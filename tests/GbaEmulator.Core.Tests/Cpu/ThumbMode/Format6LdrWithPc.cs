@@ -19,7 +19,7 @@ public sealed class Format6LdrWithPc
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000002;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -41,7 +41,7 @@ public sealed class Format6LdrWithPc
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -63,7 +63,7 @@ public sealed class Format6LdrWithPc
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -85,7 +85,7 @@ public sealed class Format6LdrWithPc
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000002;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -107,7 +107,7 @@ public sealed class Format6LdrWithPc
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

@@ -32,7 +32,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(zero);
         cpu.SetNegative(negative);
         cpu.SetOverflow(overflow);
@@ -44,10 +44,10 @@ public sealed class Format16ConditionalBranch
         //Assert
         Assert.Equal(0x02000002u, cpu.Registers.ProgramCounter);
 
-        Assert.Equal(zero, cpu.Cpsr.Zero);
-        Assert.Equal(negative, cpu.Cpsr.Negative);
-        Assert.Equal(overflow, cpu.Cpsr.Overflow);
-        Assert.Equal(carry, cpu.Cpsr.Carry);
+        Assert.Equal(zero, cpu.Registers.Cpsr.Zero);
+        Assert.Equal(negative, cpu.Registers.Cpsr.Negative);
+        Assert.Equal(overflow, cpu.Registers.Cpsr.Overflow);
+        Assert.Equal(carry, cpu.Registers.Cpsr.Carry);
     }
 
     [Theory]
@@ -77,7 +77,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(zero);
         cpu.SetNegative(negative);
         cpu.SetOverflow(overflow);
@@ -89,10 +89,10 @@ public sealed class Format16ConditionalBranch
         //Assert
         Assert.Equal(0x0200000au, cpu.Registers.ProgramCounter);
 
-        Assert.Equal(zero, cpu.Cpsr.Zero);
-        Assert.Equal(negative, cpu.Cpsr.Negative);
-        Assert.Equal(overflow, cpu.Cpsr.Overflow);
-        Assert.Equal(carry, cpu.Cpsr.Carry);
+        Assert.Equal(zero, cpu.Registers.Cpsr.Zero);
+        Assert.Equal(negative, cpu.Registers.Cpsr.Negative);
+        Assert.Equal(overflow, cpu.Registers.Cpsr.Overflow);
+        Assert.Equal(carry, cpu.Registers.Cpsr.Carry);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -126,7 +126,7 @@ public sealed class Format16ConditionalBranch
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000100;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

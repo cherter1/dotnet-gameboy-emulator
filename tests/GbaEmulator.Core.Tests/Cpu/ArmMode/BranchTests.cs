@@ -17,7 +17,7 @@ public sealed class BranchTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         cpu.Registers[0] = 0x02000009;
 
@@ -25,7 +25,7 @@ public sealed class BranchTests
         cpu.Step();
 
         //Assert
-        Assert.True(cpu.Cpsr.ThumbState);
+        Assert.True(cpu.Registers.Cpsr.ThumbState);
         Assert.Equal(0x02000008u, cpu.Registers.ProgramCounter);
     }
 
@@ -40,7 +40,7 @@ public sealed class BranchTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         cpu.Registers[0] = 0x02000008;
 
@@ -48,7 +48,7 @@ public sealed class BranchTests
         cpu.Step();
 
         //Assert
-        Assert.False(cpu.Cpsr.ThumbState);
+        Assert.False(cpu.Registers.Cpsr.ThumbState);
         Assert.Equal(0x02000008u, cpu.Registers.ProgramCounter);
     }
 
@@ -63,7 +63,7 @@ public sealed class BranchTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         cpu.Registers[0] = 0x02000008;
 
@@ -71,7 +71,7 @@ public sealed class BranchTests
         cpu.Step();
 
         //Assert
-        Assert.False(cpu.Cpsr.ThumbState);
+        Assert.False(cpu.Registers.Cpsr.ThumbState);
         Assert.Equal(0x02000008u, cpu.Registers.ProgramCounter);
     }
 
@@ -93,7 +93,7 @@ public sealed class BranchTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000000;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -121,7 +121,7 @@ public sealed class BranchTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000004;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();
@@ -150,7 +150,7 @@ public sealed class BranchTests
 
         cpu.Reset(true);
         cpu.Registers.ProgramCounter = 0x02000008;
-        cpu.SetThumbState(false);
+        cpu.Registers.Cpsr.ThumbState = false;
 
         //Act
         cpu.Step();

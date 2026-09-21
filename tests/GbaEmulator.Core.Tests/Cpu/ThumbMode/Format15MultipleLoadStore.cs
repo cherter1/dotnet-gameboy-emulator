@@ -21,7 +21,7 @@ public sealed class Format15MultipleLoadStore
         cpu.Registers[0] = 0xaaaabbbb;
         cpu.Registers[3] = 0xccccdddd;
         cpu.Registers[7] = 0xeeeeffff;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetOverflow(true);
@@ -36,10 +36,10 @@ public sealed class Format15MultipleLoadStore
         Assert.Equal(0xccccdddd, bus.Read32(0x02000014));
         Assert.Equal(0xeeeeffff, bus.Read32(0x02000018));
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Overflow);
-        Assert.True(cpu.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Zero);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class Format15MultipleLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x02000010;
         cpu.Registers[1] = 0xccccdddd;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -79,7 +79,7 @@ public sealed class Format15MultipleLoadStore
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xaaaabbbb;
         cpu.Registers[1] = 0x02000010;
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -91,7 +91,7 @@ public sealed class Format15MultipleLoadStore
     }
 
     [Fact]
-    public void LDMIA_ThreeSpareRegisters_ValuesLoadedIntoRegisterAndBaseIncrementedAndWrittenbackFlagsUnchanged()
+    public void LDMIA_ThreeSpareRegisters_ValuesLoadedIntoRegisterAndBaseIncrementedAndWrittenBackFlagsUnchanged()
     {
         //Arrange
         (Arm7Tdmi cpu, GbaBus bus) = CpuUtilities.CreateCpu();
@@ -106,7 +106,7 @@ public sealed class Format15MultipleLoadStore
         bus.Write32(0x02000014, 0xccccdddd);
         bus.Write32(0x02000018, 0xeeeeffff);
 
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
         cpu.SetNegative(true);
         cpu.SetZero(true);
@@ -121,10 +121,10 @@ public sealed class Format15MultipleLoadStore
         Assert.Equal(0xccccddddu, cpu.Registers[3]);
         Assert.Equal(0xeeeeffffu, cpu.Registers[7]);
 
-        Assert.True(cpu.Cpsr.Carry);
-        Assert.True(cpu.Cpsr.Negative);
-        Assert.True(cpu.Cpsr.Zero);
-        Assert.True(cpu.Cpsr.Overflow);
+        Assert.True(cpu.Registers.Cpsr.Carry);
+        Assert.True(cpu.Registers.Cpsr.Negative);
+        Assert.True(cpu.Registers.Cpsr.Zero);
+        Assert.True(cpu.Registers.Cpsr.Overflow);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public sealed class Format15MultipleLoadStore
         cpu.Registers[0] = 0x02000010;
         bus.Write32(0x02000010, 0xaaaabbbb);
         bus.Write32(0x02000014, 0xccccdddd);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();
@@ -165,7 +165,7 @@ public sealed class Format15MultipleLoadStore
         cpu.Registers[1] = 0x02000010;
         bus.Write32(0x02000010, 0xaaaabbbb);
         bus.Write32(0x02000014, 0xccccdddd);
-        cpu.SetThumbState(true);
+        cpu.Registers.Cpsr.ThumbState = true;
 
         //Act
         cpu.Step();

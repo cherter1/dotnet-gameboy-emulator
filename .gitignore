@@ -7,6 +7,13 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/Dotnet.gitignore
 
+#Binary and object files from bios
+ScuffedBios.o
+ScuffedBios.bin
+
+# benchmark logs
+**/BenchmarkDotNet.Artifacts/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
