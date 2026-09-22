@@ -37,6 +37,10 @@ internal static unsafe partial class Sdl
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial nint SDL_CreateWindow(string title, int width, int height, ulong flags); //SDL_WindowFlags
 
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_SetWindowTitle(nint window, string title);
+
     [LibraryImport(LibraryName)]
     internal static partial void SDL_DestroyWindow(nint window);
 
@@ -45,13 +49,44 @@ internal static unsafe partial class Sdl
     #region SDL_render.h
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial void SDL_CreateRenderer(nint window, string? name);
+    internal static partial nint SDL_CreateRenderer(nint window, string? name);
 
     [LibraryImport(LibraryName)]
     internal static partial void SDL_DestroyRenderer(nint renderer);
 
     [LibraryImport(LibraryName)]
     internal static partial nint SDL_CreateTexture(nint renderer, uint format, int access, int w, int h);
+
+    [LibraryImport(LibraryName)]
+    internal static partial void SDL_DestroyTexture(nint texture);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_SetTextureScaleMode(nint texture, int scaleMode);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_UpdateTexture(nint texture, nint rect, nint pixels, int pitch);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_RenderTexture(nint renderer, nint texture, nint srcrect, nint dstrect);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_SetRenderLogicalPresentation(nint renderer, int w, int h, int mode);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_SetRenderDrawColor(nint renderer, byte r, byte g, byte b, byte a);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_RenderPresent(nint renderer);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_RenderClear(nint renderer);
 
     #endregion
 

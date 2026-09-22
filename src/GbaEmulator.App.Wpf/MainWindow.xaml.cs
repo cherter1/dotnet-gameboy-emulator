@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -150,7 +151,22 @@ public partial class MainWindow
 
             _frameReady = false;
         }
-        _bitmap.WritePixels(_frameRect, _frontPixels, _stride, 0);
+
+        var path = Path.Combine(AppContext.BaseDirectory, "buffer.txt");
+        using var writer = new StreamWriter(path);
+        writer.WriteLine("private byte[] Presentation Pixels = new byte[]");
+        writer.WriteLine("{");
+        for (int i = 0; i < _presentationPixels.Length; i++)
+        {
+            if (i % 240 == 0 && i != 0)
+            {
+                writer.Write(Environment.NewLine);
+            }
+            writer.Write($"0x{_presentationPixels[i]:x2}, ");
+        }
+        writer.Write(Environment.NewLine);
+        writer.Write("};");
+        _bitmap.WritePixels(_frameRect, _presentationPixels, _stride, 0);
     }
 
     private void OnWindowClosed(object? sender, EventArgs e)
