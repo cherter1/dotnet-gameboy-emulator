@@ -1,6 +1,6 @@
 using GbaEmulator.Core;
 
-namespace GbaEmulator.App.Hosting;
+namespace GbaEmulator.App.Wpf.Hosting;
 
 public sealed class EmulatorStartup
 {

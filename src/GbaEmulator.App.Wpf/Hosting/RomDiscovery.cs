@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace GbaEmulator.App.Hosting;
+namespace GbaEmulator.App.Wpf.Hosting;
 
 internal static class RomDiscovery
 {

@@ -3,11 +3,11 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using GbaEmulator.App.Hosting;
+using GbaEmulator.App.Wpf.Hosting;
 using GbaEmulator.Core;
 using GbaEmulator.Core.Input;
 
-namespace GbaEmulator.App;
+namespace GbaEmulator.App.Wpf;
 
 public partial class MainWindow
 {
