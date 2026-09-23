@@ -25,7 +25,9 @@ Sdl.SDL_RenderTexture(renderer, texture, nint.Zero, nint.Zero);
 Sdl.SDL_RenderPresent(renderer);
 
 bool running = true;
-Console.WriteLine(AppContext.BaseDirectory);
+Console.WriteLine(AppContext.BaseDirectory + "roms");
+var x = Path.Combine(AppContext.BaseDirectory, "roms");
+Console.WriteLine(x);
 ulong lastTime = 0;
 uint frameCount = 0;
 while (running)
@@ -51,7 +53,7 @@ while (running)
     if (currentTime > lastTime + 1000)
     {
         Sdl.SDL_SetWindowTitle(window, $"FPS Test ({frameCount} fps)");
-        Console.WriteLine("set window title");
+        //Console.WriteLine("set window title");
         frameCount = 0;
         lastTime = currentTime;
     }

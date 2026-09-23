@@ -15,7 +15,7 @@ public sealed class Format17SoftwareInterrupt
         // 0x02000100: swi #0
         bus.Write16(0x02000100, 0xdf00);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(true);

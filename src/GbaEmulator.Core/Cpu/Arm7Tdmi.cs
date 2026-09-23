@@ -28,7 +28,7 @@ public sealed partial class Arm7Tdmi
         ThumbInstructionDispatch = GenerateThumbInstructionTable();
     }
 
-    public void Reset(bool skipBios)
+    public void Reset()
     {
         Registers = new RegisterBank();
         Registers.InitializeForGba();
@@ -40,7 +40,7 @@ public sealed partial class Arm7Tdmi
             ThumbState = false
         };
 
-        Registers.ProgramCounter = skipBios ? 0x08000000u : 0u;
+        Registers.ProgramCounter = 0u;
     }
 
     public int Step()

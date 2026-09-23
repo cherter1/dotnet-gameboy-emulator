@@ -15,7 +15,7 @@ public sealed class BlockDataTransferTests
         // 0x02000000: stmia r4!, {r0-r2}
         bus.Write32(0x02000000, 0xE8A40007);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[4] = 0x02000100;
         cpu.Registers[0] = 0x11111111;
@@ -45,7 +45,7 @@ public sealed class BlockDataTransferTests
         // 0x02000000: ldmia r4!, {r0-r2}
         bus.Write32(0x02000000, 0xE8B40007);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[4] = 0x02000100;
 
@@ -58,9 +58,4 @@ public sealed class BlockDataTransferTests
         Assert.Equal(0x22222222u, cpu.Registers[1]);
         Assert.Equal(0x33333333u, cpu.Registers[2]);
     }
-
-    //later
-    //stmdb sp!, {r4-r5, lr}
-    //ldmia sp!, {r4-r5, pc}
-    
 }

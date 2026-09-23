@@ -26,7 +26,7 @@ public class ArmSingleDataStoreBenchmark
     {
         (_storeCpu, _storeBus) = CpuUtilities.CreateCpu();
         (_storeCpuOpt, _storeBusOpt) = CpuUtilities.CreateCpuOpt();
-        _storeCpu.Reset(true);
+        _storeCpu.Reset();
         _storeCpuOpt.Reset(true);
 
         byte[] rom = new byte[StepsPerInvoke * sizeof(uint)];

@@ -15,7 +15,7 @@ public sealed class MultiplyTests
         // 0x02000000: mul r0, r1, r2
         bus.Write32(0x02000000, 0xe0000291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 3;
@@ -42,7 +42,7 @@ public sealed class MultiplyTests
         // 0x02000000: muls r0, r1, r2
         bus.Write32(0x02000000, 0xe0100291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 3;
@@ -71,7 +71,7 @@ public sealed class MultiplyTests
         // 0x02000000: muls r0, r1, r2
         bus.Write32(0x02000000, 0xe0100291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 1;
         cpu.Registers[1] = 0;
@@ -99,7 +99,7 @@ public sealed class MultiplyTests
         // 0x02000000: muls r0, r1, r2
         bus.Write32(0x02000000, 0xe0100291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 1;
         cpu.Registers[1] = 0x80000000;
@@ -127,7 +127,7 @@ public sealed class MultiplyTests
         // 0x02000000: mla r0, r1, r2, r3
         bus.Write32(0x02000000, 0xe0203291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 1;
         cpu.Registers[1] = 3;
@@ -157,7 +157,7 @@ public sealed class MultiplyTests
         // 0x02000000: mla r0, r1, r2, r3
         bus.Write32(0x02000000, 0xe0203291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 0xFFFFFFFF;
@@ -187,7 +187,7 @@ public sealed class MultiplyTests
         // 0x02000000: mlas r0, r1, r2, r3
         bus.Write32(0x02000000, 0xe0303291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 3;
@@ -217,7 +217,7 @@ public sealed class MultiplyTests
         // 0x02000000: mlas r0, r1, r2, r3
         bus.Write32(0x02000000, 0xe0303291);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0;
         cpu.Registers[1] = 3;

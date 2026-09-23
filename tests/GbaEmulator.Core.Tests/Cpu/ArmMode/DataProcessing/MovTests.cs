@@ -16,7 +16,7 @@ public sealed class MovTests
         // aka lsls r0, r1, r0
         bus.Write32(0x02000000, 0xe1b00011);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 1;
         cpu.Registers[1] = 0xFFF;
@@ -48,7 +48,7 @@ public sealed class MovTests
         // aka lsls r0, r1, r0
         bus.Write32(0x02000000, 0xe1b00011);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 32;
         cpu.Registers[1] = preshiftValue;
@@ -77,7 +77,7 @@ public sealed class MovTests
         // aka lsls r0, r1, r0
         bus.Write32(0x02000000, 0xe1b00011);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 33;
         cpu.Registers[1] = 0x3;
@@ -106,7 +106,7 @@ public sealed class MovTests
         // aka lsls r0, pc, r0
         bus.Write32(0x02000000, 0xe1b0001f);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0;
         cpu.SetCarry(true);
@@ -137,7 +137,7 @@ public sealed class MovTests
         // aka lsrs r0, r1, #32
         bus.Write32(0x02000000, 0xe1b00021);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = preshiftValue;
         cpu.SetNegative(true);
@@ -165,7 +165,7 @@ public sealed class MovTests
         // aka asrs r0, r1, #32
         bus.Write32(0x02000000, 0xe1b00041);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000fff;
         cpu.SetOverflow(true);
@@ -193,7 +193,7 @@ public sealed class MovTests
         // aka asrs r0, r1, r0
         bus.Write32(0x02000000, 0xe1b00051);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000fff;
         cpu.Registers[0] = 0;
@@ -223,7 +223,7 @@ public sealed class MovTests
         // aka asrs r0, r1, r0
         bus.Write32(0x02000000, 0xe1b00051);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0xc0000000;
         cpu.Registers[0] = shiftAmount;
@@ -250,7 +250,7 @@ public sealed class MovTests
         // aka rrxs r0, r1
         bus.Write32(0x02000000, 0xe1b00061);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
         cpu.SetOverflow(true);
@@ -277,7 +277,7 @@ public sealed class MovTests
         // aka rrxs r0, r1
         bus.Write32(0x02000000, 0xe1b00061);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345671;
         //0 9 1 a 2 b 3 8

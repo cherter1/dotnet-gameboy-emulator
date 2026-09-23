@@ -16,7 +16,6 @@ public sealed class EmulatorStartup
             RomPath = startup.RomPath,
             BiosPath = startup.BiosPath,
             SaveDirectory = startup.SaveDirectory,
-            SkipBios = startup.BiosPath is null
         });
 
         var title = machine.Cartridge?.Title is { Length: > 0 } romTitle

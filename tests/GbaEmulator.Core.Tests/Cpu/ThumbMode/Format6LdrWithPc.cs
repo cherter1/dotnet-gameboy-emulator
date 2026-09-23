@@ -17,7 +17,7 @@ public sealed class Format6LdrWithPc
 
         bus.Write32(0x02000400, 0x12345678);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000002;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -39,7 +39,7 @@ public sealed class Format6LdrWithPc
 
         bus.Write32(0x02000400, 0x12345678);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -61,7 +61,7 @@ public sealed class Format6LdrWithPc
 
         bus.Write32(0x02000008, 0x12345678);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -83,7 +83,7 @@ public sealed class Format6LdrWithPc
 
         bus.Write32(0x02000004, 0x12345678);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000002;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -105,7 +105,7 @@ public sealed class Format6LdrWithPc
 
         bus.Write32(0x02000004, 0x12345678);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 

@@ -15,7 +15,7 @@ public sealed class Format4AluOps
         // 0x02000000: and r0, r1
         bus.Write16(0x02000000, 0x4008);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xf0;
         cpu.Registers[1] = 0x0f;
@@ -45,7 +45,7 @@ public sealed class Format4AluOps
         // 0x02000000: eor r0, r1
         bus.Write16(0x02000000, 0x4048);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xff;
         cpu.Registers[1] = 0xf0;
@@ -76,7 +76,7 @@ public sealed class Format4AluOps
         // 0x02000000: lsl r0, r1
         bus.Write16(0x02000000, 0x4088);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x40000000;
         cpu.Registers[1] = 1;
@@ -106,7 +106,7 @@ public sealed class Format4AluOps
         // 0x02000000: lsl r0, r1
         bus.Write16(0x02000000, 0x4088);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x12345678;
         cpu.Registers[1] = 0;
@@ -137,7 +137,7 @@ public sealed class Format4AluOps
         // 0x02000000: lsr r0, r1
         bus.Write16(0x02000000, 0x40c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000001;
         cpu.Registers[1] = 1;
@@ -167,7 +167,7 @@ public sealed class Format4AluOps
         // 0x02000000: lsr r0, r1
         bus.Write16(0x02000000, 0x40c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers[1] = 32;
@@ -196,7 +196,7 @@ public sealed class Format4AluOps
         // 0x02000000: asr r0, r1
         bus.Write16(0x02000000, 0x4108);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers[1] = 1;
@@ -226,7 +226,7 @@ public sealed class Format4AluOps
         // 0x02000000: asr r0, r1
         bus.Write16(0x02000000, 0x4108);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers[1] = 32;
@@ -255,7 +255,7 @@ public sealed class Format4AluOps
         // 0x02000000: asr r0, r1
         bus.Write16(0x02000000, 0x4108);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x40000000;
         cpu.Registers[1] = 32;
@@ -285,7 +285,7 @@ public sealed class Format4AluOps
         // 0x02000000: adc r0, r1
         bus.Write16(0x02000000, 0x4148);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0;
@@ -314,7 +314,7 @@ public sealed class Format4AluOps
         // 0x02000000: sbc r0, r1
         bus.Write16(0x02000000, 0x4188);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 5;
         cpu.Registers[1] = 3;
@@ -343,7 +343,7 @@ public sealed class Format4AluOps
         // 0x02000000: sbc r0, r1
         bus.Write16(0x02000000, 0x4188);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 5;
         cpu.Registers[1] = 3;
@@ -371,7 +371,7 @@ public sealed class Format4AluOps
         // 0x02000000: ror r0, r1
         bus.Write16(0x02000000, 0x41c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000001;
         cpu.Registers[1] = 1;
@@ -399,7 +399,7 @@ public sealed class Format4AluOps
         // 0x02000000: tst r0, r1
         bus.Write16(0x02000000, 0x4208);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 0xf0;
@@ -428,7 +428,7 @@ public sealed class Format4AluOps
         // 0x02000000: neg r0, r1
         bus.Write16(0x02000000, 0x4248);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 1;
@@ -458,7 +458,7 @@ public sealed class Format4AluOps
         // 0x02000000: neg r0, r1
         bus.Write16(0x02000000, 0x4248);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 0;
@@ -486,7 +486,7 @@ public sealed class Format4AluOps
         // 0x02000000: cmp r0, r1
         bus.Write16(0x02000000, 0x4288);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 3;
         cpu.Registers[1] = 5;
@@ -516,7 +516,7 @@ public sealed class Format4AluOps
         // 0x02000000: cmn r0, r1
         bus.Write16(0x02000000, 0x42c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 1;
@@ -545,7 +545,7 @@ public sealed class Format4AluOps
         // 0x02000000: orr r0, r1
         bus.Write16(0x02000000, 0x4308);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0f;
         cpu.Registers[1] = 0xf0;
@@ -576,7 +576,7 @@ public sealed class Format4AluOps
         // 0x02000000: mul r0, r1
         bus.Write16(0x02000000, 0x4348);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 3;
         cpu.Registers[1] = 7;
@@ -607,7 +607,7 @@ public sealed class Format4AluOps
         // 0x02000000: mul r0, r1
         bus.Write16(0x02000000, 0x4348);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 3;
         cpu.Registers[1] = 0;
@@ -637,7 +637,7 @@ public sealed class Format4AluOps
         // 0x02000000: bic r0, r1
         bus.Write16(0x02000000, 0x4388);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xff;
         cpu.Registers[1] = 0xf0;
@@ -668,7 +668,7 @@ public sealed class Format4AluOps
         // 0x02000000: mvn r0, r1
         bus.Write16(0x02000000, 0x43c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xff;
         cpu.Registers[1] = 0x0;

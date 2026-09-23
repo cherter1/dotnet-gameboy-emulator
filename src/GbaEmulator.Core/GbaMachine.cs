@@ -13,7 +13,6 @@ namespace GbaEmulator.Core;
 
 public sealed class GbaMachine
 {
-    private readonly bool _skipBios;
     public Arm7Tdmi Cpu { get; }
     public GbaBus Bus { get; }
     public Ppu Ppu { get; }
@@ -32,8 +31,7 @@ public sealed class GbaMachine
         DmaController dma,
         InterruptController interrupts,
         KeypadState keypad,
-        GbaCartridge? cartridge,
-        bool skipBios)
+        GbaCartridge? cartridge)
     {
         Cpu = cpu;
         Bus = bus;
@@ -43,7 +41,6 @@ public sealed class GbaMachine
         Interrupts = interrupts;
         Keypad = keypad;
         Cartridge = cartridge;
-        _skipBios = skipBios;
     }
 
     public static GbaMachine Create(GbaMachineOptions options)
@@ -121,12 +118,12 @@ public sealed class GbaMachine
         }
 
         bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
-        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, false);
+        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge);
         machine.Reset();
         return machine;
     }
 
-    private void Reset() => Cpu.Reset(_skipBios);
+    private void Reset() => Cpu.Reset();
 
     public void RunFrame() => RunCycles(Ppu.CyclesPerFrame);
 

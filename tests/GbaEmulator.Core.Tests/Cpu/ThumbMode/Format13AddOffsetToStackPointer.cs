@@ -15,7 +15,7 @@ public sealed class Format13AddOffsetToStackPointer
         // 0x02000000: add sp, #0
         bus.Write16(0x02000000, 0xb000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -45,7 +45,7 @@ public sealed class Format13AddOffsetToStackPointer
         // 0x02000000: add sp, #4
         bus.Write16(0x02000000, 0xb001);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -66,7 +66,7 @@ public sealed class Format13AddOffsetToStackPointer
         // 0x02000000: add sp, #508
         bus.Write16(0x02000000, 0xb07f);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -87,7 +87,7 @@ public sealed class Format13AddOffsetToStackPointer
         // 0x02000000: sub sp, #0
         bus.Write16(0x02000000, 0xb080);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -108,7 +108,7 @@ public sealed class Format13AddOffsetToStackPointer
         // 0x02000000: sub sp, #4
         bus.Write16(0x02000000, 0xb081);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007004;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -129,7 +129,7 @@ public sealed class Format13AddOffsetToStackPointer
         // 0x02000000: sub sp, #508
         bus.Write16(0x02000000, 0xb0ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x030071fc;
         cpu.Registers.Cpsr.ThumbState = true;

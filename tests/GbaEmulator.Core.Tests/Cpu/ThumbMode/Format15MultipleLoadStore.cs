@@ -15,7 +15,7 @@ public sealed class Format15MultipleLoadStore
         // 0x02000000: stmia r4!, {r0, r3, r7}
         bus.Write16(0x02000000, 0xc489);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[4] = 0x02000010;
         cpu.Registers[0] = 0xaaaabbbb;
@@ -51,7 +51,7 @@ public sealed class Format15MultipleLoadStore
         // 0x02000000: stmia r0!, {r0, r1}
         bus.Write16(0x02000000, 0xc003);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x02000010;
         cpu.Registers[1] = 0xccccdddd;
@@ -75,7 +75,7 @@ public sealed class Format15MultipleLoadStore
         // 0x02000000: stmia r1!, {r0, r1}
         bus.Write16(0x02000000, 0xc103);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xaaaabbbb;
         cpu.Registers[1] = 0x02000010;
@@ -99,7 +99,7 @@ public sealed class Format15MultipleLoadStore
         // 0x02000000: ldmia r4!, {r0, r3, r7}
         bus.Write16(0x02000000, 0xcc89);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[4] = 0x02000010;
         bus.Write32(0x02000010, 0xaaaabbbb);
@@ -136,7 +136,7 @@ public sealed class Format15MultipleLoadStore
         // 0x02000000: ldmia r0!, {r0, r1}
         bus.Write16(0x02000000, 0xc803);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x02000010;
         bus.Write32(0x02000010, 0xaaaabbbb);
@@ -160,7 +160,7 @@ public sealed class Format15MultipleLoadStore
         // 0x02000000: ldmia r1!, {r0, r1}
         bus.Write16(0x02000000, 0xc903);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x02000010;
         bus.Write32(0x02000010, 0xaaaabbbb);

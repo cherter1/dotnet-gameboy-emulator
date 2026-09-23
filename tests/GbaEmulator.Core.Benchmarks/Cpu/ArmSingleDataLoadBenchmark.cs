@@ -26,7 +26,7 @@ public class ArmSingleDataLoadBenchmark
     {
         (_loadCpu, _loadBus) = CpuUtilities.CreateCpu();
         (_loadCpuOpt, _loadBusOpt) = CpuUtilities.CreateCpuOpt();
-        _loadCpu.Reset(true);
+        _loadCpu.Reset();
         _loadCpuOpt.Reset(true);
 
         byte[] rom = new byte[StepsPerInvoke * sizeof(uint)];

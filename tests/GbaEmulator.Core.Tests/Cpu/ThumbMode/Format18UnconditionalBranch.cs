@@ -15,7 +15,7 @@ public sealed class Format18UnconditionalBranch
         // 0x03000100: b -2048
         bus.Write16(0x03000100, 0xe400);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x03000100;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -44,7 +44,7 @@ public sealed class Format18UnconditionalBranch
         // 0x02000100: b +2046
         bus.Write16(0x02000100, 0xe3ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -73,7 +73,7 @@ public sealed class Format18UnconditionalBranch
         // 0x02000100: b +0
         bus.Write16(0x02000100, 0xe000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
 

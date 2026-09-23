@@ -15,7 +15,7 @@ public sealed class BranchTests
         //ARM: BX r0
         bus.Write32(0x02000000, 0xE12FFF10);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -38,7 +38,7 @@ public sealed class BranchTests
         //Thumb: BX r0
         bus.Write16(0x02000000, 0x4700);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -61,7 +61,7 @@ public sealed class BranchTests
         //ARM: BX r0
         bus.Write32(0x02000000, 0xE12FFF10);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -91,7 +91,7 @@ public sealed class BranchTests
         bus.Write32(0x02000008, 0xE3A0C063);
         bus.Write32(0x0200000C, 0xE3A0C036);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -119,7 +119,7 @@ public sealed class BranchTests
         bus.Write32(0x02000004, 0xEAFFFFFD);
         bus.Write32(0x02000008, 0xE3A0C063);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000004;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -148,7 +148,7 @@ public sealed class BranchTests
         bus.Write32(0x02000008, 0xE3A0C063);
         bus.Write32(0x0200000C, 0xEBFFFFFB);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000008;
         cpu.Registers.Cpsr.ThumbState = false;
 
