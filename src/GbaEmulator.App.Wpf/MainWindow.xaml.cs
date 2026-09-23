@@ -152,20 +152,6 @@ public partial class MainWindow
             _frameReady = false;
         }
 
-        var path = Path.Combine(AppContext.BaseDirectory, "buffer.txt");
-        using var writer = new StreamWriter(path);
-        writer.WriteLine("private byte[] Presentation Pixels = new byte[]");
-        writer.WriteLine("{");
-        for (int i = 0; i < _presentationPixels.Length; i++)
-        {
-            if (i % 240 == 0 && i != 0)
-            {
-                writer.Write(Environment.NewLine);
-            }
-            writer.Write($"0x{_presentationPixels[i]:x2}, ");
-        }
-        writer.Write(Environment.NewLine);
-        writer.Write("};");
         _bitmap.WritePixels(_frameRect, _presentationPixels, _stride, 0);
     }
 

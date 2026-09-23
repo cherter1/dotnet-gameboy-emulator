@@ -105,4 +105,12 @@ internal static unsafe partial class Sdl
     internal static partial ulong SDL_GetTicksNS(); //ns elapsed
 
     #endregion
+
+    #region SDL_events.h
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_PollEvent(SdlEvent* sdlEvent);
+
+    #endregion
 }
