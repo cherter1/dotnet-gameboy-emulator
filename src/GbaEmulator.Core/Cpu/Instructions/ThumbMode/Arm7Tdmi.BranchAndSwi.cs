@@ -88,7 +88,7 @@ public sealed partial class Arm7Tdmi
     private void Swi(ushort instruction)
     {
         var comment = instruction & 0xFF;
-        Console.WriteLine("THUMB SWI Enter: comment = " + comment.ToString("X8"));
+        //Console.WriteLine("THUMB SWI Enter: comment = " + comment.ToString("X8"));
 
         Registers.SetSpsr(CpuMode.Supervisor, Registers.Cpsr);
 

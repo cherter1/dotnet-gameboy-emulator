@@ -2,17 +2,16 @@ using GbaEmulator.Core;
 
 namespace GbaEmulator.App.SDL.Hosting;
 
-public class EmulatorStartup
+public static class GbaInit
 {
-    public required GbaMachine Machine { get; init; }
-
-    public EmulatorStartup()
+    public static GbaMachine CreateMachine()
     {
         var rom = ResolveGbaRomPath();
         var bios = ResolveGbaBiosPath();
         var save = ResolveSaveFilePath(rom);
 
-        Machine = GbaMachine.Create(new GbaMachineOptions { BiosPath = bios, RomPath = rom, SaveDirectory = save });
+        var machine = GbaMachine.Create(new GbaMachineOptions { BiosPath = bios, RomPath = rom, SaveDirectory = save });
+        return machine;
     }
 
     private static string? ResolveGbaRomPath()

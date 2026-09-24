@@ -13,6 +13,8 @@ internal static unsafe partial class Sdl
 
     internal const uint PixelFormatArgb8888 = 0x16362004;
     internal const uint EventQuit = 0x100;
+    internal const uint EventKeyDown = 0x300;
+    internal const uint EventKeyUp = 0x301;
 
     #region SDL_init.h
 
@@ -66,11 +68,11 @@ internal static unsafe partial class Sdl
 
     [LibraryImport(LibraryName)]
     [return: MarshalAs(UnmanagedType.I1)]
-    internal static partial bool SDL_UpdateTexture(nint texture, nint rect, nint pixels, int pitch);
+    internal static partial bool SDL_UpdateTexture(nint texture, void* rect, void* pixels, int pitch);
 
     [LibraryImport(LibraryName)]
     [return: MarshalAs(UnmanagedType.I1)]
-    internal static partial bool SDL_RenderTexture(nint renderer, nint texture, nint srcrect, nint dstrect);
+    internal static partial bool SDL_RenderTexture(nint renderer, nint texture, void* srcrect, void* dstrect);
 
     [LibraryImport(LibraryName)]
     [return: MarshalAs(UnmanagedType.I1)]

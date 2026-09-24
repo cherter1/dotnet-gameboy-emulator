@@ -132,36 +132,36 @@ public sealed class GbaMachine
         Ppu.FrameReady = false;
         var iterations = 0;
         //var consumed = 0;
-        var cpuWatch = new Stopwatch();
-        var dmaWatch = new Stopwatch();
-        var timerWatch = new Stopwatch();
-        var ppuWatch = new Stopwatch();
+        //var cpuWatch = new Stopwatch();
+        //var dmaWatch = new Stopwatch();
+        //var timerWatch = new Stopwatch();
+        //var ppuWatch = new Stopwatch();
         //while (consumed < cycles)
         while (!Ppu.FrameReady)
         {
-            cpuWatch.Start();
+            //cpuWatch.Start();
             var instructionCycles = Cpu.Step();
-            cpuWatch.Stop();
+            //cpuWatch.Stop();
 
-            dmaWatch.Start();
+            //dmaWatch.Start();
             Dma.RunDmas(DmaTimingType.Immediately, Bus);
-            dmaWatch.Stop();
+            //dmaWatch.Stop();
 
-            timerWatch.Start();
+            //timerWatch.Start();
             Timers.Advance(instructionCycles);
-            timerWatch.Stop();
+            //timerWatch.Stop();
 
-            ppuWatch.Start();
+            //ppuWatch.Start();
             Ppu.Step(instructionCycles, Bus);
-            ppuWatch.Stop();
+            //ppuWatch.Stop();
 
             //consumed += instructionCycles;
             iterations += 1;
         }
-        Console.WriteLine($"{iterations} iterations completed");
-        Console.WriteLine($"{cpuWatch.Elapsed.TotalMilliseconds} ms in CPU");
-        Console.WriteLine($"{dmaWatch.Elapsed.TotalMilliseconds} ms in DMA");
-        Console.WriteLine($"{timerWatch.Elapsed.TotalMilliseconds} ms in timers");
-        Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
+        //Console.WriteLine($"{iterations} iterations completed");
+        //Console.WriteLine($"{cpuWatch.Elapsed.TotalMilliseconds} ms in CPU");
+        //Console.WriteLine($"{dmaWatch.Elapsed.TotalMilliseconds} ms in DMA");
+        //Console.WriteLine($"{timerWatch.Elapsed.TotalMilliseconds} ms in timers");
+        //Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
     }
 }
