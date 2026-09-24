@@ -34,8 +34,10 @@ while (running)
             if (sdlEvent.Type == Sdl.EventQuit) //SDL_EventType
             {
                 running = false;
+                break;
             }
-            else if (sdlEvent.Type == Sdl.EventKeyDown) //key down
+
+            if (sdlEvent.Type == Sdl.EventKeyDown) //key down
             {
                 var keySetDown = *(SdlKeyboardEvent*)&sdlEvent;
                 if (TryMapKey(keySetDown.KeyCode, out GbaButton button))
