@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace GbaEmulator.Core.Video;
 
@@ -7,6 +6,7 @@ public sealed class FrameBuffer
 {
     public int Width { get; }
     public int Height { get; }
+    //abgr1555 color format
     public Span<ushort> Pixels => _pixels;
     private readonly ushort[] _pixels;
 
@@ -32,10 +32,5 @@ public sealed class FrameBuffer
     public void FillScanline(int scanline, ushort value)
     {
         Pixels.Slice(scanline * Width, Width).Fill(value);
-    }
-
-    public void CopyToBgra32(Span<byte> destination)
-    {
-        MemoryMarshal.AsBytes(Pixels).CopyTo(destination);
     }
 }

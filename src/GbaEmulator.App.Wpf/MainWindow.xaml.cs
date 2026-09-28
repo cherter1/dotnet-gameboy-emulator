@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -81,7 +80,16 @@ public partial class MainWindow
         {
             _machine.RunFrame();
 
-            _machine.FrameBuffer.CopyToBgra32(_backPixels);
+            //_machine.FrameBuffer.CopyToBgra32(_backPixels);
+            int count = _machine.FrameBuffer.Width * _machine.FrameBuffer.Height;
+            for (int i = 0; i < count; i++)
+            {
+                ushort p = _machine.FrameBuffer.Pixels[i];
+                _backPixels[i * 4] = Expand5To8[(p >> 10) & 0x1f]; //b
+                _backPixels[i * 4 + 1] = Expand5To8[(p >> 5) & 0x1f]; //g
+                _backPixels[i * 4 + 2] = Expand5To8[p & 0x1f]; //r
+                _backPixels[i * 4 + 3] = 0xff; //a
+            }
 
             lock (_lock)
             {
@@ -220,5 +228,18 @@ public partial class MainWindow
                 button = default;
                 return false;
         }
+    }
+
+    //Array to expand a 5bit color to 8bit
+    private static readonly byte[] Expand5To8 = BuildColorBitExpandTable();
+    private static byte[] BuildColorBitExpandTable()
+    {
+        var table = new byte[32];
+        for (int i = 0; i < 32; i++)
+        {
+            table[i] = (byte)(i * 255 / 31);
+        }
+
+        return table;
     }
 }

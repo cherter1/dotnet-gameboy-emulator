@@ -21,8 +21,7 @@ Sdl.SDL_RenderClear(renderer);
 Sdl.SDL_RenderPresent(renderer);
 
 bool running = true;
-ulong lastTime = 0;
-ulong lastTicksNs = 0;
+ulong lastTime = 0, lastTicksNs = 0;
 uint fpsCount = 0;
 while (running)
 {

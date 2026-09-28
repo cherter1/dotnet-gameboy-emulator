@@ -1341,7 +1341,6 @@ public sealed class Ppu
             var offset = startOffset + (((y * 160) + x) * 2);
 
             var bgr555 = Read16(vram, offset);
-            //var finalColor = ConvertBgr555ToArgb(bgr555);
             FrameBuffer.SetPixel(x, y, bgr555);
         }
     }
@@ -1351,27 +1350,6 @@ public sealed class Ppu
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset + 0x200);
         return bgr555;
-    }
-
-    //Array to expand a 5bit color to 8bit
-    private static readonly byte[] Expand5To8 = BuildColorBitExpandTable();
-    private static uint ConvertBgr555ToArgb(ushort value)
-    {
-        var red = Expand5To8[value & 0x1F];
-        var green = Expand5To8[(value >> 5) & 0x1F];
-        var blue = Expand5To8[(value >> 10) & 0x1F];
-        return 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue;
-    }
-
-    private static byte[] BuildColorBitExpandTable()
-    {
-        var table = new byte[32];
-        for (int i = 0; i < 32; i++)
-        {
-            table[i] = (byte)(i * 255 / 31);
-        }
-
-        return table;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

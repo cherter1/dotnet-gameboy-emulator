@@ -125,9 +125,7 @@ public sealed class GbaMachine
 
     private void Reset() => Cpu.Reset();
 
-    public void RunFrame() => RunCycles(Ppu.CyclesPerFrame);
-
-    private void RunCycles(int cycles)
+    public void RunFrame()
     {
         Ppu.FrameReady = false;
         var iterations = 0;
