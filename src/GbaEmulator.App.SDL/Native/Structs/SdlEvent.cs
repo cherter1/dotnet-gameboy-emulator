@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace GbaEmulator.App.SDL.Native;
+namespace GbaEmulator.App.SDL.Native.Structs;
 
 [StructLayout(LayoutKind.Explicit, Size = 128)]
 internal struct SdlEvent

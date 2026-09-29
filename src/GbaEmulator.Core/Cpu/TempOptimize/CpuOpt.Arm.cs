@@ -304,25 +304,7 @@ public sealed partial class CpuOpt
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: false); //N
         _cycles += bus.GetCpuAccessCycles(Registers.ProgramCounter, AccessWidth.Word, sequential: true) * 2; //2S cycles
 
-        var functionVector = comment >> 16;
-        if (functionVector == 0x6)
-        {
-            var q = 1;
-        }
-        if (false)
-        {
-            //TODO: temp must add functions in bios
-            //div
-            var numerator = (int)Registers[0];
-            var denominator = (int)Registers[1];
-            //TODO: not handling divide by zero
-            var result = numerator / denominator;
-            Registers[0] = (uint)result;
-            var remainder = numerator % denominator;
-            Registers[1] = (uint)remainder;
-            Registers[3] = (uint)result;
-            //var absoluteValue = (uint)result;
-        }
+        //var functionVector = comment >> 16;
     }
 
     private void ExecuteArmBranchExchange(uint instruction)

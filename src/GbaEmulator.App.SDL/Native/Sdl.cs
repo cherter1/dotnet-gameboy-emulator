@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using GbaEmulator.App.SDL.Native.Structs;
 
 namespace GbaEmulator.App.SDL.Native;
 
@@ -6,12 +7,6 @@ internal static unsafe partial class Sdl
 {
     private const string LibraryName = "SDL3";
 
-    internal const uint InitVideo = 0x00000020;
-    internal const int TextureAccessStreaming = 1;
-    internal const int ScaleModeNearest = 0;
-    internal const int LogicalPresentationIntegerScale = 4;
-
-    internal const uint PixelFormatArgb8888 = 0x16362004;
     internal const uint EventQuit = 0x100;
     internal const uint EventKeyDown = 0x300;
     internal const uint EventKeyUp = 0x301;
@@ -93,9 +88,6 @@ internal static unsafe partial class Sdl
     #endregion
 
     #region SDL_timer.h
-
-    [LibraryImport(LibraryName)]
-    internal static partial void SDL_Delay(uint ms);
 
     [LibraryImport(LibraryName)]
     internal static partial void SDL_DelayNS(ulong ns);

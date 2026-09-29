@@ -65,7 +65,7 @@ dotnet test
 ```
 for benchmarks
 ```powershell
-dotnet run --project tests/GbaEmulator.Core.Benchmarks
+dotnet run -c Release --project tests/GbaEmulator.Core.Benchmarks
 ```
 
 ### Emulator
@@ -77,12 +77,12 @@ Place BIOS file in `bios/` at the repo root, and make sure the file is named `gb
 
 To run the SDL3 frontend that uses GPU rendering (<span style="font-size: 1.1em">***Recommended***</span>)
 ```powershell
-dotnet run --project src/GbaEmulator.App.SDL
+dotnet run -c Release --project src/GbaEmulator.App.SDL
 ```
 
 To run the WPF frontend (<span style="font-size: 1.1em">***Not Recommended***</span>)
 ```powershell
-dotnet run --project src/GbaEmulator.App.Wpf
+dotnet run -c Release --project src/GbaEmulator.App.Wpf
 ```
 
 ### Controls

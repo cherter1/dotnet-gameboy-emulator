@@ -51,45 +51,6 @@ public sealed partial class Arm7Tdmi
             return 4;
         }
 
-#if DEBUG
-            if (Registers.ProgramCounter % 2 == 1)
-            {
-                //DebugUtilities.DumpTrace(_traces, ref _traceIndex);
-                Console.WriteLine(nameof(ArmBranch) + $": {ArmBranch:N0}");
-                Console.WriteLine(nameof(ArmBlockDataTransfer) + $": {ArmBlockDataTransfer:N0}");
-                Console.WriteLine(nameof(ArmSingleDataTransfer) + $": {ArmSingleDataTransfer:N0}");
-                Console.WriteLine(nameof(ArmSwi) + $": {ArmSwi:N0}");
-                Console.WriteLine(nameof(ArmBranchExchange) + $": {ArmBranchExchange:N0}");
-                Console.WriteLine(nameof(ArmSingleDataSwap) + $": {ArmSingleDataSwap:N0}");
-                Console.WriteLine(nameof(ArmMultiply) + $": {ArmMultiply:N0}");
-                Console.WriteLine(nameof(ArmMultiplyLong) + $": {ArmMultiplyLong:N0}");
-                Console.WriteLine(nameof(ArmHalfwordSignedDataTransfer) + $": {ArmHalfwordSignedDataTransfer:N0}");
-                Console.WriteLine(nameof(ArmMrs) + $": {ArmMrs:N0}");
-                Console.WriteLine(nameof(ArmMsr) + $": {ArmMsr:N0}");
-                Console.WriteLine(nameof(ArmDataProc) + $": {ArmDataProc:N0}");
-                Console.WriteLine("THUMB");
-                Console.WriteLine(nameof(ThumbFormat1) + $": {ThumbFormat1:N0}");
-                Console.WriteLine(nameof(ThumbFormat2) + $": {ThumbFormat2:N0}");
-                Console.WriteLine(nameof(ThumbFormat3) + $": {ThumbFormat3:N0}");
-                Console.WriteLine(nameof(ThumbFormat4) + $": {ThumbFormat4:N0}");
-                Console.WriteLine(nameof(ThumbFormat5) + $": {ThumbFormat5:N0}");
-                Console.WriteLine(nameof(ThumbFormat6) + $": {ThumbFormat6:N0}");
-                Console.WriteLine(nameof(ThumbFormat7) + $": {ThumbFormat7:N0}");
-                Console.WriteLine(nameof(ThumbFormat8) + $": {ThumbFormat8:N0}");
-                Console.WriteLine(nameof(ThumbFormat9) + $": {ThumbFormat9:N0}");
-                Console.WriteLine(nameof(ThumbFormat10) + $": {ThumbFormat10:N0}");
-                Console.WriteLine(nameof(ThumbFormat11) + $": {ThumbFormat11:N0}");
-                Console.WriteLine(nameof(ThumbFormat12) + $": {ThumbFormat12:N0}");
-                Console.WriteLine(nameof(ThumbFormat13) + $": {ThumbFormat13:N0}");
-                Console.WriteLine(nameof(ThumbFormat14) + $": {ThumbFormat14:N0}");
-                Console.WriteLine(nameof(ThumbFormat15) + $": {ThumbFormat15:N0}");
-                Console.WriteLine(nameof(ThumbFormat16) + $": {ThumbFormat16:N0}");
-                Console.WriteLine(nameof(ThumbFormat17) + $": {ThumbFormat17:N0}");
-                Console.WriteLine(nameof(ThumbFormat18) + $": {ThumbFormat18:N0}");
-                Console.WriteLine(nameof(ThumbFormat19) + $": {ThumbFormat19:N0}");
-            }
-#endif
-
         _cycles = 0;
         if (Registers.Cpsr.ThumbState)
         {
@@ -102,41 +63,6 @@ public sealed partial class Arm7Tdmi
 
         return _cycles;
     }
-
-    #region DEBUG
-    private int ArmBranch = 0;
-    private int ArmBlockDataTransfer = 0;
-    private int ArmSingleDataTransfer = 0;
-    private int ArmSwi = 0;
-    private int ArmBranchExchange = 0;
-    private int ArmSingleDataSwap = 0;
-    private int ArmMultiply = 0;
-    private int ArmMultiplyLong = 0;
-    private int ArmHalfwordSignedDataTransfer = 0;
-    private int ArmMrs = 0;
-    private int ArmMsr = 0;
-    private int ArmDataProc = 0;
-    private int ThumbFormat1 = 0;
-    private int ThumbFormat2 = 0;
-    private int ThumbFormat3 = 0;
-    private int ThumbFormat4 = 0;
-    private int ThumbFormat5 = 0;
-    private int ThumbFormat6 = 0;
-    private int ThumbFormat7 = 0;
-    private int ThumbFormat8 = 0;
-    private int ThumbFormat9 = 0;
-    private int ThumbFormat10 = 0;
-    private int ThumbFormat11 = 0;
-    private int ThumbFormat12 = 0;
-    private int ThumbFormat13 = 0;
-    private int ThumbFormat14 = 0;
-    private int ThumbFormat15 = 0;
-    private int ThumbFormat16 = 0;
-    private int ThumbFormat17 = 0;
-    private int ThumbFormat18 = 0;
-    private int ThumbFormat19 = 0;
-
-    #endregion
 
     private void StepArm()
     {

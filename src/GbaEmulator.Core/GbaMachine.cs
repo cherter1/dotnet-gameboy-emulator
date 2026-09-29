@@ -13,11 +13,11 @@ namespace GbaEmulator.Core;
 
 public sealed class GbaMachine
 {
-    public Arm7Tdmi Cpu { get; }
-    public GbaBus Bus { get; }
-    public Ppu Ppu { get; }
+    private Arm7Tdmi Cpu { get; }
+    private GbaBus Bus { get; }
+    private Ppu Ppu { get; }
     private TimerController Timers { get; }
-    public DmaController Dma { get; }
+    private DmaController Dma { get; }
     public InterruptController Interrupts { get; }
     public KeypadState Keypad { get; }
     public GbaCartridge? Cartridge { get; }
