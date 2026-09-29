@@ -80,7 +80,6 @@ public partial class MainWindow
         {
             _machine.RunFrame();
 
-            //_machine.FrameBuffer.CopyToBgra32(_backPixels);
             int count = _machine.FrameBuffer.Width * _machine.FrameBuffer.Height;
             for (int i = 0; i < count; i++)
             {

@@ -72,6 +72,7 @@ public sealed class GbaMachine
             "FLASH1M_"
         ];
         int matchedIndex = 0;
+        if (cartridge == null) goto breakLoop;
         for (int i = 0; i < saveStrings.Length; i++)
         {
             char[] chars = saveStrings[i].ToCharArray();

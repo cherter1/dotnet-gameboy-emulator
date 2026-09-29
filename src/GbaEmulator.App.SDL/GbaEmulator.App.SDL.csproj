@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>..\..\img\GbaEmu-Icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

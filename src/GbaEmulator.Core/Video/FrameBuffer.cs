@@ -31,6 +31,6 @@ public sealed class FrameBuffer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void FillScanline(int scanline, ushort value)
     {
-        Pixels.Slice(scanline * Width, Width).Fill(value);
+        Pixels.Slice(scanline * Width, Width).Fill((ushort)(value | 0x8000));
     }
 }
