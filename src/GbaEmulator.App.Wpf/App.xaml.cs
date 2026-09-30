@@ -1,7 +1,7 @@
 using System.Windows;
-using GbaEmulator.App.Hosting;
+using GbaEmulator.App.Wpf.Hosting;
 
-namespace GbaEmulator.App;
+namespace GbaEmulator.App.Wpf;
 
 public partial class App
 {

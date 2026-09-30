@@ -20,7 +20,7 @@ public sealed class SingleDataTransferTests
         bus.Write32(0x02000004, 0xE3E00000);
         bus.Write32(0x02000008, 0xE58B0000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -51,7 +51,7 @@ public sealed class SingleDataTransferTests
         bus.Write32(0x02000004, 0xE3E00000);
         bus.Write32(0x02000008, 0xE5CB0000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -83,7 +83,7 @@ public sealed class SingleDataTransferTests
         bus.Write32(0x02000000, 0xE3A0B403);
         bus.Write32(0x02000004, 0xE59B1000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -110,7 +110,7 @@ public sealed class SingleDataTransferTests
         bus.Write32(0x02000000, 0xE3A0B403);
         bus.Write32(0x02000004, 0xE5DB1000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -137,7 +137,7 @@ public sealed class SingleDataTransferTests
         bus.Write32(0x02000000, 0xE3A0B403);
         bus.Write32(0x02000004, 0xE5DB1000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 

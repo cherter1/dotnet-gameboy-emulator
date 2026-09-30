@@ -25,7 +25,7 @@ public class ArmAluBenchmarks
     {
         (_cpu, _bus) = CpuUtilities.CreateCpu();
         (_cpuOpt, _busOpt) = CpuUtilities.CreateCpuOpt();
-        _cpu.Reset(true);
+        _cpu.Reset();
         _cpuOpt.Reset(true);
 
         byte[] rom = new byte[StepsPerInvoke * sizeof(uint)];

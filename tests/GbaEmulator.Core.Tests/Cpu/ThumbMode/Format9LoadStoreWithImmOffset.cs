@@ -15,7 +15,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: str r0 [r1, #0]
         bus.Write16(0x02000000, 0x6008);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
@@ -46,7 +46,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: str r0 [r1, #4]
         bus.Write16(0x02000000, 0x6048);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
@@ -68,7 +68,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: str r0 [r1, #124]  @ 0x7c
         bus.Write16(0x02000000, 0x67c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
@@ -90,7 +90,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: ldr r0 [r1, #0]
         bus.Write16(0x02000000, 0x6808);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
@@ -113,7 +113,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: ldr r0 [r1, #4]
         bus.Write16(0x02000000, 0x6848);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
@@ -136,7 +136,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: ldr r0 [r1, #124]  @ 0x7c
         bus.Write16(0x02000000, 0x6fc8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
@@ -159,7 +159,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: strb r0 [r1, #0]
         bus.Write16(0x02000000, 0x7008);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x123456AB;
         cpu.Registers[1] = 0x02000100;
@@ -181,7 +181,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: strb r0 [r1, #5]
         bus.Write16(0x02000000, 0x7148);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x123456AB;
         cpu.Registers[1] = 0x02000100;
@@ -203,7 +203,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: strb r0 [r1, #31]
         bus.Write16(0x02000000, 0x77c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x123456AB;
         cpu.Registers[1] = 0x02000100;
@@ -225,7 +225,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: ldrb r0 [r1, #0]
         bus.Write16(0x02000000, 0x7808);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
@@ -248,7 +248,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: ldrb r0 [r1, #5]
         bus.Write16(0x02000000, 0x7948);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;
@@ -271,7 +271,7 @@ public sealed class Format9LoadStoreWithImmOffset
         // 0x02000000: ldrb r0 [r1, #31]
         bus.Write16(0x02000000, 0x7fc8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x0;
         cpu.Registers[1] = 0x02000100;

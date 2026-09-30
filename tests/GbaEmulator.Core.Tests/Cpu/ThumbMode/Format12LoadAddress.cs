@@ -15,7 +15,7 @@ public sealed class Format12LoadAddress
         // 0x02000000: add r0, pc, #0
         bus.Write16(0x02000000, 0xa000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -44,7 +44,7 @@ public sealed class Format12LoadAddress
         // 0x02000002: add r0, pc, #0
         bus.Write16(0x02000002, 0xa000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000002;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -64,7 +64,7 @@ public sealed class Format12LoadAddress
         // 0x02000000: add r1, pc, #4
         bus.Write16(0x02000000, 0xa101);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -84,7 +84,7 @@ public sealed class Format12LoadAddress
         // 0x02000000: add r7, pc, #1020
         bus.Write16(0x02000000, 0xa7ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -104,7 +104,7 @@ public sealed class Format12LoadAddress
         // 0x02000002: add r7, pc, #1020
         bus.Write16(0x02000002, 0xa7ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000002;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -124,7 +124,7 @@ public sealed class Format12LoadAddress
         // 0x02000000: add r0, sp, #0
         bus.Write16(0x02000000, 0xa800);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -145,7 +145,7 @@ public sealed class Format12LoadAddress
         // 0x02000000: add r2, sp, #4
         bus.Write16(0x02000000, 0xaa01);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -166,7 +166,7 @@ public sealed class Format12LoadAddress
         // 0x02000000: add r5, sp, #1020
         bus.Write16(0x02000000, 0xadff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers.Cpsr.ThumbState = true;

@@ -15,7 +15,7 @@ public sealed class Format11SpRelativeLoadStore
         // 0x02000000: str r0 [sp, #0]
         bus.Write16(0x02000000, 0x9000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers[0] = 0x12345678;
@@ -46,7 +46,7 @@ public sealed class Format11SpRelativeLoadStore
         // 0x02000000: str r0 [sp, #4]
         bus.Write16(0x02000000, 0x9001);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers[0] = 0x12345678;
@@ -68,7 +68,7 @@ public sealed class Format11SpRelativeLoadStore
         // 0x02000000: str r7 [sp, #4]
         bus.Write16(0x02000000, 0x97ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         cpu.Registers[7] = 0x12345678;
@@ -90,7 +90,7 @@ public sealed class Format11SpRelativeLoadStore
         // 0x02000000: ldr r0 [sp, #0]
         bus.Write16(0x02000000, 0x9800);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         bus.Write32(0x03007000, 0x12345678);
@@ -112,7 +112,7 @@ public sealed class Format11SpRelativeLoadStore
         // 0x02000000: ldr r2 [sp, #4]
         bus.Write16(0x02000000, 0x9a01);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         bus.Write32(0x03007004, 0x12345678);
@@ -134,7 +134,7 @@ public sealed class Format11SpRelativeLoadStore
         // 0x02000000: ldr r5 [sp, #1020]
         bus.Write16(0x02000000, 0x9dff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007000;
         bus.Write32(0x030073fc, 0x12345678);

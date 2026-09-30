@@ -13,12 +13,11 @@ namespace GbaEmulator.Core;
 
 public sealed class GbaMachine
 {
-    private readonly bool _skipBios;
-    public Arm7Tdmi Cpu { get; }
-    public GbaBus Bus { get; }
-    public Ppu Ppu { get; }
+    private Arm7Tdmi Cpu { get; }
+    private GbaBus Bus { get; }
+    private Ppu Ppu { get; }
     private TimerController Timers { get; }
-    public DmaController Dma { get; }
+    private DmaController Dma { get; }
     public InterruptController Interrupts { get; }
     public KeypadState Keypad { get; }
     public GbaCartridge? Cartridge { get; }
@@ -32,8 +31,7 @@ public sealed class GbaMachine
         DmaController dma,
         InterruptController interrupts,
         KeypadState keypad,
-        GbaCartridge? cartridge,
-        bool skipBios)
+        GbaCartridge? cartridge)
     {
         Cpu = cpu;
         Bus = bus;
@@ -43,7 +41,6 @@ public sealed class GbaMachine
         Interrupts = interrupts;
         Keypad = keypad;
         Cartridge = cartridge;
-        _skipBios = skipBios;
     }
 
     public static GbaMachine Create(GbaMachineOptions options)
@@ -75,6 +72,7 @@ public sealed class GbaMachine
             "FLASH1M_"
         ];
         int matchedIndex = 0;
+        if (cartridge == null) goto breakLoop;
         for (int i = 0; i < saveStrings.Length; i++)
         {
             char[] chars = saveStrings[i].ToCharArray();
@@ -121,50 +119,48 @@ public sealed class GbaMachine
         }
 
         bus.LoadBios(BiosImage.LoadOptional(options.BiosPath));
-        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge, false);
+        var machine = new GbaMachine(cpu, bus, ppu, timers, dma, interrupts, keypad, cartridge);
         machine.Reset();
         return machine;
     }
 
-    private void Reset() => Cpu.Reset(_skipBios);
+    private void Reset() => Cpu.Reset();
 
-    public void RunFrame() => RunCycles(Ppu.CyclesPerFrame);
-
-    private void RunCycles(int cycles)
+    public void RunFrame()
     {
         Ppu.FrameReady = false;
         var iterations = 0;
         //var consumed = 0;
-        var cpuWatch = new Stopwatch();
-        var dmaWatch = new Stopwatch();
-        var timerWatch = new Stopwatch();
-        var ppuWatch = new Stopwatch();
+        //var cpuWatch = new Stopwatch();
+        //var dmaWatch = new Stopwatch();
+        //var timerWatch = new Stopwatch();
+        //var ppuWatch = new Stopwatch();
         //while (consumed < cycles)
         while (!Ppu.FrameReady)
         {
-            cpuWatch.Start();
+            //cpuWatch.Start();
             var instructionCycles = Cpu.Step();
-            cpuWatch.Stop();
+            //cpuWatch.Stop();
 
-            dmaWatch.Start();
+            //dmaWatch.Start();
             Dma.RunDmas(DmaTimingType.Immediately, Bus);
-            dmaWatch.Stop();
+            //dmaWatch.Stop();
 
-            timerWatch.Start();
+            //timerWatch.Start();
             Timers.Advance(instructionCycles);
-            timerWatch.Stop();
+            //timerWatch.Stop();
 
-            ppuWatch.Start();
+            //ppuWatch.Start();
             Ppu.Step(instructionCycles, Bus);
-            ppuWatch.Stop();
+            //ppuWatch.Stop();
 
             //consumed += instructionCycles;
             iterations += 1;
         }
-        Console.WriteLine($"{iterations} iterations completed");
-        Console.WriteLine($"{cpuWatch.Elapsed.TotalMilliseconds} ms in CPU");
-        Console.WriteLine($"{dmaWatch.Elapsed.TotalMilliseconds} ms in DMA");
-        Console.WriteLine($"{timerWatch.Elapsed.TotalMilliseconds} ms in timers");
-        Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
+        //Console.WriteLine($"{iterations} iterations completed");
+        //Console.WriteLine($"{cpuWatch.Elapsed.TotalMilliseconds} ms in CPU");
+        //Console.WriteLine($"{dmaWatch.Elapsed.TotalMilliseconds} ms in DMA");
+        //Console.WriteLine($"{timerWatch.Elapsed.TotalMilliseconds} ms in timers");
+        //Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
     }
 }

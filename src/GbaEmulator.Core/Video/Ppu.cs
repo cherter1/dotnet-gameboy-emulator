@@ -154,11 +154,12 @@ public sealed class Ppu
         return (ushort)(_memory.PaletteRam[offset] | (_memory.PaletteRam[offset + 1] << 8));
     }
 
-    private uint ReadBgPaletteColor(int paletteIndex)
+    private ushort ReadBgPaletteColor(int paletteIndex)
     {
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset);
-        return ConvertBgr555ToArgb(bgr555);
+        return bgr555;
+        //return ConvertBgr555ToArgb(bgr555);
     }
 
     private void RenderScanLine(int scanLine)
@@ -413,8 +414,8 @@ public sealed class Ppu
             }
 
             setColor:
-            var finalColor = ConvertBgr555ToArgb(topPixelBgrColor);
-            FrameBuffer.SetPixel(x, y, finalColor);
+            //var finalColor = ConvertBgr555ToArgb(topPixelBgrColor);
+            FrameBuffer.SetPixel(x, y, topPixelBgrColor);
         }
     }
 
@@ -849,8 +850,8 @@ public sealed class Ppu
                 }
             }
 
-            var finalColor = ConvertBgr555ToArgb(hiBgrColor);
-            FrameBuffer.SetPixel(x, y, finalColor);
+            //var finalColor = ConvertBgr555ToArgb(hiBgrColor);
+            FrameBuffer.SetPixel(x, y, hiBgrColor);
         }
 
         _memory.Io.InternalBg2X += (short)_memory.Io.REG_BG2PB;
@@ -1067,8 +1068,8 @@ public sealed class Ppu
                 }
             }
 
-            var finalColor = ConvertBgr555ToArgb(hiBgrColor);
-            FrameBuffer.SetPixel(x, y, finalColor);
+            //var finalColor = ConvertBgr555ToArgb(hiBgrColor);
+            FrameBuffer.SetPixel(x, y, hiBgrColor);
         }
 
         _memory.Io.InternalBg2X += (short)_memory.Io.REG_BG2PB;
@@ -1294,7 +1295,8 @@ public sealed class Ppu
             var offset = ((y * ScreenWidth) + x) * 2;
 
             var bgr555 = Read16(vram, offset);
-            FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
+            //var finalColor = ConvertBgr555ToArgb(bgr555);
+            FrameBuffer.SetPixel(x, y, bgr555);
         }
     }
 
@@ -1339,7 +1341,7 @@ public sealed class Ppu
             var offset = startOffset + (((y * 160) + x) * 2);
 
             var bgr555 = Read16(vram, offset);
-            FrameBuffer.SetPixel(x, y, ConvertBgr555ToArgb(bgr555));
+            FrameBuffer.SetPixel(x, y, bgr555);
         }
     }
 
@@ -1348,27 +1350,6 @@ public sealed class Ppu
         var offset = paletteIndex * 2;
         var bgr555 = ReadPalette16(offset + 0x200);
         return bgr555;
-    }
-
-    //Array to expand a 5bit color to 8bit
-    private static readonly byte[] Expand5To8 = BuildColorBitExpandTable();
-    private static uint ConvertBgr555ToArgb(ushort value)
-    {
-        var red = Expand5To8[value & 0x1F];
-        var green = Expand5To8[(value >> 5) & 0x1F];
-        var blue = Expand5To8[(value >> 10) & 0x1F];
-        return 0xFF000000U | ((uint)red << 16) | ((uint)green << 8) | blue;
-    }
-
-    private static byte[] BuildColorBitExpandTable()
-    {
-        var table = new byte[32];
-        for (int i = 0; i < 32; i++)
-        {
-            table[i] = (byte)(i * 255 / 31);
-        }
-
-        return table;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

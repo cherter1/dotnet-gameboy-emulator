@@ -17,7 +17,7 @@ public sealed class ExclusiveOrTests
         bus.Write32(0x02000000, 0xE3A0C0FF);
         bus.Write32(0x02000004, 0xE22CC0F0);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 
@@ -42,7 +42,7 @@ public sealed class ExclusiveOrTests
         bus.Write32(0x02000004, 0xE3A0A102);
         bus.Write32(0x02000008, 0xE03AC00B);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = false;
 

@@ -15,7 +15,7 @@ public sealed class Format14PushPopRegisters
         // 0x02000000: push {r0, r1, r3}
         bus.Write16(0x02000000, 0xb40b);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03008000;
         cpu.Registers[0] = 0x11111111;
@@ -51,7 +51,7 @@ public sealed class Format14PushPopRegisters
         // 0x02000000: push {lr}
         bus.Write16(0x02000000, 0xb500);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[14] = 0x02000101;
         cpu.Registers[13] = 0x03008000;
@@ -74,7 +74,7 @@ public sealed class Format14PushPopRegisters
         // 0x02000000: push {r4, r5, r6, r7, lr}
         bus.Write16(0x02000000, 0xb5f0);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03008000;
         cpu.Registers[4] = 0x44444444;
@@ -105,7 +105,7 @@ public sealed class Format14PushPopRegisters
         // 0x02000000: pop {r0, r5, r6}
         bus.Write16(0x02000000, 0xbc61);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007ff4;
         bus.Write32(0x03007ff4, 0x11111111);
@@ -141,7 +141,7 @@ public sealed class Format14PushPopRegisters
         // 0x02000000: pop {pc}
         bus.Write16(0x02000000, 0xbd00);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007ffc;
         bus.Write32(0x03007ffc, 0x02000101);
@@ -166,7 +166,7 @@ public sealed class Format14PushPopRegisters
         // 0x02000000: pop {r4, r5, r6, r7, pc}
         bus.Write16(0x02000000, 0xbdf0);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[13] = 0x03007fec;
         bus.Write32(0x03007fec, 0x44444444);

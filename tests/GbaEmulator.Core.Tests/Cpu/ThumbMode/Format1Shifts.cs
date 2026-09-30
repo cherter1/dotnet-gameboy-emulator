@@ -17,7 +17,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsl r0, r1, #0
         bus.Write16(0x02000000, 0x0008);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x12345678;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -49,7 +49,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsl r0, r1, #1
         bus.Write16(0x02000000, 0x0048);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000001;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -75,7 +75,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsl r0, r1, #1
         bus.Write16(0x02000000, 0x0048);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -102,7 +102,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsl r0, r1, #31
         bus.Write16(0x02000000, 0x07c8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x10;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -129,7 +129,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsr r0, r1, #1
         bus.Write16(0x02000000, 0x0848);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000001;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -155,7 +155,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsr r0, r1, #1
         bus.Write16(0x02000000, 0x0848);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -182,7 +182,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsr r0, r1, #31
         bus.Write16(0x02000000, 0x0fc8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -208,7 +208,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsr r0, r1, #31
         bus.Write16(0x02000000, 0x0fc8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -234,7 +234,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsr r0, r1, #32
         bus.Write16(0x02000000, 0x0808);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -260,7 +260,7 @@ public sealed class Format1Shifts
         // 0x02000000: lsr r0, r1, #32
         bus.Write16(0x02000000, 0x0808);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -287,7 +287,7 @@ public sealed class Format1Shifts
         // 0x02000000: asr r0, r1, #1
         bus.Write16(0x02000000, 0x1048);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000001;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -313,7 +313,7 @@ public sealed class Format1Shifts
         // 0x02000000: asr r0, r1, #1
         bus.Write16(0x02000000, 0x1048);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -340,7 +340,7 @@ public sealed class Format1Shifts
         // 0x02000000: asr r0, r1, #4
         bus.Write16(0x02000000, 0x1108);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0xF0000008;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -366,7 +366,7 @@ public sealed class Format1Shifts
         // 0x02000000: asr r0, r1, #31
         bus.Write16(0x02000000, 0x17C8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x40000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -392,7 +392,7 @@ public sealed class Format1Shifts
         // 0x02000000: asr r0, r1, #32
         bus.Write16(0x02000000, 0x1008);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -418,7 +418,7 @@ public sealed class Format1Shifts
         // 0x02000000: asr r0, r1, #32
         bus.Write16(0x02000000, 0x1008);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[1] = 0x7fffffff;
         cpu.Registers.Cpsr.ThumbState = true;

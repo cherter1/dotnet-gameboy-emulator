@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.Core", "src\GbaEmulator.Core\GbaEmulator.Core.csproj", "{C66BA55F-2829-4E2F-AC35-112EF30303B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.App", "src\GbaEmulator.App\GbaEmulator.App.csproj", "{7F2E8A2D-8E8D-451C-A352-601EA08B7C8A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.App.Wpf", "src\GbaEmulator.App.Wpf\GbaEmulator.App.Wpf.csproj", "{7F2E8A2D-8E8D-451C-A352-601EA08B7C8A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.Core.Tests", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.Core.Benchmarks", "tests\GbaEmulator.Core.Benchmarks\GbaEmulator.Core.Benchmarks.csproj", "{24CDEEF6-AE35-4BC2-BF21-B25F747222BF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.AppSDL", "src\GbaEmulator.AppSDL\GbaEmulator.AppSDL.csproj", "{9B9767DD-D745-4F98-83D7-0192BDF0A8DD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GbaEmulator.App.SDL", "src\GbaEmulator.App.SDL\GbaEmulator.App.SDL.csproj", "{9B9767DD-D745-4F98-83D7-0192BDF0A8DD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -15,7 +15,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: mov r0, #0
         bus.Write16(0x02000000, 0x2000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x1;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -43,7 +43,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: mov r0, #1
         bus.Write16(0x02000000, 0x2001);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetNegative(true);
@@ -70,7 +70,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: mov r0, #255
         bus.Write16(0x02000000, 0x20ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetNegative(true);
@@ -96,7 +96,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: cmp r0, #0
         bus.Write16(0x02000000, 0x2800);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -123,7 +123,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: cmp r0, #1
         bus.Write16(0x02000000, 0x2801);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -149,7 +149,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: cmp r0, #255
         bus.Write16(0x02000000, 0x28ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xFF;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -175,7 +175,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: add r0, #0
         bus.Write16(0x02000000, 0x3000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -201,7 +201,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: add r0, #1
         bus.Write16(0x02000000, 0x3001);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xe;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -231,7 +231,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: add r0, #1
         bus.Write16(0x02000000, 0x3001);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -259,7 +259,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: add r0, #1
         bus.Write16(0x02000000, 0x3001);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x7fffffff;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -287,7 +287,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: add r0, #255
         bus.Write16(0x02000000, 0x30ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -315,7 +315,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: sub r0, #0
         bus.Write16(0x02000000, 0x3800);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -340,7 +340,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: sub r0, #1
         bus.Write16(0x02000000, 0x3801);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x10;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -369,7 +369,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: sub r0, #1
         bus.Write16(0x02000000, 0x3801);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -395,7 +395,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: sub r0, #255
         bus.Write16(0x02000000, 0x38ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xfe;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -422,7 +422,7 @@ public sealed class Format3AddSubMovCmp
         // 0x02000000: sub r0, #1
         bus.Write16(0x02000000, 0x3801);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x80000000;
         cpu.Registers.Cpsr.ThumbState = true;

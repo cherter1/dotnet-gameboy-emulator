@@ -6,12 +6,6 @@ namespace GbaEmulator.Core.Tests.Cpu.ArmMode.DataProcessing;
 
 public sealed class AdcSbcRscTests
 {
-    /*
-        1c:   e0b10002        adcs    r0, r1, r2
-       20:   e0d10002        sbcs    r0, r1, r2
-       24:   e0f10002        rscs    r0, r1, r2 
-     */
-
     [Fact]
     public void ADCS__test()
     {
@@ -21,7 +15,7 @@ public sealed class AdcSbcRscTests
         // 0x02000000: adcs r0, r1, r2
         bus.Write32(0x02000000, 0xE0b10002);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x1;
         cpu.Registers[1] = 0;
@@ -48,7 +42,7 @@ public sealed class AdcSbcRscTests
         // 0x02000000: sbcs r0, r1, r2
         bus.Write32(0x02000000, 0xE0d10002);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x1;
         cpu.Registers[1] = 0x7fffffff;
@@ -74,7 +68,7 @@ public sealed class AdcSbcRscTests
         // 0x02000000: rscs r0, r1, r2
         bus.Write32(0x02000000, 0xE0f10002);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x1;
         cpu.Registers[1] = 0;

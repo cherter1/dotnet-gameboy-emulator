@@ -15,7 +15,7 @@ public sealed class Format7LoadStoreRegOffset
         // 0x02000000: str r0 [r1, r2]
         bus.Write16(0x02000000, 0x5088);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x12345678;
         cpu.Registers[1] = 0x02000100;
@@ -47,7 +47,7 @@ public sealed class Format7LoadStoreRegOffset
         // 0x02000000: str r0 [r1, r2]
         bus.Write16(0x02000000, 0x5088);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0x12345678;
         cpu.Registers[1] = 0x02000100;
@@ -70,7 +70,7 @@ public sealed class Format7LoadStoreRegOffset
         // 0x02000000: strb r0 [r1, r2]
         bus.Write16(0x02000000, 0x5488);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffab;
         cpu.Registers[1] = 0x02000100;
@@ -93,7 +93,7 @@ public sealed class Format7LoadStoreRegOffset
         // 0x02000000: ldr r0 [r1, r2]
         bus.Write16(0x02000000, 0x5888);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;
@@ -117,7 +117,7 @@ public sealed class Format7LoadStoreRegOffset
         // 0x02000000: ldrb r0 [r1, r2]
         bus.Write16(0x02000000, 0x5c88);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[0] = 0xffffffff;
         cpu.Registers[1] = 0x02000100;

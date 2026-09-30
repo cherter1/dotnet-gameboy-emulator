@@ -15,7 +15,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: bx lr
         bus.Write16(0x02000100, 0x4770);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[14] = 0x02000201;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -46,7 +46,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: bx lr
         bus.Write16(0x02000100, 0x4770);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[14] = 0x02000200;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -77,7 +77,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: bx r0
         bus.Write16(0x02000100, 0x4700);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x02000201;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -108,7 +108,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: bx r0
         bus.Write16(0x02000100, 0x4700);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x02000200;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -139,7 +139,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000102: bx pc
         bus.Write16(0x02000102, 0x4778);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000102;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
@@ -169,7 +169,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: bx pc
         bus.Write16(0x02000100, 0x4778);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetOverflow(true);
@@ -199,7 +199,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000102: mov r8, pc
         bus.Write16(0x02000102, 0x46f8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000102;
         cpu.Registers[8] = 0x0;
         cpu.SetThumbState(true);
@@ -229,7 +229,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: mov r0, pc
         bus.Write16(0x02000100, 0x4678);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x0;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -259,7 +259,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: cmp r8, pc
         bus.Write16(0x02000100, 0x45f8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[8] = 0x02000104;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -287,7 +287,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: cmp r0, pc
         bus.Write16(0x02000100, 0x4578);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[0] = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -316,7 +316,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000100: add r8, pc
         bus.Write16(0x02000100, 0x44f8);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers[8] = 0x20;
         cpu.Registers.Cpsr.ThumbState = true;
@@ -347,7 +347,7 @@ public sealed class Format5AddCmpMovBxHiRegs
         // 0x02000102: add r0, pc
         bus.Write16(0x02000102, 0x4478);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000102;
         cpu.Registers[0] = 0x20;
         cpu.SetThumbState(true);

@@ -19,7 +19,7 @@ public sealed class FiqRegisterBankingTests
         bus.Write32(0x02000004, 0xe369f01f);
         bus.Write32(0x02000008, 0xe25ff004);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers[8] = 0xD00D;
         cpu.Registers[9] = 0xD00D;

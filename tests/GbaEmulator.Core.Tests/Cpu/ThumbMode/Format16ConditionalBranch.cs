@@ -30,7 +30,7 @@ public sealed class Format16ConditionalBranch
         // 0x02000000: b{cond} +6
         bus.Write16(0x02000000, (ushort)instruction);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(zero);
@@ -75,7 +75,7 @@ public sealed class Format16ConditionalBranch
         // 0x02000000: b{cond} +6
         bus.Write16(0x02000000, (ushort)instruction);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetZero(zero);
@@ -104,7 +104,7 @@ public sealed class Format16ConditionalBranch
         // 0x02000000: bne +254
         bus.Write16(0x02000000, 0xd17f);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000000;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -124,7 +124,7 @@ public sealed class Format16ConditionalBranch
         // 0x02000100: bne -256
         bus.Write16(0x02000100, 0xd180);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
 

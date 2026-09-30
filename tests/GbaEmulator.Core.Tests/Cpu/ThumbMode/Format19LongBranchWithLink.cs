@@ -15,7 +15,7 @@ public sealed class Format19LongBranchWithLink
         // 0x02000100: bl +0
         bus.Write32(0x02000100, 0xf800f000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
         cpu.SetCarry(true);
@@ -46,7 +46,7 @@ public sealed class Format19LongBranchWithLink
         // 0x02000100: bl -4
         bus.Write32(0x02000100, 0xfffef7ff);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
 
@@ -68,7 +68,7 @@ public sealed class Format19LongBranchWithLink
         // 0x02000100: bl +8
         bus.Write32(0x02000100, 0xf804f000);
 
-        cpu.Reset(true);
+        cpu.Reset();
         cpu.Registers.ProgramCounter = 0x02000100;
         cpu.Registers.Cpsr.ThumbState = true;
 
