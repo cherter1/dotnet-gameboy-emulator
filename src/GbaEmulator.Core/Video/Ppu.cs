@@ -1118,13 +1118,14 @@ public sealed class Ppu
     private int SpriteStuff_TempName(int y, Span<ScanlineSpriteInfo> sprites)
     {
         int count = 0;
-        var oam = _memory.Oam.AsSpan();
+        //var oam = _memory.Oam.AsSpan();
+        var oam = _memory.Oam.AsSpan(0, 0x400); //Explicit slice with full Length of OAM to help JIT eliminate bounds checks
 
         for (int oamAttrOffset = 0; oamAttrOffset < 1016; oamAttrOffset += 8) //loop runs for sprites 0-127
         {
             var attr0Value = Read16(oam, oamAttrOffset);
             var attr0 = new ObjAttribute0(attr0Value);
-            var isSinglePalette = attr0.IsSinglePalette; //just here for later so i remember
+            var isSinglePalette = attr0.IsSinglePalette; //just here for later so I remember
             if (attr0 is { IsRotationScaling: false, IsDisabled: true })
             {
                 continue; //disabled but only if not r/s obj otherwise its IsDoubleSize
