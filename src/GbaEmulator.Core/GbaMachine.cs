@@ -129,12 +129,12 @@ public sealed class GbaMachine
     public void RunFrame()
     {
         Ppu.FrameReady = false;
-        var iterations = 0;
+        //var iterations = 0;
         //var consumed = 0;
         //var cpuWatch = new Stopwatch();
         //var dmaWatch = new Stopwatch();
         //var timerWatch = new Stopwatch();
-        var ppuWatch = new Stopwatch();
+        //var ppuWatch = new Stopwatch();
         //while (consumed < cycles)
         while (!Ppu.FrameReady)
         {
@@ -150,17 +150,17 @@ public sealed class GbaMachine
             Timers.Advance(instructionCycles);
             //timerWatch.Stop();
 
-            ppuWatch.Start();
+            //ppuWatch.Start();
             Ppu.Step(instructionCycles, Bus);
-            ppuWatch.Stop();
+            //ppuWatch.Stop();
 
             //consumed += instructionCycles;
-            iterations += 1;
+            //iterations += 1;
         }
         //Console.WriteLine($"{iterations} iterations completed");
         //Console.WriteLine($"{cpuWatch.Elapsed.TotalMilliseconds} ms in CPU");
         //Console.WriteLine($"{dmaWatch.Elapsed.TotalMilliseconds} ms in DMA");
         //Console.WriteLine($"{timerWatch.Elapsed.TotalMilliseconds} ms in timers");
-        Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
+        //Console.WriteLine($"{ppuWatch.Elapsed.TotalMilliseconds} ms in ppu");
     }
 }

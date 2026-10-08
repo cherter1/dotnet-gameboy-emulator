@@ -16,7 +16,6 @@ public sealed class Ppu
     private const int CyclesPerScanline = 1232;
     private const int ScanLinesPerFrame = 228;
     private const int HBlankStartCycle = 1006;
-    public const int CyclesPerFrame = CyclesPerScanline * ScanLinesPerFrame;
 
     private readonly InterruptController _interrupts;
     private readonly DmaController _dma;
@@ -321,8 +320,8 @@ public sealed class Ppu
                 }
 
                 int objPaletteIndex = sprite.IsAffine
-                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, sprite)
-                    : RenderRegularSprite(ref vram, x, loPriorityLine, sprite);
+                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, in sprite)
+                    : RenderRegularSprite(ref vram, x, loPriorityLine, in sprite);
 
                 if (objPaletteIndex == 0) continue;
 
@@ -375,7 +374,7 @@ public sealed class Ppu
         }
     }
 
-    private static int RenderAffineSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ushort displayControl, ScanlineSpriteInfo sprite)
+    private static int RenderAffineSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ushort displayControl, in ScanlineSpriteInfo sprite)
     {
         var spriteXPos = x - sprite.XCoord;
 
@@ -483,7 +482,7 @@ public sealed class Ppu
         return sourceObjPaletteIndex;
     }
 
-    private static int RenderRegularSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ScanlineSpriteInfo sprite)
+    private static int RenderRegularSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, in ScanlineSpriteInfo sprite)
     {
         var spriteXPos = x - sprite.XCoord;
 
@@ -746,8 +745,8 @@ public sealed class Ppu
                 }
 
                 int objPaletteIndex = sprite.IsAffine
-                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, sprite)
-                    : RenderRegularSprite(ref vram, x, loPriorityLine, sprite);
+                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, in sprite)
+                    : RenderRegularSprite(ref vram, x, loPriorityLine, in sprite);
 
                 if (objPaletteIndex == 0) continue; //if transparent dont draw
 
@@ -960,8 +959,8 @@ public sealed class Ppu
                 }
 
                 int objPaletteIndex = sprite.IsAffine
-                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, sprite)
-                    : RenderRegularSprite(ref vram, x, loPriorityLine, sprite);
+                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, in sprite)
+                    : RenderRegularSprite(ref vram, x, loPriorityLine, in sprite);
 
                 if (objPaletteIndex == 0)
                 {
