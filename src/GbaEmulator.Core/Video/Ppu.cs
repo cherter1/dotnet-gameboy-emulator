@@ -224,42 +224,16 @@ public sealed class Ppu
             _memory.Io.REG_BG0HOFS, _memory.Io.REG_BG1HOFS,
             _memory.Io.REG_BG2HOFS, _memory.Io.REG_BG3HOFS
         ];
-        ReadOnlySpan<ushort> vofsTable =
-        [
-            _memory.Io.REG_BG0VOFS, _memory.Io.REG_BG1VOFS,
-            _memory.Io.REG_BG2VOFS, _memory.Io.REG_BG3VOFS
-        ];
         Span<int> bgOutputBuffer = stackalloc int[4];
         int enabledBgCount = FastSortBackgroundsByPriority(displayControl, bgControls, bgOutputBuffer, 0b1111);
         Span<int> activeBgs = bgOutputBuffer[..enabledBgCount];
-
-        Span<int> bgScanlineInfo = stackalloc int[7 * (activeBgs.Length + 1)];
-        for (int i = 0; i < activeBgs.Length; i++)
-        {
-            var bgIdx = activeBgs[i];
-            var tileDataStartOffset = ((bgControls[bgIdx] >> 2) & 0b11) * 0x4000; // + 0x0600000 for address
-            var tileMapStartOffset = ((bgControls[bgIdx] >> 8) & 0x1f) * 0x800; // + 0x0600000 for address
-            var tileMapSize = (bgControls[bgIdx] >> 14) & 0b11;
-            BackgroundHelpers.GetTextBackgroundSizeTiles(tileMapSize, out var xTiles, out var yTiles);
-
-            var bgYStartOffset = y + vofsTable[bgIdx];
-            if (yTiles > 32 && ((bgYStartOffset >> 8) & 1) != 0) //startOffset greater than pixels per map or SE length across AND yTiles > 32, if its 32 mirror the single Y SE
-            {
-                tileMapStartOffset += xTiles > 32 ? 0x1000 : 0x800; //move startOffset to next SE(map) start offset, if xTiles long then add 2 maps if not then only add 1 map length
-            }
-            bgYStartOffset &= 0xff;
-
-            var tileY = bgYStartOffset >> 3; // div 8 to count tiles from offset
-            var pixelYInTile = bgYStartOffset & 7; // modulo 8 for pixel 0-7 on x axis
-
-            bgScanlineInfo[i * 7] = tileDataStartOffset;
-            bgScanlineInfo[(i * 7) + 1] = tileMapStartOffset;
-            bgScanlineInfo[(i * 7) + 2] = xTiles;
-            bgScanlineInfo[(i * 7) + 3] = yTiles; //remove later
-            bgScanlineInfo[(i * 7) + 4] = tileY;
-            bgScanlineInfo[(i * 7) + 5] = pixelYInTile;
-            bgScanlineInfo[(i * 7) + 6] = (bgControls[bgIdx] >> 7) & 0b1; // set is 8bpp mode else 4bpp
-        }
+        ReadOnlySpan<TextBackgroundScanlineInfo> bgScanlineInfo =
+        [
+            new(y, _memory.Io.REG_BG0VOFS, bgControls[0]),
+            new(y, _memory.Io.REG_BG1VOFS, bgControls[1]),
+            new(y, _memory.Io.REG_BG2VOFS, bgControls[2]),
+            new(y, _memory.Io.REG_BG3VOFS, bgControls[3])
+        ];
 
         var spriteCount = 0;
         Span<ScanlineSpriteInfo> spriteBuffer = stackalloc ScanlineSpriteInfo[128];
@@ -292,29 +266,26 @@ public sealed class Ppu
                 }
             }
 
-            ushort topPixelBgrColor = 0x8000;
-            BlendTargetOneType topColorSource = BlendTargetOneType.Backdrop;
-            ushort nextTopPixelBgrColor = 0x8000;
-            BlendTargetTwoType nextTopColorSource = BlendTargetTwoType.Backdrop;
+            ushort hiBgrColor, loBgrColor = hiBgrColor = 0x8000;
+            BlendTargetOneType hiColorSource = BlendTargetOneType.Backdrop;
+            BlendTargetTwoType loColorSource = BlendTargetTwoType.Backdrop;
 
-            int topPriorityLine = 4; //top pixel priority line
-            int priorityLine = 4; //priority Of the next TopPixel default 4 so by default anything has higher priority
-            for (int i = 0; i < activeBgs.Length; i++)
+            int hiPriorityLine, loPriorityLine = hiPriorityLine = 4; //priority line for hi and lo pixels default 4 to always get beat initially
+            foreach (ref readonly var bgIdx in activeBgs)
             {
-                var bgIdx = activeBgs[i];
                 if ((winMask & (1 << bgIdx)) == 0) //if not set to display in window continue
                 {
                     continue;
                 }
 
-                var isSinglePalette = bgScanlineInfo[(i * 7) + 6] == 1;
+                var isSinglePalette = bgScanlineInfo[bgIdx].IsSinglePalette;
                 var paletteIndex = RenderTiledTextBackground(ref vram, x, hofsTable[bgIdx],
-                    tileMapStartOffset: bgScanlineInfo[(i * 7) + 1],
-                    xTiles: bgScanlineInfo[(i * 7) + 2],
-                    tileY: bgScanlineInfo[(i * 7) + 4],
-                    pixelYInTile: bgScanlineInfo[(i * 7) + 5],
+                    tileMapStartOffset: bgScanlineInfo[bgIdx].TileMapStartOffset,
+                    xTiles: bgScanlineInfo[bgIdx].XTiles,
+                    tileY: bgScanlineInfo[bgIdx].CurrentYTile,
+                    pixelYInTile: bgScanlineInfo[bgIdx].PixelYInTile,
                     isSinglePalette,
-                    tileDataStartOffset: bgScanlineInfo[i * 7]);
+                    tileDataStartOffset: bgScanlineInfo[bgIdx].TileDataStartOffset);
 
                 if (paletteIndex == 0)
                 {
@@ -327,17 +298,17 @@ public sealed class Ppu
 
                 var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
 
-                if (topPixelBgrColor == 0x8000)
+                if (hiBgrColor == 0x8000)
                 {
-                    topPixelBgrColor = bgrColor;
-                    topColorSource = (BlendTargetOneType)(1 << bgIdx);
-                    topPriorityLine = bgControls[bgIdx] & 0b11;
+                    hiBgrColor = bgrColor;
+                    hiColorSource = (BlendTargetOneType)(1 << bgIdx);
+                    hiPriorityLine = bgControls[bgIdx] & 0b11;
                     continue;
                 }
 
-                nextTopPixelBgrColor = bgrColor;
-                nextTopColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
-                priorityLine = bgControls[bgIdx] & 0b11;
+                loBgrColor = bgrColor;
+                loColorSource = (BlendTargetTwoType)(1 << (bgIdx + 8));
+                loPriorityLine = bgControls[bgIdx] & 0b11;
                 break;
             }
 
@@ -350,79 +321,63 @@ public sealed class Ppu
                 }
 
                 int objPaletteIndex = sprite.IsAffine
-                    ? RenderAffineSprite(ref vram, x, priorityLine, displayControl, sprite)
-                    : RenderRegularSprite(ref vram, x, priorityLine, sprite);
+                    ? RenderAffineSprite(ref vram, x, loPriorityLine, displayControl, sprite)
+                    : RenderRegularSprite(ref vram, x, loPriorityLine, sprite);
 
-                if (objPaletteIndex == 0)
-                {
-                    continue;
-                }
+                if (objPaletteIndex == 0) continue;
 
                 var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber)));
-                if (sprite.Priority <= topPriorityLine) //if sprite has higher priority than current top pixel
+                if (sprite.Priority <= hiPriorityLine) //if sprite has higher priority than current top pixel
                 {
                     //make sprite pixel top and next top gets set to previous top
-                    var tempCol = topPixelBgrColor;
-                    var tempSource = (uint)topColorSource;
-
-                    topPixelBgrColor = objPixelColor;
-                    topColorSource = BlendTargetOneType.Obj;
+                    (loBgrColor, loColorSource) = (hiBgrColor, hiColorSource.ToBlendTargetTwoType());
+                    (hiBgrColor, hiColorSource) = (objPixelColor, BlendTargetOneType.Obj);
                     spriteMode = sprite.Mode;
-
-                    nextTopPixelBgrColor = tempCol;
-                    nextTopColorSource = (BlendTargetTwoType)(tempSource << 8);
                     break;
                 }
 
-                nextTopPixelBgrColor = objPixelColor;
-                nextTopColorSource = BlendTargetTwoType.Obj;
+                loBgrColor = objPixelColor;
+                loColorSource = BlendTargetTwoType.Obj;
                 break;
             }
 
-            if (nextTopPixelBgrColor == 0x8000)
+            if (loBgrColor == 0x8000)
             {
-                nextTopPixelBgrColor = ReadPalette16(0);
-                if (topPixelBgrColor == 0x8000)
+                loBgrColor = ReadPalette16(0);
+                if (hiBgrColor == 0x8000)
                 {
-                    topPixelBgrColor = ReadPalette16(0);
+                    hiBgrColor = loBgrColor;
                 }
             }
 
-            if ((winMask & 0x20) == 0) //if window mask bit 5 not set then window's special effects disabled
+            if ((winMask & 0x20) != 0) //if window mask bit 5 not set then window's special effects disabled
             {
-                goto setColor;
-            }
-            if (topColorSource == BlendTargetOneType.Obj && spriteMode == 1)
-            {
-                //will always use alpha blending with this as source regardless of BLDCNT
-                var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)nextTopColorSource) == (ushort)nextTopColorSource;
-                if (t2BlendingEnabled)
+                if (hiColorSource == BlendTargetOneType.Obj && spriteMode == 1)
                 {
-                    topPixelBgrColor = SpecialEffectsHelper.AlphaBlendPixels(topPixelBgrColor, nextTopPixelBgrColor, _memory.Io.REG_BLDALPHA);
-                }
-                else
-                {
-                    if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    //will always use alpha blending with this as source regardless of BLDCNT
+                    var t2BlendingEnabled = (_memory.Io.REG_BLDCNT & (ushort)loColorSource) != 0;
+                    if (t2BlendingEnabled)
                     {
-                        topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+                        hiBgrColor = SpecialEffectsHelper.AlphaBlendPixels(hiBgrColor, loBgrColor, _memory.Io.REG_BLDALPHA);
+                    }
+                    else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                    {
+                        hiBgrColor = ApplyBlendingEffects(hiBgrColor, hiColorSource, loBgrColor, loColorSource);
                     }
                 }
-            }
-            else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
-            {
-                topPixelBgrColor = ApplyBlendingEffects(topPixelBgrColor, topColorSource, nextTopPixelBgrColor, nextTopColorSource);
+                else if (((_memory.Io.REG_BLDCNT >> 6) & 0b11) != 0b00) //blend control bits 6-7 not zero then apply blending
+                {
+                    hiBgrColor = ApplyBlendingEffects(hiBgrColor, hiColorSource, loBgrColor, loColorSource);
+                }
             }
 
-            setColor:
-            //var finalColor = ConvertBgr555ToArgb(topPixelBgrColor);
-            FrameBuffer.SetPixel(x, y, topPixelBgrColor);
+            FrameBuffer.SetPixel(x, y, hiBgrColor);
         }
     }
 
     private static int RenderAffineSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ushort displayControl, ScanlineSpriteInfo sprite)
     {
-        int xCoord = sprite.XCoord;
-        var spriteXPos = x - xCoord;
+        var spriteXPos = x - sprite.XCoord;
 
         var canvasWidth = sprite.DoubleSize ? (sprite.XTiles * 8) * 2 : sprite.XTiles * 8; //for now hFlip is DoubleSize flag for rotationalSprites
         if ((uint)spriteXPos >= (uint)canvasWidth || sprite.Priority > priorityLine)
@@ -530,8 +485,7 @@ public sealed class Ppu
 
     private static int RenderRegularSprite(ref ReadOnlySpan<byte> vram, int x, int priorityLine, ScanlineSpriteInfo sprite)
     {
-        int xCoord = sprite.XCoord;
-        var spriteXPos = x - xCoord;
+        var spriteXPos = x - sprite.XCoord;
 
         bool objXRange = (uint)spriteXPos < (uint)(sprite.XTiles * 8);
         if (!objXRange || sprite.Priority > priorityLine)
@@ -730,7 +684,7 @@ public sealed class Ppu
             BlendTargetTwoType loColorSource = BlendTargetTwoType.Backdrop;
             int hiPriorityLine, loPriorityLine = hiPriorityLine = 4;
 
-            foreach (var bgIdx in activeBgs)
+            foreach (ref readonly var bgIdx in activeBgs)
             {
                 if ((winMask & (1 << bgIdx)) == 0) //if not set to display in window continue
                 {
@@ -842,7 +796,6 @@ public sealed class Ppu
                 }
             }
 
-            //var finalColor = ConvertBgr555ToArgb(hiBgrColor);
             FrameBuffer.SetPixel(x, y, hiBgrColor);
         }
 
@@ -961,7 +914,7 @@ public sealed class Ppu
             BlendTargetTwoType loColorSource = BlendTargetTwoType.Backdrop;
             int hiPriorityLine, loPriorityLine = hiPriorityLine = 4; //priority of hi and lo pixel is defaulted to 4 which is always higher than any bg or obj pixel
 
-            foreach (var bgIdx in activeBgs)
+            foreach (ref readonly var bgIdx in activeBgs)
             {
                 if ((winMask & (1 << bgIdx)) == 0) //if not set to display in window continue
                 {
@@ -1285,7 +1238,6 @@ public sealed class Ppu
             var offset = ((y * ScreenWidth) + x) * 2;
 
             var bgr555 = Read16(vram, offset);
-            //var finalColor = ConvertBgr555ToArgb(bgr555);
             FrameBuffer.SetPixel(x, y, bgr555);
         }
     }
