@@ -245,6 +245,7 @@ public sealed class Ppu
         SortSpriteIndicesByPriority(visibleSprites);
 
         ReadOnlySpan<byte> vram = _memory.Vram.AsSpan(0, 0x18000); //Explicit slice with full Length of VRAM to help JIT eliminate bounds checks
+        ReadOnlySpan<byte> paletteRam = _memory.PaletteRam.AsSpan(0, 0x400);
         for (var x = 0; x < ScreenWidth; x++)
         {
             var winMask = 0b111111;
@@ -295,7 +296,8 @@ public sealed class Ppu
                     continue;
                 }
 
-                var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
+                var offset = paletteIndex << 1; // mul 2 because each palette entry is 2 bytes
+                var bgrColor = (ushort)(paletteRam[offset] | (paletteRam[offset + 1] << 8));
 
                 if (hiBgrColor == 0x8000)
                 {
@@ -325,7 +327,10 @@ public sealed class Ppu
 
                 if (objPaletteIndex == 0) continue;
 
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber)));
+                objPaletteIndex += (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber));
+                var offset = (objPaletteIndex << 1) + 0x200; //object palettes start offset 0x200 in paletteRam
+                var objPixelColor = (ushort)(paletteRam[offset] | (paletteRam[offset + 1] << 8));
+
                 if (sprite.Priority <= hiPriorityLine) //if sprite has higher priority than current top pixel
                 {
                     //make sprite pixel top and next top gets set to previous top
@@ -342,7 +347,7 @@ public sealed class Ppu
 
             if (loBgrColor == 0x8000)
             {
-                loBgrColor = ReadPalette16(0);
+                loBgrColor = (ushort)(paletteRam[0] | (paletteRam[1] << 8));
                 if (hiBgrColor == 0x8000)
                 {
                     hiBgrColor = loBgrColor;
@@ -659,6 +664,7 @@ public sealed class Ppu
         SortSpriteIndicesByPriority(visibleSprites);
 
         ReadOnlySpan<byte> vram = _memory.Vram.AsSpan(0, 0x18000); //Explicit slice with full Length of VRAM to help JIT eliminate bounds checks
+        ReadOnlySpan<byte> paletteRam = _memory.PaletteRam.AsSpan(0, 0x400);
         for (int x = 0; x < ScreenWidth; x++)
         {
             var winMask = 0b111111;
@@ -720,7 +726,8 @@ public sealed class Ppu
                 if (paletteIndex == 0) continue;
                 if (!isSinglePalette && (paletteIndex & 0xf) == 0) continue;  //mod 16 in 4bpp mode to cover all palette transparency
 
-                var bgrColor = ReadPalette16(paletteIndex * 2); // paletteInd * 2 bc each paletteEntry is 2bytes
+                var offset = paletteIndex << 1; // mul 2 bc each palette entry is 2 bytes
+                var bgrColor = (ushort)(paletteRam[offset] | (paletteRam[offset + 1] << 8));
 
                 if (hiBgrColor == 0x8000)
                 {
@@ -750,7 +757,10 @@ public sealed class Ppu
 
                 if (objPaletteIndex == 0) continue; //if transparent dont draw
 
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber)));
+                objPaletteIndex += (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber));
+                var offset = (objPaletteIndex << 1) + 0x200; //object palettes start offset 0x200 in paletteRam
+                var objPixelColor = (ushort)(paletteRam[offset] | (paletteRam[offset + 1] << 8));
+
                 if (sprite.Priority <= hiPriorityLine) //if sprite has higher priority than current top pixel
                 {
                     //make sprite pixel top and next top gets set to previous top
@@ -767,7 +777,7 @@ public sealed class Ppu
 
             if (loBgrColor == 0x8000)
             {
-                loBgrColor = ReadPalette16(0);
+                loBgrColor = (ushort)(paletteRam[0] | (paletteRam[1] << 8));
                 if (hiBgrColor == 0x8000)
                 {
                     hiBgrColor = loBgrColor;
@@ -889,6 +899,7 @@ public sealed class Ppu
         SortSpriteIndicesByPriority(visibleSprites);
 
         ReadOnlySpan<byte> vram = _memory.Vram.AsSpan(0, 0x18000); //Explicit slice with full Length of VRAM to help JIT eliminate bounds checks
+        ReadOnlySpan<byte> paletteRam = _memory.PaletteRam.AsSpan(0, 0x400);
         for (int x = 0; x < ScreenWidth; x++)
         {
             var winMask = 0b111111;
@@ -935,7 +946,9 @@ public sealed class Ppu
                     continue;
                 }
 
-                var bgrColor = ReadPalette16(paletteIndex * 2); //paletteInd * 2 bc each paletteEntry is 2bytes
+                var offset = paletteIndex << 1; // mul 2 bc each palette entry is 2 bytes
+                var bgrColor = (ushort)(paletteRam[offset] | (paletteRam[offset + 1] << 8));
+
                 if (hiBgrColor == 0x8000)
                 {
                     hiBgrColor = bgrColor;
@@ -967,7 +980,10 @@ public sealed class Ppu
                     continue;
                 }
 
-                var objPixelColor = ReadObjPaletteColor(objPaletteIndex + (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber)));
+                objPaletteIndex += (16 * (sprite.SinglePalette ? 0 : sprite.PaletteNumber));
+                var offset = (objPaletteIndex << 1) + 0x200; //object palettes start offset 0x200 in paletteRam
+                var objPixelColor = (ushort)(paletteRam[offset] | (paletteRam[offset + 1] << 8));
+
                 if (sprite.Priority <= hiPriorityLine) //if sprite has higher priority than current top pixel
                 {
                     //make sprite pixel top and next top gets set to previous top
@@ -984,7 +1000,7 @@ public sealed class Ppu
 
             if (loBgrColor == 0x8000)
             {
-                loBgrColor = ReadPalette16(0);
+                loBgrColor = (ushort)(paletteRam[0] | (paletteRam[1] << 8));
                 if (hiBgrColor == 0x8000)
                 {
                     hiBgrColor = loBgrColor;
@@ -1012,7 +1028,6 @@ public sealed class Ppu
                 }
             }
 
-            //var finalColor = ConvertBgr555ToArgb(hiBgrColor);
             FrameBuffer.SetPixel(x, y, hiBgrColor);
         }
 

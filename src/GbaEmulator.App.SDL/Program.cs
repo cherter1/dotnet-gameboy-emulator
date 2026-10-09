@@ -82,7 +82,7 @@ while (running)
     ulong nextIntervalTicksNs = lastTicksNs + NativeFrameTicks;
     if (currentTicksNs < nextIntervalTicksNs)
     {
-        SDL.SDL_DelayNS(nextIntervalTicksNs - currentTicksNs);
+        //SDL.SDL_DelayNS(nextIntervalTicksNs - currentTicksNs);
     }
     lastTicksNs = SDL.SDL_GetTicksNS();
 }
